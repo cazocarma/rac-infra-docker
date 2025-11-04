@@ -7,16 +7,14 @@ volumes:
   minio-data:
   keycloak-data:
   rabbitmq-data:
+  pgadmin_data:
 
 services:
 
   postgres:
     image: postgis/postgis:16-3.4
     container_name: rac-postgres
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-rentacompa}
+    env_file: ../.env.dev
     ports:
       - "5432:5432"
     volumes:
@@ -28,16 +26,26 @@ services:
       timeout: 5s
       retries: 10
 
+  pgadmin:
+    image: dpage/pgadmin4:8.6
+    container_name: rac-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@rentacompa.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks: [rac-net]
+    volumes:
+      - ./pgadmin_data:/var/lib/pgadmin
+
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
     container_name: rac-keycloak
-    command:
-      - start-dev
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_DB: dev-mem
-      KC_HTTP_RELATIVE_PATH: /
+    command: start-dev
+    env_file: ../.env.dev
     ports:
       - "8081:8080"
     volumes:
@@ -57,9 +65,7 @@ services:
   minio:
     image: quay.io/minio/minio:RELEASE.2024-10-02T17-50-41Z
     container_name: rac-minio
-    environment:
-      MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: minio123
+    env_file: ../.env.dev
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
@@ -68,64 +74,73 @@ services:
       - minio-data:/data
     networks: [rac-net]
 
-  # === Microservicios (build local simple; en producción se construyen imágenes) ===
-
   backend-auth:
     build: ../rac-auth-service
     container_name: rac-auth
-    env_file: ../.env
+    env_file: ../.env.dev
     depends_on: [keycloak]
     networks: [rac-net]
 
   backend-user:
     build: ../rac-user-service
     container_name: rac-user
-    env_file: ../.env
+    env_file: ../.env.dev
     depends_on: [postgres]
     networks: [rac-net]
 
   backend-match:
     build: ../rac-match-service
     container_name: rac-match
-    env_file: ../.env
+    env_file: ../.env.dev
     depends_on: [postgres, rabbitmq]
     networks: [rac-net]
 
   backend-chat:
     build: ../rac-chat-service
     container_name: rac-chat
-    env_file: ../.env
+    env_file: ../.env.dev
     depends_on: [postgres, rabbitmq]
-    networks: [rac-net]
     ports:
-      - "8085:8080" # para pruebas WS
+      - "8085:8080"
+    networks: [rac-net]
 
   backend-payment:
     build: ../rac-payment-service
     container_name: rac-payment
-    env_file: ../.env
+    env_file: ../.env.dev
     depends_on: [postgres, rabbitmq]
     networks: [rac-net]
 
   backend-alert:
     build: ../rac-alert-service
     container_name: rac-alert
-    env_file: ../.env
+    env_file: ../.env.dev
     depends_on: [postgres, rabbitmq]
     networks: [rac-net]
 
   backend-admin:
     build: ../rac-admin-service
     container_name: rac-admin
-    env_file: ../.env
+    env_file: ../.env.dev
     depends_on: [postgres]
     networks: [rac-net]
 
   flutter-web:
-    build: ../rac-frontend-flutter
+    build:
+      context: ../rac-frontend-flutter
+      dockerfile: Dockerfile
     container_name: rac-frontend
-    env_file: ../.env
+    environment:
+      - ENVIRONMENT=development
+    depends_on:
+      - backend-user
+      - backend-auth
     networks: [rac-net]
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
   nginx-proxy:
     image: nginx:1.25-alpine

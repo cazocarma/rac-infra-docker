@@ -1,0 +1,13 @@
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+.env
+*.local
+*.log
+*.tmp
+*.bak
+README.md
+rac-docs/
