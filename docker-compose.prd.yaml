@@ -1,3 +1,5 @@
+version: "3.9"
+
 networks:
   rac-net:
     driver: bridge
@@ -7,39 +9,23 @@ volumes:
   minio-data:
   keycloak-data:
   rabbitmq-data:
+  pgadmin_data:
 
 services:
 
   postgres:
     image: postgis/postgis:16-3.4
     container_name: rac-postgres
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-rentacompa}
-    ports:
-      - "5432:5432"
+    env_file: ../.env.prd
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks: [rac-net]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-rentacompa}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
 
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
     container_name: rac-keycloak
-    command:
-      - start-dev
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_DB: dev-mem
-      KC_HTTP_RELATIVE_PATH: /
-    ports:
-      - "8081:8080"
+    command: start
+    env_file: ../.env.prd
     volumes:
       - keycloak-data:/opt/keycloak/data
     networks: [rac-net]
@@ -47,9 +33,6 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rac-rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks: [rac-net]
@@ -57,74 +40,65 @@ services:
   minio:
     image: quay.io/minio/minio:RELEASE.2024-10-02T17-50-41Z
     container_name: rac-minio
-    environment:
-      MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: minio123
+    env_file: ../.env.prd
     command: server /data --console-address ":9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
     volumes:
       - minio-data:/data
     networks: [rac-net]
 
-  # === Microservicios (build local simple; en producción se construyen imágenes) ===
-
   backend-auth:
-    build: ../rac-auth-service
+    image: ghcr.io/cazocarma/rac-auth-service:latest
     container_name: rac-auth
-    env_file: ../.env
+    env_file: ../.env.prd
     depends_on: [keycloak]
     networks: [rac-net]
 
   backend-user:
-    build: ../rac-user-service
+    image: ghcr.io/cazocarma/rac-user-service:latest
     container_name: rac-user
-    env_file: ../.env
+    env_file: ../.env.prd
     depends_on: [postgres]
     networks: [rac-net]
 
   backend-match:
-    build: ../rac-match-service
+    image: ghcr.io/cazocarma/rac-match-service:latest
     container_name: rac-match
-    env_file: ../.env
+    env_file: ../.env.prd
     depends_on: [postgres, rabbitmq]
     networks: [rac-net]
 
   backend-chat:
-    build: ../rac-chat-service
+    image: ghcr.io/cazocarma/rac-chat-service:latest
     container_name: rac-chat
-    env_file: ../.env
+    env_file: ../.env.prd
     depends_on: [postgres, rabbitmq]
     networks: [rac-net]
-    ports:
-      - "8085:8080" # para pruebas WS
 
   backend-payment:
-    build: ../rac-payment-service
+    image: ghcr.io/cazocarma/rac-payment-service:latest
     container_name: rac-payment
-    env_file: ../.env
+    env_file: ../.env.prd
     depends_on: [postgres, rabbitmq]
     networks: [rac-net]
 
   backend-alert:
-    build: ../rac-alert-service
+    image: ghcr.io/cazocarma/rac-alert-service:latest
     container_name: rac-alert
-    env_file: ../.env
+    env_file: ../.env.prd
     depends_on: [postgres, rabbitmq]
     networks: [rac-net]
 
   backend-admin:
-    build: ../rac-admin-service
+    image: ghcr.io/cazocarma/rac-admin-service:latest
     container_name: rac-admin
-    env_file: ../.env
+    env_file: ../.env.prd
     depends_on: [postgres]
     networks: [rac-net]
 
   flutter-web:
-    build: ../rac-frontend-flutter
+    image: ghcr.io/cazocarma/rac-frontend-flutter:latest
     container_name: rac-frontend
-    env_file: ../.env
+    env_file: ../.env.prd
     networks: [rac-net]
 
   nginx-proxy:

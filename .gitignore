@@ -1,0 +1,13 @@
+.env
+.env.*
+*.local
+*.log
+*.tmp
+*.bak
+*.pid
+docker-compose.override.yml
+*.tar
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
