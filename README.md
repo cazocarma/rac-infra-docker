@@ -231,3 +231,16 @@ docker volume rm rac-infra-docker_pgdata rac-infra-docker_minio-data rac-infra-d
 ---
 
 🧡 **Rent-a-Compa — Arquitectura Docker Multiservicio**
+
+
+
+## Comandos útiles:
+
+Levantar stack de auth
+   bash```
+   docker compose -f docker-compose.dev.yaml up -d backend-auth
+   ```
+Bajar stack de auth
+   bash```
+   docker compose -f docker-compose.dev.yaml down
+   ```
