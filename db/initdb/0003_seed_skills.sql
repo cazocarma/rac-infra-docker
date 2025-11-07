@@ -1,4 +1,4 @@
--- 0002_seed_skills.sql
+-- 0003_seed_skills.sql
 -- Carga de habilidades base (idempotente)
 
 INSERT INTO skill (id, name) VALUES

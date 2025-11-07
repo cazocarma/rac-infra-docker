@@ -1,11 +1,10 @@
--- 0001_schema_h3.sql
--- Esquema base + normalización de skills para H3
+-- 0010_schema_h3.sql
+-- Esquema base normalizado + corrección de triggers
 
--- Extensiones
 CREATE EXTENSION IF NOT EXISTS postgis;
-CREATE EXTENSION IF NOT EXISTS pgcrypto;  -- para gen_random_uuid()
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- ====== Tipos ======
+-- ===== Tipos =====
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'rol_enum') THEN
     CREATE TYPE rol_enum AS ENUM ('cliente','compa','admin');
@@ -27,7 +26,7 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- ====== Tablas principales ======
+-- ===== Tablas principales =====
 CREATE TABLE IF NOT EXISTS usuario (
   id UUID PRIMARY KEY,
   nombre VARCHAR(120) NOT NULL,
@@ -40,14 +39,13 @@ CREATE TABLE IF NOT EXISTS usuario (
 
 CREATE TABLE IF NOT EXISTS compa_perfil (
   id UUID PRIMARY KEY,
-  usuario_id UUID NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+  usuario_id UUID NOT NULL REFERENCES usuario(id) ON DELETE CASCADE UNIQUE,
   descripcion TEXT,
   tarifa_hora NUMERIC(10,2) NOT NULL DEFAULT 0,
   rating_promedio NUMERIC(3,2) NOT NULL DEFAULT 0,
   ubicacion geometry(Point, 4326),
   disponibilidad_json JSONB NOT NULL DEFAULT '{}'::jsonb,
   foto_url TEXT,
-  -- cache opcional (no es la fuente de verdad)
   habilidades_cache TEXT[] NOT NULL DEFAULT '{}'
 );
 
@@ -55,12 +53,11 @@ CREATE INDEX IF NOT EXISTS idx_compa_perfil_usuario ON compa_perfil(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_compa_perfil_ubicacion ON compa_perfil USING GIST(ubicacion);
 CREATE INDEX IF NOT EXISTS idx_compa_perfil_cache ON compa_perfil USING GIN(habilidades_cache);
 
--- ====== Normalización de Skills ======
+-- ===== Normalización de skills =====
 CREATE TABLE IF NOT EXISTS skill (
   id UUID PRIMARY KEY,
   name TEXT UNIQUE NOT NULL
 );
-
 CREATE INDEX IF NOT EXISTS idx_skill_name ON skill(LOWER(name));
 
 CREATE TABLE IF NOT EXISTS compa_perfil_skill (
@@ -69,7 +66,7 @@ CREATE TABLE IF NOT EXISTS compa_perfil_skill (
   PRIMARY KEY (perfil_id, skill_id)
 );
 
--- ====== Cache de habilidades (trigger) ======
+-- ===== Cache de habilidades (trigger) =====
 CREATE OR REPLACE FUNCTION refresh_habilidades_cache(p_perfil UUID) RETURNS void AS $$
 DECLARE
   arr TEXT[];
@@ -84,23 +81,26 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_cps_insert ON compa_perfil_skill;
-CREATE TRIGGER trg_cps_insert
-AFTER INSERT ON compa_perfil_skill
-FOR EACH ROW EXECUTE FUNCTION refresh_habilidades_cache(NEW.perfil_id);
+CREATE OR REPLACE FUNCTION trg_refresh_habilidades_cache() RETURNS trigger AS $$
+DECLARE
+  v_perfil UUID;
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    v_perfil := OLD.perfil_id;
+  ELSE
+    v_perfil := NEW.perfil_id;
+  END IF;
+  PERFORM refresh_habilidades_cache(v_perfil);
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_cps_delete ON compa_perfil_skill;
-CREATE TRIGGER trg_cps_delete
-AFTER DELETE ON compa_perfil_skill
-FOR EACH ROW EXECUTE FUNCTION refresh_habilidades_cache(OLD.perfil_id);
+DROP TRIGGER IF EXISTS trg_cps_refresh ON compa_perfil_skill;
+CREATE TRIGGER trg_cps_refresh
+AFTER INSERT OR UPDATE OR DELETE ON compa_perfil_skill
+FOR EACH ROW EXECUTE FUNCTION trg_refresh_habilidades_cache();
 
-DROP TRIGGER IF EXISTS trg_cps_update ON compa_perfil_skill;
-CREATE TRIGGER trg_cps_update
-AFTER UPDATE ON compa_perfil_skill
-FOR EACH ROW EXECUTE FUNCTION refresh_habilidades_cache(NEW.perfil_id);
-
--- ====== (Opcional) Tablas adicionales ya previstas en H2/H4+ ======
--- Se agregan aquí sólo si aún no existen en tu base.
+-- ===== Otras tablas =====
 CREATE TABLE IF NOT EXISTS sesion (
   id UUID PRIMARY KEY,
   cliente_id UUID NOT NULL REFERENCES usuario(id),
@@ -127,11 +127,12 @@ CREATE INDEX IF NOT EXISTS idx_mensaje_sesion ON mensaje(sesion_id);
 
 CREATE TABLE IF NOT EXISTS pago (
   id UUID PRIMARY KEY,
-  sesion_id UUID NOT NULL REFERENCES sesion(id) UNIQUE ON DELETE CASCADE,
+  sesion_id UUID NOT NULL REFERENCES sesion(id) ON DELETE CASCADE,
   monto NUMERIC(10,2) NOT NULL,
   estado pago_estado_enum NOT NULL,
   metodo pago_metodo_enum NOT NULL,
-  fecha_pago TIMESTAMPTZ NOT NULL DEFAULT now()
+  fecha_pago TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT pago_sesion_unique UNIQUE (sesion_id)
 );
 
 CREATE TABLE IF NOT EXISTS reporte (

@@ -19,8 +19,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./db/migrations:/sql:ro
-      - ./db/keycloak:/docker-entrypoint-initdb.d:ro
+      - ./db/initdb:/docker-entrypoint-initdb.d:ro
     networks: [rac-net]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-rentacompa}"]
