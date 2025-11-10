@@ -1,0 +1,68 @@
+{
+  "realm": "rentacompa",
+  "enabled": true,
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": true,
+  "clients": [
+    {
+      "clientId": "frontend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "7b613d9625672aa6e7fa232b5237836666e4a6b1bb524a815c7a68ab79132273",
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "attributes": {
+        "access.token.lifespan": "3600",
+        "refresh.token.lifespan": "86400"
+      }
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "cliente", "description": "Usuario cliente" },
+      { "name": "compa", "description": "Usuario compa" },
+      { "name": "admin", "description": "Administrador" }
+    ]
+  },
+  "users": [
+    {
+      "username": "cliente1",
+      "enabled": true,
+      "email": "cliente1@demo.com",
+      "emailVerified": true,
+      "firstName": "Cliente",
+      "lastName": "Demo",
+      "credentials": [
+        { "type": "password", "value": "123456", "temporary": false }
+      ],
+      "requiredActions": [],
+      "realmRoles": ["cliente"]
+    },
+    {
+      "username": "compa1",
+      "enabled": true,
+      "email": "compa1@demo.com",
+      "emailVerified": true,
+      "firstName": "Compa",
+      "lastName": "Demo",
+      "credentials": [{ "type": "password", "value": "123456", "temporary": false }],
+      "requiredActions": [],
+      "realmRoles": ["compa"]
+    },
+    {
+      "username": "admin1",
+      "enabled": true,
+      "email": "admin1@demo.com",
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "Demo",
+      "credentials": [{ "type": "password", "value": "123456", "temporary": false }],
+      "requiredActions": [],
+      "realmRoles": ["admin"]
+    }
+  ]
+}
