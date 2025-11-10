@@ -12,3 +12,4 @@ docker-compose.override.yml
 .DS_Store
 Thumbs.db
 realm-rentacompa.json
+realm-rentacompa.template.json
