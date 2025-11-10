@@ -9,6 +9,9 @@ DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'rol_enum') THEN
     CREATE TYPE rol_enum AS ENUM ('cliente','compa','admin');
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'genero_enum') THEN
+    CREATE TYPE genero_enum AS ENUM ('masculino','femenino','otro','prefiero_no_decir');
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'sesion_estado_enum') THEN
     CREATE TYPE sesion_estado_enum AS ENUM ('pendiente','activa','finalizada','cancelada');
   END IF;
@@ -36,6 +39,21 @@ CREATE TABLE IF NOT EXISTS usuario (
   verificado BOOLEAN NOT NULL DEFAULT FALSE,
   fecha_registro TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Campos extendidos registro (Hito 4)
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS fecha_nacimiento DATE;
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS genero genero_enum;
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS telefono TEXT;
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS pais TEXT;
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS region TEXT;
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS ciudad TEXT;
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS direccion TEXT;
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS intereses TEXT[];
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS idioma_preferido TEXT;
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS notificaciones_activadas BOOLEAN DEFAULT FALSE;
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS foto_perfil TEXT;
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS ubicacion geometry(Point, 4326);
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS radio_busqueda_km INT;
 
 CREATE TABLE IF NOT EXISTS compa_perfil (
   id UUID PRIMARY KEY,
@@ -144,3 +162,32 @@ CREATE TABLE IF NOT EXISTS reporte (
   estado reporte_estado_enum NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_reporte_sesion ON reporte(sesion_id);
+
+-- rac-match-service initial schema
+
+
+
+CREATE TABLE IF NOT EXISTS sesion (
+  id UUID PRIMARY KEY,
+  cliente_id UUID NOT NULL,
+  compa_id UUID NOT NULL,
+  fecha_inicio TIMESTAMPTZ NOT NULL,
+  fecha_fin TIMESTAMPTZ NOT NULL,
+  estado sesion_estado_enum NOT NULL DEFAULT 'pendiente',
+  monto_total NUMERIC(10,2) NOT NULL DEFAULT 0,
+  calificacion_cliente INT,
+  calificacion_compa INT,
+  creado_en TIMESTAMPTZ DEFAULT now(),
+  actualizado_en TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sesion_compa_fecha ON sesion(compa_id, fecha_inicio, fecha_fin);
+CREATE INDEX IF NOT EXISTS idx_sesion_cliente_fecha ON sesion(cliente_id, fecha_inicio);
+
+-- Compa availability JSON store
+CREATE TABLE IF NOT EXISTS compa_availability (
+  compa_id UUID PRIMARY KEY,
+  disponibilidad_json JSONB NOT NULL,
+  actualizado_en TIMESTAMPTZ DEFAULT now()
+);
+
