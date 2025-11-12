@@ -21,11 +21,32 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks: [rac-net]
 
+  keycloak-schema:
+    image: postgres:16
+    container_name: rac-keycloak-schema
+    env_file: ../.env.prd
+    depends_on:
+      - postgres
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set_in_secret_manager}
+    volumes:
+      - ./db/initdb/0001_keycloak_db.sql:/scripts/0001_keycloak_db.sql:ro
+    entrypoint:
+      - bash
+      - -c
+      - >
+        psql -h postgres -U ${POSTGRES_USER:-postgres} -d postgres
+        -f /scripts/0001_keycloak_db.sql
+    networks: [rac-net]
+    restart: "no"
+
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
     container_name: rac-keycloak
     command: start
     env_file: ../.env.prd
+    depends_on:
+      - keycloak-schema
     volumes:
       - keycloak-data:/opt/keycloak/data
     networks: [rac-net]
