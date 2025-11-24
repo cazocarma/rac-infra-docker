@@ -84,7 +84,7 @@ services:
       - minio-data:/data
     networks: [rac-net]
 
-  backend-auth:
+  b-auth:
     build: ../rac-auth-service
     container_name: rac-auth
     env_file: ../.env.dev
@@ -96,7 +96,7 @@ services:
       retries: 5
     networks: [rac-net]
 
-  backend-user:
+  b-user:
     build: ../rac-user-service
     container_name: rac-user
     env_file: ../.env.dev
@@ -105,7 +105,7 @@ services:
         condition: service_healthy
     networks: [rac-net]
 
-  backend-match:
+  b-match:
     build: ../rac-match-service
     container_name: rac-match
     env_file: ../.env.dev
@@ -116,7 +116,7 @@ services:
         condition: service_started
     networks: [rac-net]
 
-  backend-chat:
+  b-chat:
     build: ../rac-chat-service
     container_name: rac-chat
     env_file: ../.env.dev
@@ -125,21 +125,21 @@ services:
       - "8085:8080"
     networks: [rac-net]
 
-  backend-payment:
+  b-payment:
     build: ../rac-payment-service
     container_name: rac-payment
     env_file: ../.env.dev
     depends_on: [postgres, rabbitmq]
     networks: [rac-net]
 
-  backend-alert:
+  b-alert:
     build: ../rac-alert-service
     container_name: rac-alert
     env_file: ../.env.dev
     depends_on: [postgres, rabbitmq]
     networks: [rac-net]
 
-  backend-admin:
+  b-admin:
     build: ../rac-admin-service
     container_name: rac-admin
     env_file: ../.env.dev
@@ -154,8 +154,8 @@ services:
     environment:
       - ENVIRONMENT=development
     depends_on:
-      - backend-user
-      - backend-auth
+      - b-user
+      - b-auth
     networks: [rac-net]
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://localhost || exit 1"]
@@ -167,13 +167,13 @@ services:
     image: nginx:1.25-alpine
     container_name: rac-nginx
     depends_on:
-      - backend-auth
-      - backend-user
-      - backend-match
-      - backend-chat
-      - backend-payment
-      - backend-alert
-      - backend-admin
+      - b-auth
+      - b-user
+      - b-match
+      - b-chat
+      - b-payment
+      - b-alert
+      - b-admin
       - flutter-web
     ports:
       - "80:80"
