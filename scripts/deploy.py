@@ -7,6 +7,7 @@ import re
 import subprocess
 import urllib.request
 from urllib.parse import urlsplit
+from release_policy import load_release, infrastructure_digest
 
 def require(condition, message="Deployment gate rejected"):
     if not condition: raise RuntimeError(message)
@@ -17,20 +18,10 @@ require(environment in {"qa", "prd"})
 require(os.environ["CONFIRMATION"] == "DEPLOY " + environment, "Explicit confirmation required")
 require(re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,79}", release_id), "Invalid release id")
 root = Path(__file__).resolve().parent.parent
-raw = (root / "releases" / (release_id + ".json")).read_bytes()
-manifest = json.loads(raw)
-require(set(manifest) == {"AUTH_IMAGE", "USER_IMAGE", "MATCH_IMAGE", "FRONTEND_IMAGE"})
-for key, repo in {"AUTH_IMAGE":"rac-auth-service", "USER_IMAGE":"rac-user-service", "MATCH_IMAGE":"rac-match-service", "FRONTEND_IMAGE":"rac-frontend-flutter"}.items():
-    require(re.fullmatch(r"ghcr\.io/cazocarma/" + repo + r"@sha256:[a-f0-9]{64}", manifest[key]), "Immutable image required")
+manifest = load_release(root, release_id)
 release_hash = hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest()
 # Promote infrastructure and migration contents as well as application images.
-infra_hash = hashlib.sha256()
-files = [root / name for name in ("Makefile", "compose.yaml", "compose.release.yaml", "compose.observability.yaml", "docker-compose.qa.yaml", "docker-compose.prd.yaml", "nginx/environments.conf", "scripts/deploy.py")]
-files += sorted((root / "db/migrations").glob("*.sql"))
-files += sorted(p for p in (root / "observability").rglob("*") if p.is_file())
-for file in sorted(files):
-    infra_hash.update(file.relative_to(root).as_posix().encode() + b"\0" + file.read_bytes().replace(b"\r\n", b"\n"))
-infra_hash = infra_hash.hexdigest()
+infra_hash = infrastructure_digest(root)
 repository = os.environ["GITHUB_REPOSITORY"]
 def api(path, data=None):
     req = urllib.request.Request("https://api.github.com/repos/" + repository + path,

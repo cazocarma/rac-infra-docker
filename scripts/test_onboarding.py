@@ -57,6 +57,21 @@ else:
         token=login(username)
         me=api('GET','/api/user/me',token)
         assert me['role']=='cliente'
+        personal={'nombre':'Cris de prueba','telefono':'+56 9 1234 5678','pais':'Chile','region':'Metropolitana','ciudad':'Santiago','intereses':['Cine','cine','Running']}
+        api('PUT','/api/user/me',expected=401)
+        for extra in ({'role':'admin'},{'correo':'foreign@fixture.test'},{'usuario_id':me['id']}):
+            api('PUT','/api/user/me',token,{**personal,**extra},expected=400)
+        other=api('GET','/api/user/me',login('cliente1'))
+        api('PUT','/api/user/me',token,personal)
+        saved=api('GET','/api/user/me',token)
+        assert saved['nombre']==personal['nombre'] and saved['intereses']==['Cine','Running']
+        assert saved['correo']==me['correo'] and saved['role']=='cliente'
+        again=api('GET','/api/user/me',login(username))
+        assert again['nombre']==personal['nombre'] and again['telefono']==personal['telefono']
+        assert api('GET','/api/user/me',login('cliente1'))==other
+        # Keep TOKENS[-1] associated with the test identity for the role refresh below.
+        token=login(username)
+        print('PASS: personal profile persists across login, rejects identity/role assignment and isolates owners')
         path='/api/user/me/compa'
         api('GET',path,token,expected=404)
         api('PUT',path,expected=401)

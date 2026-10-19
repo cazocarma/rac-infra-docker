@@ -61,6 +61,50 @@ try:
         page.locator('#kc-login').click()
         page.wait_for_url(BASE+'/#/home',timeout=60000)
         semantics()
+        page.goto(BASE+'/#/profile',wait_until='networkidle')
+        semantics()
+        expect(page.get_by_text('Hagamos tu perfil más tuyo',exact=True)).to_be_visible(timeout=60000)
+        fill('Nombre visible','Cris perfil de prueba')
+        fill('Teléfono (opcional)','+56 9 1234 5678')
+        fill('País (opcional)','Chile')
+        fill('Ciudad (opcional)','Santiago')
+        fill('Tus intereses (opcionales)','Cine, Running')
+        failure_route='**/api/user/me'
+        page.route(failure_route,lambda route: route.fulfill(status=503,content_type='application/json',body='{"error":"profile_unavailable"}') if route.request.method=='PUT' else route.continue_())
+        with page.expect_response(lambda r:r.url.endswith('/api/user/me') and r.request.method=='PUT') as failed_save:
+            find('button','Guardar cambios').click()
+        assert failed_save.value.status==503
+        try:
+            expect(page.get_by_role('group',name=re.compile('Se conservan en el formulario'))).to_be_visible(timeout=5000)
+        except Exception:
+            (ARTIFACTS/'profile-error-aria.txt').write_text(page.locator('body').aria_snapshot(),encoding='utf-8')
+            page.screenshot(path=str(ARTIFACTS/'profile-error.png'))
+            raise
+        page.unroute(failure_route)
+        with page.expect_response(lambda r:r.url.endswith('/api/user/me') and r.request.method=='PUT') as personal_saved:
+            find('button','Guardar cambios').click()
+        assert personal_saved.value.status==200
+        expect(page.get_by_text('Tu perfil se guardó correctamente',exact=True)).to_be_visible(timeout=30000)
+        auth=personal_saved.value.request.headers['authorization']
+        personal=context.request.get(BASE+'/api/user/me',headers={'Authorization':auth}).json()
+        assert personal['nombre']=='Cris perfil de prueba' and personal['intereses']==['Cine','Running']
+        page.reload(wait_until='networkidle');semantics()
+        expect(page.get_by_text('Hagamos tu perfil más tuyo',exact=True)).to_be_visible(timeout=60000)
+        restored_name=find('textbox','Nombre visible')
+        restored_name.click()
+        expect(restored_name).to_have_value('Cris perfil de prueba')
+        page.keyboard.press('Tab')
+        page.mouse.wheel(0,-100000);page.wait_for_timeout(250)
+        page.screenshot(path=str(ARTIFACTS/'personal-profile-desktop.png'))
+        page.set_viewport_size({'width':390,'height':844})
+        page.emulate_media(color_scheme='dark')
+        page.wait_for_timeout(500)
+        page.screenshot(path=str(ARTIFACTS/'personal-profile-mobile.png'))
+        assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Profile overflows mobile width'
+        page.set_viewport_size({'width':1280,'height':900})
+        page.goto(BASE+'/#/home',wait_until='networkidle');semantics()
+        expect(page.get_by_text('Encuentra tu compa',exact=True)).to_be_visible(timeout=60000)
+        print('PASS: personal profile real save/reload, retry after outage and mobile layout',flush=True)
         page.get_by_role('button',name='Sé Compa',exact=True).click()
         expect(page.get_by_text('Comparte lo que te gusta hacer',exact=True)).to_be_visible(timeout=30000)
         page.set_viewport_size({'width':320,'height':568})

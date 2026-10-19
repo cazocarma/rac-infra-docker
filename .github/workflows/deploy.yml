@@ -26,12 +26,22 @@ jobs:
   validate-request:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
       - name: Validate branch and explicit confirmation
         env:
           BRANCH: ${{ github.ref_name }}
           TARGET: ${{ inputs.environment }}
           CONFIRMATION: ${{ inputs.confirmation }}
         run: python -c 'import os,sys; sys.exit(0 if os.environ["BRANCH"] == os.environ["TARGET"] and os.environ["CONFIRMATION"] == "DEPLOY " + os.environ["TARGET"] else "Branch or confirmation rejected")'
+      - name: Validate release and environment before waiting for a target runner
+        env:
+          DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/check_release.py
   deploy:
     needs: validate-request
     environment: ${{ inputs.environment }}

@@ -22,6 +22,8 @@ jobs:
         working-directory: rac-infra-docker
       - run: python scripts/test_deployment_guards.py
         working-directory: rac-infra-docker
+      - run: python -m unittest discover -s scripts -p "test_release_policy.py"
+        working-directory: rac-infra-docker
   integration:
     timeout-minutes: 55
     needs: migrations
