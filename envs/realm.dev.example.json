@@ -192,5 +192,13 @@
   ],
   "defaultRoles": [
     "cliente"
-  ]
+  ],
+  "loginTheme": "rac",
+  "displayName": "Rent-A-Compa",
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "es",
+    "en"
+  ],
+  "defaultLocale": "es"
 }

@@ -104,6 +104,7 @@ jobs:
           python -m playwright install --with-deps chromium
           python scripts/test_browser.py
           python scripts/test_browser_onboarding.py
+          python scripts/test_identity_ui.py
       - name: Logs
         if: failure()
         working-directory: rac-infra-docker

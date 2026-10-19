@@ -1,0 +1,56 @@
+:root { color-scheme: light dark; --rac-bg:#f6f7f2; --rac-surface:#fff; --rac-text:#243e33; --rac-muted:#52685b; --rac-border:#d9e3db; --rac-primary:#176b58; --rac-focus:#176b58; }
+.login-pf body { background:var(--rac-bg); color:var(--rac-text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; font-size:15px; margin:0; min-height:100vh; }
+.login-pf-page { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:48px; max-width:1100px; margin:auto; padding:56px 32px; min-height:100vh; box-sizing:border-box; }
+#kc-header { margin:0; background:#183f31; border-radius:28px; padding:48px 36px; align-self:stretch; display:flex; align-items:center; min-height:480px; }
+#kc-header-wrapper { padding:0; text-align:left; text-transform:none; color:#c5e8ad; font-size:20px; font-weight:800; letter-spacing:-.5px; overflow-wrap:anywhere; }
+#kc-header-wrapper::before { content:"RAC"; display:block; color:#fff; font-size:36px; font-weight:900; margin-bottom:68px; letter-spacing:-2px; }
+#kc-header-wrapper::after { content:"Los mejores planes se comparten."; display:block; color:#fff; font-size:44px; font-weight:800; line-height:1.1; letter-spacing:-1.7px; margin-top:24px; max-width:360px; }
+.card-pf { background:var(--rac-surface); color:var(--rac-text); border:1px solid var(--rac-border); border-top:1px solid var(--rac-border); box-shadow:none; border-radius:24px; padding:36px; width:100%; max-width:none; margin:0; box-sizing:border-box; }
+.login-pf-page .login-pf-header { margin:0 0 28px; }
+#kc-page-title { color:var(--rac-text); font-size:30px; line-height:1.2; font-weight:800; letter-spacing:-1px; text-align:left; margin:8px 0 24px; }
+.login-pf-page .form-group { margin-bottom:20px; }
+.login-pf-page label, .pf-c-form__label-text { color:var(--rac-text); font-weight:600; font-size:13px; }
+.login-pf-page .form-control, .pf-c-form-control { height:50px; border:1px solid var(--rac-border); border-radius:12px; background:var(--rac-bg); color:var(--rac-text); box-shadow:none; padding:12px 14px; font:inherit; }
+.login-pf-page .form-control:focus, .pf-c-form-control:focus { outline:2px solid var(--rac-focus); outline-offset:2px; border-color:var(--rac-focus); box-shadow:none; }
+.pf-c-input-group { gap:6px; }
+.pf-c-input-group .pf-c-form-control { border-radius:12px !important; }
+.pf-c-input-group .pf-c-button { border:1px solid var(--rac-border); border-radius:12px; color:var(--rac-primary); background:var(--rac-bg); }
+.pf-c-input-group .pf-c-button::after { border:0; }
+.login-pf-page .btn-primary, .login-pf-page .pf-m-primary { background:var(--rac-primary); border:0; border-radius:12px; color:#fff; padding:15px 18px; min-height:50px; font-size:15px; font-weight:700; box-shadow:none; text-shadow:none; }
+.login-pf-page .btn-primary:hover, .login-pf-page .pf-m-primary:hover { background:#105141; }
+.login-pf-page a { color:var(--rac-primary); font-weight:600; text-decoration:underline; text-underline-offset:3px; }
+.login-pf-page a:hover { color:var(--rac-text); }
+.login-pf-page :focus-visible { outline:2px solid var(--rac-focus); outline-offset:3px; }
+#kc-form-options { color:var(--rac-muted); }
+#kc-info-wrapper { background:var(--rac-bg); border-radius:14px; margin-top:24px; padding:18px; color:var(--rac-muted); }
+#kc-registration { text-align:center; font-size:13px; }
+.login-pf-page .alert { border-radius:12px; box-shadow:none; padding:14px; font-size:13px; }
+#kc-locale { margin-bottom:12px; }
+#kc-locale ul { background:var(--rac-surface); border:1px solid var(--rac-border); border-radius:12px; }
+@media (max-width:999px) {
+ .login-pf-page { display:block; padding:20px; min-height:100vh; max-width:520px; }
+ #kc-header { min-height:0; padding:24px; border-radius:22px; margin-bottom:18px; }
+ #kc-header-wrapper { font-size:12px; }
+ #kc-header-wrapper::before { font-size:26px; margin-bottom:14px; }
+ #kc-header-wrapper::after { font-size:30px; margin-top:12px; max-width:340px; }
+ .card-pf { padding:24px; border-radius:22px; }
+ #kc-page-title { font-size:26px; }
+}
+@media (prefers-color-scheme:dark) {
+ :root { --rac-bg:#101c17; --rac-surface:#192822; --rac-text:#e1ebe4; --rac-muted:#b0c2b6; --rac-border:#35473d; --rac-primary:#91d5bc; --rac-focus:#91d5bc; }
+ .login-pf-page .btn-primary, .login-pf-page .pf-m-primary { color:#103d32; }
+ .login-pf-page .btn-primary:hover, .login-pf-page .pf-m-primary:hover { background:#b7e6d2; }
+}
+
+/* Keep inherited PatternFly control backgrounds and locale menu legible. */
+.pf-c-input-group { background:transparent; border-radius:12px; }
+#kc-current-locale-link, #kc-locale-dropdown a { color:var(--rac-text); }
+#kc-info { margin:0; padding:0; background:transparent; }
+#kc-info-wrapper { margin-bottom:0; }
+
+.login-pf-page #kc-locale { position:relative; top:auto; right:auto; width:auto; height:auto; margin:0 0 16px; text-align:right; }
+.login-pf-page #kc-locale-dropdown { position:relative; display:inline-block; }
+.login-pf-page #kc-locale-dropdown ul { right:0; left:auto; }
+
+.login-pf-page #kc-header-wrapper, .login-pf-page #kc-page-title { font-family:inherit; text-shadow:none; }
+.login-pf-page #kc-locale-dropdown a { color:var(--rac-text); }

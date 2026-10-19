@@ -2,8 +2,9 @@ services:
   postgres:
     ports: ["127.0.0.1:5432:5432"]
   keycloak:
-    command: [start-dev, --import-realm]
+    command: [start-dev, --import-realm, --spi-theme-static-max-age=-1, --spi-theme-cache-themes=false, --spi-theme-cache-templates=false]
     volumes:
+      - ./keycloak/themes/rac:/opt/keycloak/themes/rac:ro
       - ./envs/realm.dev.json:/opt/keycloak/data/import/realm-rentacompa.json:ro
   backend-auth:
     build: ../rac-auth-service

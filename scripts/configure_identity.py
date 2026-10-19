@@ -81,6 +81,10 @@ admin("POST", "/users/" + account["id"] + "/role-mappings/clients/" + management
 admin("POST", "/clients/" + client["id"] + "/scope-mappings/clients/" + management["id"], permissions)
 
 if ENV == "dev":
+    # The DEV overlay mounts this theme. Existing realms are updated too;
+    # realm import alone deliberately does not overwrite persisted settings.
+    admin("PUT", "", {"loginTheme": "rac", "displayName": "Rent-A-Compa",
+        "internationalizationEnabled": True, "supportedLocales": ["es", "en"], "defaultLocale": "es"})
     with psycopg.connect(os.environ["DATABASE_URL"]) as db:
         for skill in ("asado", "cine", "karaoke", "running"):
             db.execute("INSERT INTO skill(id,name) VALUES(gen_random_uuid(),%s) ON CONFLICT(name) DO NOTHING", (skill,))
