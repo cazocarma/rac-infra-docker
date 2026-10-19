@@ -13,14 +13,18 @@ with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
     errors = []
     def login(username, width=1366, height=1000):
-        context = browser.new_context(viewport={'width': width, 'height': height}, timezone_id='America/Santiago')
+        # Linux can inherit en-US@posix, which is not a valid browser BCP 47 locale.
+        context = browser.new_context(viewport={'width': width, 'height': height}, locale='es-CL', timezone_id='America/Santiago')
         page = context.new_page()
         page.on('pageerror', lambda e: errors.append(str(e)))
         page.goto(BASE, wait_until='networkidle')
         placeholder = page.locator('flt-semantics-placeholder')
         if placeholder.count(): placeholder.evaluate("element => element.click()")
         button = page.get_by_role('button', name='Ingresar o crear cuenta')
-        expect(button).to_be_visible(timeout=60000)
+        try:
+            expect(button).to_be_visible(timeout=60000)
+        except AssertionError as error:
+            raise AssertionError('Login did not start. Browser errors: ' + '; '.join(errors)) from error
         button.click()
         page.locator('#username').fill(username)
         page.locator('#password').fill('123456')

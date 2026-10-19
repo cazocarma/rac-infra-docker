@@ -26,7 +26,7 @@ username = json.loads(fixture('prepare'))['username']
 try:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(viewport={'width':1280,'height':900},timezone_id='America/Santiago')
+        context = browser.new_context(viewport={'width':1280,'height':900},locale='es-CL',timezone_id='America/Santiago')
         page = context.new_page()
         errors=[]
         page.on('pageerror',lambda e:errors.append(str(e)))

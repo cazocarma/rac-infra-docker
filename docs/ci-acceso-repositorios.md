@@ -45,6 +45,10 @@ Después de configurar App y Actions, ejecutar el workflow de la versión actual
 
 No registrar tokens, PEM ni cuerpos de respuestas de autenticación. El preflight solo informa repositorio, rama y código HTTP.
 
+### Navegador Linux: idioma explícito
+
+Tras corregir el acceso, el intento 2 llegó a las pruebas web pero no encontró el botón inicial. La reproducción con Chromium de Playwright 1.55.0 en Linux mostró `navigator.language = en-US@posix` y un error de Flutter: `Incorrect locale information provided`. Con `locale='es-CL'`, el mismo navegador mostró el login correctamente. Las pruebas de reservas y onboarding fijan ahora idioma `es-CL` y zona `America/Santiago`, sin depender del locale del sistema del runner. Un fallo de arranque informa también los errores JavaScript recolectados. Esto es independiente de las credenciales de la App; no se amplían permisos ni se oculta el fallo con reintentos.
+
 ## Operación y rotación
 
 La clave privada es persistente y **no expira automáticamente**. Rotarla periódicamente (política inicial RAC: cada 90 días) y al sospechar exposición: generar una segunda clave, actualizar el secret, validar una ejecución y eliminar la anterior en GitHub. GitHub admite varias claves durante la transición. Ante exposición confirmada, revocar inmediatamente la clave afectada y los tokens activos.
