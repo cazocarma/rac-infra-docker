@@ -1,19 +1,62 @@
 # Acceso entre repositorios en CI
 
-La ejecución [39255195701](https://github.com/cazocarma/rac-infra-docker/actions/runs/39255195701) falló al descargar `rac-match-service`, antes de ejecutar migraciones. La anotación fue `repository ... not found`; GitHub también responde así cuando el token carece de acceso a un repositorio privado. El job integration se omitió porque dependía del job fallido. Los 34 segundos correspondieron a preparación y reintentos del checkout.
+## Causa y decisión
 
-La llave SSH de este PC permite nuestros fetch/push locales. El runner de GitHub es otra máquina y no recibe esa llave. Su GITHUB_TOKEN está limitado al repositorio de la ejecución, por lo que no sustituye el acceso de lectura a otros repositorios privados. Véase [checkout de otros repositorios privados](https://github.com/actions/checkout#checkout-multiple-repos-private).
+La ejecución [39255195701](https://github.com/cazocarma/rac-infra-docker/actions/runs/39255195701) falló al descargar `rac-match-service`, antes de ejecutar migraciones. La anotación fue `repository ... not found`: GitHub también responde así cuando el token no puede leer un repositorio privado. Los 34 segundos correspondieron a preparación y reintentos del checkout. Las advertencias de Node no fueron la causa.
 
-## Configuración requerida
+La llave SSH del PC permite fetch/push locales. El runner es otra máquina: no recibe esa llave y su `GITHUB_TOKEN` está limitado al repositorio de la ejecución. Véase [checkout de otros repositorios privados](https://github.com/actions/checkout#checkout-multiple-repos-private).
 
-1. Crear un [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new?name=RAC-CI-read&target_name=cazocarma&contents=read&expires_in=90), con vencimiento y acceso seleccionado a `rac-auth-service`, `rac-user-service`, `rac-match-service` y `rac-frontend-flutter`. Permiso de repositorio: **Contents: Read-only**; Metadata de lectura se incluye automáticamente. No necesita escritura, administración ni acceso a todos los repositorios.
-2. Guardarlo como **repository secret** `REPO_READ_TOKEN` en [Settings → Secrets and variables → Actions de rac-infra-docker](https://github.com/cazocarma/rac-infra-docker/settings/secrets/actions). No guardarlo como variable, archivo de código o mensaje de chat.
-3. Ejecutar nuevamente el workflow de la última versión de main. Si existe un token pero no funciona, revisar expiración, repositorios seleccionados, permiso Contents y existencia de la rama.
+Usamos una GitHub App dedicada de lectura. Su identidad pertenece a la automatización; no utiliza un token personal ni una llave SSH personal. La instalación selecciona repositorios y permite emitir tokens temporales por job. Un PAT depende de una persona y requiere mantener su vencimiento; una deploy key por repositorio multiplicaría las llaves que administrar. La App resuelve este acceso común con el mecanismo oficial de GitHub.
 
-Referencias oficiales: [tokens de acceso personal](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) y [secrets de Actions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets).
+## Registro e instalación
+
+1. En [Developer settings → GitHub Apps](https://github.com/settings/apps), registrar `RAC CI Read - cazocarma` (nombre único).
+2. Homepage: `https://github.com/cazocarma/rac-infra-docker`. Desactivar Webhook. No se requieren callbacks, OAuth de usuarios, Device Flow ni eventos.
+3. Repository permissions: **Contents: Read-only**. Metadata de lectura se agrega automáticamente. Los demás permisos quedan sin acceso, incluidos Actions, Secrets y Administration.
+4. Visibilidad: **Only on this account** (`cazocarma`).
+5. Instalar con **Only select repositories**, seleccionando exactamente `rac-auth-service`, `rac-user-service`, `rac-match-service` y `rac-frontend-flutter`.
+6. En Credentials → Key pairs → New key de la App, generar una private key y guardar el PEM fuera del checkout, protegido. Nunca enviarlo al chat, imprimirlo en logs ni versionarlo.
+7. En [Actions de rac-infra-docker](https://github.com/cazocarma/rac-infra-docker/settings/secrets/actions), configurar:
+
+| Tipo | Nombre | Valor |
+| --- | --- | --- |
+| Repository variable | `RAC_CI_APP_CLIENT_ID` | Client ID de la App, no un client secret ni el App ID |
+| Repository secret | `RAC_CI_APP_PRIVATE_KEY` | Contenido completo del PEM de la App |
+
+La App no necesita instalarse en infra: el workflow usa su `GITHUB_TOKEN` para infra y solicita explícitamente el token de instalación para los cuatro compañeros. No otorgar acceso a todos los repositorios como solución a un error.
 
 ## Comportamiento del workflow
 
-El job migrations ejecuta las migraciones y verificaciones de infraestructura sin descargar repositorios externos. El job integration valida primero el token con GET de las referencias de las ramas, descarga los cuatro servicios y ejecuta las pruebas de políticas de base de datos, OIDC/API y navegador. La comprobación no imprime tokens ni cuerpos de error de GitHub y no cambia permisos o visibilidad de repositorios.
+El job `migrations` verifica la infraestructura sin descargar repositorios externos. `integration` valida la configuración y usa `actions/create-github-app-token` v3, fijada a un commit registrado en `docs/action-pins.json`. Solicita los cuatro repositorios y `permission-contents: read`. La acción revoca el token al terminar el job; GitHub limita su duración a una hora y el job tiene timeout de 55 minutos.
 
-Faltar ese secret es un error explícito de configuración: no se omiten las pruebas de integración para presentar una ejecución verde. Los logs de contenedores y la limpieza solo se intentan si se llegó a crear la configuración DEV efímera.
+El preflight comprueba lectura de las referencias antes de descargar código. Los checkouts no persisten credenciales. Las pruebas incluyen políticas de base de datos con los servicios compañeros, OIDC/API y navegador. La falta de configuración falla explícitamente: no se omiten pruebas para obtener un resultado verde. Ya no se consume `REPO_READ_TOKEN`.
+
+En push se lee la misma rama en los cuatro repositorios; en pull request, la rama base. Esas ramas deben existir en todos ellos. No hay fallback silencioso a main. No se usa `pull_request_target`: los PR de forks no reciben secretos y requieren integración desde una rama interna revisada. Revisar especialmente cambios de workflows y scripts ejecutados por CI antes de ejecutarlos con secretos. La App no incluye despliegue, producción, pagos ni escritura.
+
+## Verificación y diagnóstico
+
+Después de configurar App y Actions, ejecutar el workflow de la versión actual de main. Verificar emisión del token, comprobación de acceso, cuatro checkouts y pruebas reales. Los tests unitarios del preflight no sustituyen esta verificación.
+
+- Configuración ausente: comprobar nombres y que sean variable/secret **del repositorio infra**, no de un environment que el job no utiliza.
+- Fallo al emitir token: revisar Client ID, PEM completo e instalación en `cazocarma` con los cuatro repositorios.
+- HTTP 403/404: revisar instalación, Contents de lectura y existencia de rama. Un 404 no demuestra que el repositorio no exista.
+- Error de red: reintentar y revisar el estado de GitHub. No ampliar permisos.
+- Si la emisión funciona pero una prueba falla, investigar esa prueba por separado.
+
+No registrar tokens, PEM ni cuerpos de respuestas de autenticación. El preflight solo informa repositorio, rama y código HTTP.
+
+## Operación y rotación
+
+La clave privada es persistente y **no expira automáticamente**. Rotarla periódicamente (política inicial RAC: cada 90 días) y al sospechar exposición: generar una segunda clave, actualizar el secret, validar una ejecución y eliminar la anterior en GitHub. GitHub admite varias claves durante la transición. Ante exposición confirmada, revocar inmediatamente la clave afectada y los tokens activos.
+
+Conservar el PEM en un gestor de secretos o almacenamiento protegido. Limitar quién modifica workflows y secretos de infra. Eliminar copias temporales después de verificar el secret. Si se configuró un PAT para esta finalidad, revocarlo después de validar la App. Este cambio no automatiza la rotación.
+
+Para retirar acceso, suspender o desinstalar la App y eliminar secret y variable. Al agregar repositorios, revisar expresamente instalación y lista del workflow.
+
+## Referencias oficiales
+
+- [GitHub App en Actions](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow)
+- [Acción oficial y entradas](https://github.com/actions/create-github-app-token)
+- [Tokens de instalación y duración](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app)
+- [Administración y rotación de claves privadas](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/managing-private-keys-for-github-apps)
+- [Secrets de Actions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)

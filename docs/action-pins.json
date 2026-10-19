@@ -6,5 +6,6 @@
   "docker/login-action": "c94ce9fb468520275223c153574b00df6fe4bcc9",
   "docker/build-push-action": "10e90e3645eae34f1e60eeb005ba3a3d33f178e8",
   "subosito/flutter-action": "1a449444c387b1966244ae4d4f8c696479add0b2",
-  "actions/setup-java": "cf277c60eb25467037889841efdb72551f06f6c3"
+  "actions/setup-java": "cf277c60eb25467037889841efdb72551f06f6c3",
+  "actions/create-github-app-token": "64ab729a6294000f5aa4a4bc0b73d1f32bc45510"
 }
