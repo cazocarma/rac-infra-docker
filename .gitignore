@@ -12,3 +12,10 @@ docker-compose.override.yml
 .DS_Store
 Thumbs.db
 realm-rentacompa.json
+!envs/.env.*.example
+envs/realm.*.json
+!envs/realm.dev.example.json
+docs/evidence/*.log
+docs/evidence/*.json
+__pycache__/
+*.pyc

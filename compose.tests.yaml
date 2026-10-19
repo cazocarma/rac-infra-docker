@@ -1,0 +1,38 @@
+services:
+  test-go:
+    profiles: [tests]
+    build:
+      context: .
+      dockerfile: tools/Dockerfile.go-test
+    volumes:
+      - ..:/sources:ro
+      - go-test-modules:/go/pkg/mod
+      - go-test-build:/root/.cache/go-build
+    command:
+      - sh
+      - -c
+      - 'set -e; for name in auth user match chat payment alert admin; do cp -a /sources/rac-$$name-service /tmp/$$name; cd /tmp/$$name; go vet ./...; go test -race -count=1 ./...; done'
+  test-flutter:
+    profiles: [tests]
+    image: ghcr.io/cirruslabs/flutter:3.44.0
+    volumes: ["../rac-frontend-flutter:/sources:ro"]
+    command: [sh, -c, 'cp -a /sources /tmp/rac && cd /tmp/rac && flutter pub get --enforce-lockfile && flutter analyze && flutter test']
+  test-integration:
+    profiles: [tests]
+    build:
+      context: .
+      dockerfile: tools/Dockerfile
+    environment:
+      RAC_ENV: ${RAC_ENV}
+      DATABASE_URL: ${DATABASE_URL}
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      OIDC_ISSUER: ${OIDC_ISSUER}
+      OIDC_WEB_REDIRECT_URI: ${OIDC_WEB_REDIRECT_URI}
+      API_INTERNAL_URL: http://nginx
+      # DEV-only disposable identity fixtures, never passed to an application API.
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    command: [sh, -c, 'python test_integration.py && python test_onboarding.py']
+volumes:
+  go-test-modules:
+  go-test-build:

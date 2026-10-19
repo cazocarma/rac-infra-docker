@@ -1,13 +1,5 @@
 .git
-.gitignore
-.vscode
-.idea
-.DS_Store
-Thumbs.db
-.env
-*.local
+envs/.env.*
+envs/realm.dev.json
+__pycache__
 *.log
-*.tmp
-*.bak
-README.md
-rac-docs/

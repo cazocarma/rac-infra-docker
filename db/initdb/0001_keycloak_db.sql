@@ -1,15 +1,5 @@
 -- 0001_keycloak_db.sql
--- Reinicia la base y el esquema KC en cada arranque
-
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_database WHERE datname = 'keycloak') THEN
-    PERFORM pg_terminate_backend(pid)
-    FROM pg_stat_activity
-    WHERE datname = 'keycloak' AND pid <> pg_backend_pid();
-    EXECUTE 'DROP DATABASE keycloak';
-  END IF;
-END $$;
+-- Crea rol y DB para Keycloak (idempotente)
 
 DO $$
 BEGIN
@@ -18,12 +8,12 @@ BEGIN
   END IF;
 END $$;
 
-CREATE DATABASE keycloak OWNER keycloak;
+SELECT 'CREATE DATABASE keycloak OWNER keycloak'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\gexec
 
 \connect keycloak
 
-DROP SCHEMA IF EXISTS kc CASCADE;
-CREATE SCHEMA kc AUTHORIZATION keycloak;
+CREATE SCHEMA IF NOT EXISTS kc AUTHORIZATION keycloak;
 ALTER SCHEMA kc OWNER TO keycloak;
 GRANT USAGE ON SCHEMA kc TO keycloak;
 

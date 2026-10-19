@@ -1,0 +1,15 @@
+groups:
+  - name: rac
+    rules:
+      - alert: RACServiceUnavailable
+        expr: up{job="rac-api"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "Servicio RAC sin métricas: {{ $labels.service }}"
+      - alert: RACHighErrorRate
+        expr: sum by(service) (rate(rac_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum by(service) (rate(rac_http_requests_total[5m])), 0.001) > 0.05
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Más de 5% de errores en {{ $labels.service }}"

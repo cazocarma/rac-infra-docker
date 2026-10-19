@@ -1,0 +1,30 @@
+discovery.docker "rac" {
+  host = "tcp://docker-socket-proxy:2375"
+  refresh_interval = "10s"
+}
+discovery.relabel "rac" {
+  targets = discovery.docker.rac.targets
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    regex = "rac-" + sys.env("RAC_ENV")
+    action = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label = "service"
+  }
+  rule {
+    target_label = "environment"
+    replacement = sys.env("RAC_ENV")
+  }
+}
+loki.source.docker "rac" {
+  host = "tcp://docker-socket-proxy:2375"
+  targets = discovery.relabel.rac.output
+  forward_to = [loki.write.local.receiver]
+}
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
