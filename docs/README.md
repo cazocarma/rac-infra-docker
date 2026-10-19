@@ -38,3 +38,5 @@ pero no están desplegados y conservan bloqueos explícitos.
 - [Activación gratuita de compas y permisos](activacion-compa.md).
 
 - [Entrega y validaciones del 19 de octubre de 2026](entrega-2026-10-19.md).
+
+- [Resolver permisos de lectura entre repositorios en CI](ci-acceso-repositorios.md).

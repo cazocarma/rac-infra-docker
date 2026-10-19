@@ -14,21 +14,9 @@ jobs:
         with:
           persist-credentials: false
           path: rac-infra-docker
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          persist-credentials: false
-          repository: cazocarma/rac-match-service
-          ref: ${{ github.base_ref || github.ref_name }}
-          path: rac-match-service
-          token: ${{ secrets.REPO_READ_TOKEN || github.token }}
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          persist-credentials: false
-          repository: cazocarma/rac-user-service
-          ref: ${{ github.base_ref || github.ref_name }}
-          path: rac-user-service
-          token: ${{ secrets.REPO_READ_TOKEN || github.token }}
       - run: python scripts/test_migrations.py
+        working-directory: rac-infra-docker
+      - run: python -m unittest discover -s scripts -p "test_ci_access.py"
         working-directory: rac-infra-docker
       - run: python scripts/check_configuration.py
         working-directory: rac-infra-docker
@@ -42,35 +30,43 @@ jobs:
         with:
           persist-credentials: false
           path: rac-infra-docker
+      - name: Verify read access to companion repositories
+        working-directory: rac-infra-docker
+        env:
+          REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+        run: python scripts/check_ci_access.py
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
           repository: cazocarma/rac-auth-service
           ref: ${{ github.base_ref || github.ref_name }}
           path: rac-auth-service
-          token: ${{ secrets.REPO_READ_TOKEN || github.token }}
+          token: ${{ secrets.REPO_READ_TOKEN }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
           repository: cazocarma/rac-user-service
           ref: ${{ github.base_ref || github.ref_name }}
           path: rac-user-service
-          token: ${{ secrets.REPO_READ_TOKEN || github.token }}
+          token: ${{ secrets.REPO_READ_TOKEN }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
           repository: cazocarma/rac-match-service
           ref: ${{ github.base_ref || github.ref_name }}
           path: rac-match-service
-          token: ${{ secrets.REPO_READ_TOKEN || github.token }}
+          token: ${{ secrets.REPO_READ_TOKEN }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
           repository: cazocarma/rac-frontend-flutter
           ref: ${{ github.base_ref || github.ref_name }}
           path: rac-frontend-flutter
-          token: ${{ secrets.REPO_READ_TOKEN || github.token }}
+          token: ${{ secrets.REPO_READ_TOKEN }}
 
+      - name: Database policies against companion services
+        working-directory: rac-infra-docker
+        run: python scripts/test_migrations.py
       - name: Prepare ephemeral DEV
         working-directory: rac-infra-docker
         run: |
@@ -90,8 +86,8 @@ jobs:
       - name: Logs
         if: failure()
         working-directory: rac-infra-docker
-        run: docker compose --env-file envs/.env.dev -p rac-dev -f compose.yaml -f docker-compose.dev.yaml logs --tail=100
+        run: if [ -f envs/.env.dev ]; then docker compose --env-file envs/.env.dev -p rac-dev -f compose.yaml -f docker-compose.dev.yaml logs --tail=100; fi
       - name: Clean ephemeral CI containers
         if: always()
         working-directory: rac-infra-docker
-        run: make down
+        run: if [ -f envs/.env.dev ]; then make down; fi
