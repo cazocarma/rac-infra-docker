@@ -13,9 +13,27 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+          path: rac-infra-docker
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          repository: cazocarma/rac-match-service
+          ref: ${{ github.base_ref || github.ref_name }}
+          path: rac-match-service
+          token: ${{ secrets.REPO_READ_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          repository: cazocarma/rac-user-service
+          ref: ${{ github.base_ref || github.ref_name }}
+          path: rac-user-service
+          token: ${{ secrets.REPO_READ_TOKEN || github.token }}
       - run: python scripts/test_migrations.py
+        working-directory: rac-infra-docker
       - run: python scripts/check_configuration.py
+        working-directory: rac-infra-docker
       - run: python scripts/test_deployment_guards.py
+        working-directory: rac-infra-docker
   integration:
     needs: migrations
     runs-on: ubuntu-latest
