@@ -1,0 +1,79 @@
+name: Infrastructure CI
+on:
+  pull_request:
+    branches: [dev, qa, prd, main]
+  push:
+    branches: [dev, qa, prd, main]
+permissions:
+  contents: read
+jobs:
+  migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - run: python scripts/test_migrations.py
+      - run: python scripts/check_configuration.py
+      - run: python scripts/test_deployment_guards.py
+  integration:
+    needs: migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          path: rac-infra-docker
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          repository: cazocarma/rac-auth-service
+          ref: ${{ github.base_ref || github.ref_name }}
+          path: rac-auth-service
+          token: ${{ secrets.REPO_READ_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          repository: cazocarma/rac-user-service
+          ref: ${{ github.base_ref || github.ref_name }}
+          path: rac-user-service
+          token: ${{ secrets.REPO_READ_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          repository: cazocarma/rac-match-service
+          ref: ${{ github.base_ref || github.ref_name }}
+          path: rac-match-service
+          token: ${{ secrets.REPO_READ_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          repository: cazocarma/rac-frontend-flutter
+          ref: ${{ github.base_ref || github.ref_name }}
+          path: rac-frontend-flutter
+          token: ${{ secrets.REPO_READ_TOKEN || github.token }}
+
+      - name: Prepare ephemeral DEV
+        working-directory: rac-infra-docker
+        run: |
+          cp envs/.env.dev.example envs/.env.dev
+          cp envs/realm.dev.example.json envs/realm.dev.json
+          make up
+      - name: API and PKCE integration
+        working-directory: rac-infra-docker
+        run: make check test-integration
+      - name: Web OIDC integration
+        working-directory: rac-infra-docker
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+          python scripts/test_browser.py
+          python scripts/test_browser_onboarding.py
+      - name: Logs
+        if: failure()
+        working-directory: rac-infra-docker
+        run: docker compose --env-file envs/.env.dev -p rac-dev -f compose.yaml -f docker-compose.dev.yaml logs --tail=100
+      - name: Clean ephemeral CI containers
+        if: always()
+        working-directory: rac-infra-docker
+        run: make down

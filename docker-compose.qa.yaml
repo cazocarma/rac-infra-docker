@@ -1,0 +1,6 @@
+# Base + compose.release.yaml + este archivo. TLS termina en el proxy del host.
+services:
+  backend-auth:
+    environment:
+      JWT_ISSUER: rentacompa-qa
+      JWT_AUDIENCE: rentacompa-qa

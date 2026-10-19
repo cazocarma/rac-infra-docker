@@ -1,0 +1,52 @@
+name: Approved deployment
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [qa, prd]
+        required: true
+      release_id:
+        description: Reviewed releases/<id>.json manifest
+        type: string
+        required: true
+      confirmation:
+        description: Type DEPLOY qa or DEPLOY prd
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+  deployments: write
+  packages: read
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+jobs:
+  validate-request:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate branch and explicit confirmation
+        env:
+          BRANCH: ${{ github.ref_name }}
+          TARGET: ${{ inputs.environment }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: python -c 'import os,sys; sys.exit(0 if os.environ["BRANCH"] == os.environ["TARGET"] and os.environ["CONFIRMATION"] == "DEPLOY " + os.environ["TARGET"] else "Branch or confirmation rejected")'
+  deploy:
+    needs: validate-request
+    environment: ${{ inputs.environment }}
+    runs-on: [self-hosted, linux, '${{ format(''rac-{0}'', inputs.environment) }}']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Verified promotion and deployment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          RAC_ENV_FILE: ${{ vars.RAC_ENV_FILE }}
+        run: python3 scripts/deploy.py
