@@ -38,10 +38,15 @@ try:
         page.wait_for_timeout(300)
         (ARTIFACTS/'review-dialog-aria.txt').write_text(page.locator('body').aria_snapshot(),encoding='utf-8')
         page.get_by_role('checkbox',name=re.compile(r'^5 de 5 estrellas')).click()
-        page.get_by_role('textbox',name='Comentario (opcional)').fill('Una experiencia excelente y muy buena compañía.')
+        comment='Una experiencia excelente y muy buena compañía.'
+        page.get_by_role('textbox',name='Comentario (opcional)').click()
+        editor=page.locator('textarea[data-semantics-role="text-field"]')
+        editor.fill(comment)
+        expect(page.get_by_text(f'{1000-len(comment)} characters remaining',exact=True)).to_be_visible()
         with page.expect_response(lambda response:'/api/user/bookings/' in response.url and response.request.method=='POST') as sent:
             page.get_by_role('button',name='Publicar reseña',exact=True).click()
         assert sent.value.status in (200,201), 'Review submission failed: '+sent.value.text()
+        assert sent.value.request.post_data_json['comentario']==comment, 'Review editor did not submit the entered comment'
         page.wait_for_timeout(600)
         (ARTIFACTS/'review-saved-aria.txt').write_text(page.locator('body').aria_snapshot(),encoding='utf-8')
         page.screenshot(path=str(ARTIFACTS/'review-saved-debug.png'))
@@ -56,11 +61,19 @@ try:
         for _ in range(60):
             if card.count() and card.first.is_visible():break
             page.mouse.wheel(0,280);page.wait_for_timeout(100)
-        card.first.click()
-        for _ in range(60):
-            if 'Una experiencia excelente y muy buena compañía.' in page.locator('body').aria_snapshot():break
-            page.mouse.wheel(0,260);page.wait_for_timeout(100)
-        assert 'Una experiencia excelente y muy buena compañía.' in page.locator('body').aria_snapshot()
+        with page.expect_response(lambda response: '/api/user/compas/' in response.url and '/reviews' in response.url and response.request.method=='GET') as public_reviews:
+            card.first.click()
+            expect(page.get_by_role('heading',name='Conoce a tu compa',exact=True)).to_be_visible()
+        assert public_reviews.value.status==200, 'Public reviews failed to load'
+        assert any(item['comentario']==comment for item in public_reviews.value.json()['items']), 'Saved comment missing from public API'
+        page.mouse.move(195,650)
+        page.mouse.wheel(0,-10000)
+        for _ in range(100):
+            if comment in page.locator('body').aria_snapshot():break
+            page.mouse.wheel(0,100);page.wait_for_timeout(100)
+        (ARTIFACTS/'review-public-aria.txt').write_text(page.locator('body').aria_snapshot(),encoding='utf-8')
+        page.screenshot(path=str(ARTIFACTS/'review-public-debug.png'))
+        assert comment in page.locator('body').aria_snapshot(), 'Saved public review is absent from the rendered profile'
         page.mouse.wheel(0,480);page.wait_for_timeout(300)
         page.screenshot(path=str(ARTIFACTS/'review-public-mobile.png'),full_page=True)
         page.set_viewport_size({"width":1280,"height":1000});page.screenshot(path=str(ARTIFACTS/'review-public-desktop.png'),full_page=True)

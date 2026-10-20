@@ -55,6 +55,8 @@ La ejecución `39447271885`, intento 2, pudo emitir el token y descargar los cin
 
 La regresión completa local también detectó una carrera en la automatización del editor Flutter: el campo semántico cambia su nombre al recibir foco, y la respuesta HTTP de envío puede llegar antes de que se restablezca el compositor. El test enfoca la pestaña, espera el editor listo y verifica el contador y el botón habilitado después de enviar. No agrega pausas fijas ni reintentos de envío para ocultar el fallo. Ante un envío fallido guarda captura y árbol accesible localmente, sin registrar credenciales.
 
+La siguiente ejecución, `39456030382`, aprobó login/reservas y onboarding, pero detectó una carrera al buscar la reseña pública. El test debe esperar la carga del perfil y la respuesta de reseñas antes de recorrerlo; desplazar durante la transición puede saltarse el contenido. Se verifica también que el POST incluya el comentario y que la API pública lo devuelva, para distinguir escritura, lectura y presentación. El identificador del perfil de compa y el de su usuario son distintos; la observación de la respuesta usa la ruta pública real.
+
 ## Operación y rotación
 
 La clave privada es persistente y **no expira automáticamente**. Rotarla periódicamente (política inicial RAC: cada 90 días) y al sospechar exposición: generar una segunda clave, actualizar el secret, validar una ejecución y eliminar la anterior en GitHub. GitHub admite varias claves durante la transición. Ante exposición confirmada, revocar inmediatamente la clave afectada y los tokens activos.
