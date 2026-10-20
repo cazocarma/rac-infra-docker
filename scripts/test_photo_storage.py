@@ -15,7 +15,7 @@ def run(*args,ok=True):
     result = subprocess.run(list(args),cwd=ROOT,capture_output=True,text=True)
     if ok and result.returncode:
         # Commands never contain application secrets; SDK errors are not logged by handlers.
-        raise RuntimeError(result.stdout[-5000:]+result.stderr[-3000:])
+        raise RuntimeError("\n".join(line for line in result.stdout.splitlines() if ".go:" in line or "FAIL" in line)+"\n"+result.stdout[-2000:]+result.stderr[-2000:])
     return result
 
 filename = None
@@ -30,6 +30,7 @@ try:
         raise RuntimeError("Disposable photo database did not start")
     run("docker","run","--rm","--network",network,"--mount",f"type=bind,source={ROOT/'db/migrations'},target=/flyway/sql,readonly","-e",f"FLYWAY_URL=jdbc:postgresql://{name}:5432/photos","-e","FLYWAY_USER=postgres","-e","FLYWAY_PASSWORD=test-only","-e","FLYWAY_SCHEMAS=meta","-e","FLYWAY_DEFAULT_SCHEMA=meta","flyway/flyway:11.15.0-alpine","migrate")
     env = {key:credentials[key] for key in ("PROFILE_S3_BUCKET","PROFILE_S3_ACCESS_KEY","PROFILE_S3_SECRET_KEY")}
+    env["GIN_MODE"] = "release"
     env["RAC_PHOTO_TEST_S3_ENDPOINT"] = "http://rustfs:9000"
     env["RAC_ONBOARDING_TEST_DATABASE_URL"] = f"postgres://postgres:test-only@{name}:5432/photos?sslmode=disable"
     with tempfile.NamedTemporaryFile(mode="w",delete=False,encoding="utf-8") as output:

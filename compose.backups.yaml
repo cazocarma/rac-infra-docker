@@ -1,0 +1,33 @@
+# DEV only. Independently encrypted host directory, never the source DB/S3 volumes.
+services:
+  backups:
+    build:
+      context: .
+      dockerfile: tools/backup/Dockerfile
+    restart: unless-stopped
+    user: "${BACKUP_UID:-10001}:${BACKUP_GID:-10001}"
+    env_file: [envs/.env.backups]
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      BACKUP_S3_ENDPOINT: http://rustfs:9000
+    volumes: ["${BACKUP_DIRECTORY:?Inicializar backups}:/backups"]
+    read_only: true
+    tmpfs: ["/work:size=512m,mode=1777", "/tmp:size=64m,mode=1777"]
+    networks: [default, photo-storage]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, /tools/backup.py, health]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+networks:
+  photo-storage:
+    external: true
+    name: rac-dev-storage_default

@@ -35,10 +35,7 @@ def admin(path, body=None, method="PUT", **query):
             response.read()
     except urllib.error.HTTPError as error:
         body = ET.fromstring(error.read())
-        message = str(body.findtext("Message"))
-        for value in (root.access_key,root.secret_key,access,secret):
-            message = message.replace(value,"[redacted]")
-        raise RuntimeError("Storage admin failure: " + str(error.code) + " " + str(body.findtext("Code")) + " " + message) from None
+        raise RuntimeError("Storage admin failure: " + str(error.code) + " " + str(body.findtext("Code"))) from None
 
 client = boto3.client("s3", endpoint_url=endpoint, region_name="us-east-1", config=Config(signature_version="s3v4",s3={"addressing_style":"path"}))
 try:
@@ -87,3 +84,17 @@ finally:
     app.delete_object(Bucket=bucket,Key=key)
     client.delete_object(Bucket=other,Key=key)
     client.delete_bucket(Bucket=other)
+
+backup_access = os.environ["BACKUP_S3_ACCESS_KEY"]
+backup_secret = os.environ["BACKUP_S3_SECRET_KEY"]
+backup_policy = {"Version":"2012-10-17","Statement":[
+    {"Effect":"Allow","Action":["s3:ListBucket"],"Resource":["arn:aws:s3:::"+bucket]},
+    {"Effect":"Allow","Action":["s3:GetObject"],"Resource":["arn:aws:s3:::"+bucket+"/*"]},
+]}
+admin("add-canned-policy",backup_policy,name="rac-dev-photo-backup")
+admin("add-user",{"secretKey":backup_secret,"status":"enabled"},accessKey=backup_access)
+admin("set-user-or-group-policy",policyName="rac-dev-photo-backup",userOrGroup=backup_access,isGroup="false")
+backup_client = boto3.client("s3",endpoint_url=endpoint,region_name="us-east-1",aws_access_key_id=backup_access,aws_secret_access_key=backup_secret,config=Config(signature_version="s3v4",s3={"addressing_style":"path"}))
+backup_client.head_bucket(Bucket=bucket)
+denied(lambda:backup_client.put_object(Bucket=bucket,Key="backup-must-not-write",Body=b"denied"))
+print("PASS dedicated backup identity is read-only")

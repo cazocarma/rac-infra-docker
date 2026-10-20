@@ -46,3 +46,6 @@ pero no están desplegados y conservan bloqueos explícitos.
 - [Perfiles públicos, biografía y fotos](perfiles-publicos-y-fotos.md)
 
 - [RustFS: laboratorio S3](almacenamiento-rustfs.md)
+
+- [Resenas de reservas verificadas](resenas-verificadas.md)
+- [Respaldos automaticos y prueba de recuperacion](respaldos-automaticos.md)

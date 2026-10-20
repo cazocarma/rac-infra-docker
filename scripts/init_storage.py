@@ -16,6 +16,8 @@ required = {
     "PROFILE_S3_ACCESS_KEY":lambda:"rac-user-"+secrets.token_hex(8),
     "PROFILE_S3_SECRET_KEY":lambda:secrets.token_urlsafe(36),
     "PROFILE_S3_BUCKET":lambda:"rac-dev-profile-photos",
+    "BACKUP_S3_ACCESS_KEY":lambda:"rac-backup-"+secrets.token_hex(8),
+    "BACKUP_S3_SECRET_KEY":lambda:secrets.token_urlsafe(36),
 }
 changed = False
 for key,generate in required.items():

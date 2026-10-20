@@ -31,6 +31,8 @@ jobs:
         working-directory: rac-infra-docker
       - run: python scripts/check_configuration.py
         working-directory: rac-infra-docker
+      - run: python scripts/check_backup_configuration.py
+        working-directory: rac-infra-docker
       - run: python scripts/test_deployment_guards.py
         working-directory: rac-infra-docker
       - run: python -m unittest discover -s scripts -p "test_release_policy.py"
@@ -108,6 +110,7 @@ jobs:
           cp envs/realm.dev.example.json envs/realm.dev.json
           make up
           make storage-activate
+          make backup-enable
       - name: S3 photo ownership and migration against disposable database
         working-directory: rac-infra-docker
         run: python scripts/test_photo_storage.py
@@ -121,6 +124,7 @@ jobs:
           python -m playwright install --with-deps chromium
           python scripts/test_browser.py
           python scripts/test_browser_onboarding.py
+          python scripts/test_reviews_browser.py
           python scripts/test_identity_ui.py
       - name: Logs
         if: failure()

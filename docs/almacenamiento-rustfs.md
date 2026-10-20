@@ -77,7 +77,7 @@ Si Python no esta en PATH, pasar `PYTHON=ruta/al/python` a make.
 
 ## Limites pendientes
 
-DEV tiene un nodo/disco sin redundancia y no hay respaldos automaticos. Recrear
+DEV tiene un nodo/disco sin redundancia. Cuenta ahora con [respaldos cifrados automaticos y prueba de recuperacion](respaldos-automaticos.md). La copia externa sigue pendiente. Recrear
 contenedores conserva objetos; borrar volumenes o perder el disco pierde datos.
 Los fallos de borrado posterior al commit se registran sin secretos. Un commit o
 una escritura remota con resultado incierto puede dejar un objeto huerfano privado;

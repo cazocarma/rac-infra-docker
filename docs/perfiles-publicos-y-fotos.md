@@ -20,7 +20,7 @@ V007 agrega biografia y foto_clave en usuario, con límites de longitud/formato.
 
 Compose monta profile-photos en /var/lib/rac/photos, separado automáticamente por el nombre de proyecto rac-dev / rac-qa / rac-prd. El servicio se ejecuta como usuario sin privilegios y los archivos quedan fuera del webroot. Ese adaptador local se mantiene para compatibilidad y como origen de migracion. DEV activa ahora RustFS mediante compose.photos-s3.yaml: bucket privado, identidad restringida y API con las mismas URLs. Ver [operacion S3](almacenamiento-rustfs.md).
 
-El volumen sobrevive a recrear contenedores y a make down. Debe respaldarse y restaurarse junto con la base de datos, verificando la correspondencia entre foto_clave y archivos; aún no hay automatización de respaldo/restauración. No usar down -v para conservar datos. RustFS usa su propio volumen persistente; debe respaldarse junto con PostgreSQL. El despliegue DEV sigue siendo de un solo nodo/disco y no ofrece alta disponibilidad. No se desplegó QA/PRD con este cambio.
+El volumen sobrevive a recrear contenedores y a make down. Debe respaldarse y restaurarse junto con la base de datos, verificando la correspondencia entre foto_clave y archivos; DEV ya tiene [respaldos cifrados diarios y prueba de restauración](respaldos-automaticos.md). No usar down -v para conservar datos. RustFS usa su propio volumen persistente; debe respaldarse junto con PostgreSQL. El despliegue DEV sigue siendo de un solo nodo/disco y no ofrece alta disponibilidad. No se desplegó QA/PRD con este cambio.
 
 ## Validación
 

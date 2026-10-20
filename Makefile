@@ -21,7 +21,14 @@ ifneq ($(wildcard envs/.env.photos-s3),)
 COMPOSE_FILES += -f compose.photos-s3.yaml
 endif
 endif
-COMPOSE := docker compose --env-file $(ENV_FILE) -p rac-$(ENV) $(COMPOSE_FILES)
+COMPOSE_ENV := --env-file $(ENV_FILE)
+ifeq ($(ENV),dev)
+ifneq ($(wildcard envs/.env.backups),)
+COMPOSE_ENV += --env-file envs/.env.backups
+COMPOSE_FILES += -f compose.backups.yaml
+endif
+endif
+COMPOSE := docker compose $(COMPOSE_ENV) -p rac-$(ENV) $(COMPOSE_FILES)
 CHECK_URL ?= http://localhost$(if $(filter qa,$(ENV)),:8080,$(if $(filter prd,$(ENV)),:8088,))
 CURL := curl --fail --silent --show-error --max-time 15 --retry 5 --retry-all-errors --retry-delay 2
 
@@ -36,6 +43,7 @@ help:
 	@echo make migrate / migration-info / migration-validate / identity-config / observe
 	@echo make test / test-go / test-flutter / test-integration
 	@echo make storage-up / storage-activate / storage-test / storage-test-persistence / storage-stop
+	@echo make backup-enable / backup-now / backup-status / backup-restore-test
 config:
 	$(COMPOSE) config --quiet
 up: config
@@ -121,4 +129,34 @@ ifeq ($(ENV),dev)
 ifneq ($(wildcard envs/.env.photos-s3),)
 up: storage-up
 endif
+endif
+
+.PHONY: backup-enable backup-now backup-status backup-restore-test
+backup-enable:
+ifeq ($(ENV),dev)
+	$(PYTHON) scripts/init_storage.py
+	$(STORAGE_COMPOSE) run --rm --build storage-config
+	$(PYTHON) scripts/init_backups.py
+	$(MAKE) backup-now
+	$(COMPOSE) --env-file envs/.env.backups -f compose.backups.yaml up -d --build --no-deps --wait --wait-timeout 240 backups
+else
+	$(error Backups automaticos solo configurados en DEV)
+endif
+backup-now:
+ifeq ($(ENV),dev)
+	$(COMPOSE) run --rm --build --no-deps backups once
+else
+	$(error Backups automaticos solo configurados en DEV)
+endif
+backup-status:
+ifeq ($(ENV),dev)
+	$(COMPOSE) exec -T backups cat /backups/status.json
+else
+	$(error Backups automaticos solo configurados en DEV)
+endif
+backup-restore-test:
+ifeq ($(ENV),dev)
+	$(PYTHON) scripts/test_backup_restore.py
+else
+	$(error Prueba de restauracion solo disponible para DEV)
 endif
