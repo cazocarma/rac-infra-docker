@@ -1,0 +1,7 @@
+{
+  "rac-auth-service": "0ea967ac6cdeca42811392d5b7e56eb02073f1a6",
+  "rac-user-service": "f934d565cfbc5c8efaa0acecb2b71d50af842156",
+  "rac-match-service": "88a5bcab48d8c4b982ecb28960868386821e17dc",
+  "rac-chat-service": "755cec8b64329b6e3d0a69a3f1d78a34115fc686",
+  "rac-frontend-flutter": "be0b4b306f3b074a84aa9cfa7788675f7cb8943d"
+}

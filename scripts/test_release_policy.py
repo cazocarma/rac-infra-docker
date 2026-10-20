@@ -63,7 +63,7 @@ class ReleasePolicyTests(unittest.TestCase):
             self.assertEqual(load_release(root, "demo"), manifest)
             for invalid in ("../demo", "../../escape", "Demo", "", "missing"):
                 with self.assertRaises(RuntimeError): load_release(root, invalid)
-            for bad in ({}, {**manifest, "EXTRA": "image"}, {**manifest, "USER_IMAGE": "ghcr.io/cazocarma/rac-user-service:latest"}, {**manifest, "USER_IMAGE": None}):
+            for bad in ({}, {k:v for k,v in manifest.items() if k != "CHAT_IMAGE"}, {**manifest, "EXTRA": "image"}, {**manifest, "USER_IMAGE": "ghcr.io/cazocarma/rac-user-service:latest"}, {**manifest, "USER_IMAGE": None}):
                 path.write_text(json.dumps(bad))
                 with self.assertRaises(RuntimeError): load_release(root, "demo")
 

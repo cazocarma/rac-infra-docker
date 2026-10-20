@@ -12,6 +12,9 @@ services:
   flutter-web:
     image: ${FRONTEND_IMAGE:?Configurar FRONTEND_IMAGE con tag inmutable o digest}
     restart: unless-stopped
+  backend-chat:
+    image: ${CHAT_IMAGE:?Configurar CHAT_IMAGE con tag inmutable o digest}
+    restart: unless-stopped
   postgres:
     restart: unless-stopped
   keycloak:

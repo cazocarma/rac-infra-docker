@@ -14,7 +14,7 @@ Usamos una GitHub App dedicada de lectura. Su identidad pertenece a la automatiz
 2. Homepage: `https://github.com/cazocarma/rac-infra-docker`. Desactivar Webhook. No se requieren callbacks, OAuth de usuarios, Device Flow ni eventos.
 3. Repository permissions: **Contents: Read-only**. Metadata de lectura se agrega automáticamente. Los demás permisos quedan sin acceso, incluidos Actions, Secrets y Administration.
 4. Visibilidad: **Only on this account** (`cazocarma`).
-5. Instalar con **Only select repositories**, seleccionando exactamente `rac-auth-service`, `rac-user-service`, `rac-match-service` y `rac-frontend-flutter`.
+5. Instalar con **Only select repositories**, seleccionando exactamente `rac-auth-service`, `rac-user-service`, `rac-match-service`, `rac-chat-service` y `rac-frontend-flutter`.
 6. En Credentials → Key pairs → New key de la App, generar una private key y guardar el PEM fuera del checkout, protegido. Nunca enviarlo al chat, imprimirlo en logs ni versionarlo.
 7. En [Actions de rac-infra-docker](https://github.com/cazocarma/rac-infra-docker/settings/secrets/actions), configurar:
 
@@ -23,27 +23,27 @@ Usamos una GitHub App dedicada de lectura. Su identidad pertenece a la automatiz
 | Repository variable | `RAC_CI_APP_CLIENT_ID` | Client ID de la App, no un client secret ni el App ID |
 | Repository secret | `RAC_CI_APP_PRIVATE_KEY` | Contenido completo del PEM de la App |
 
-La App no necesita instalarse en infra: el workflow usa su `GITHUB_TOKEN` para infra y solicita explícitamente el token de instalación para los cuatro compañeros. No otorgar acceso a todos los repositorios como solución a un error.
+La App no necesita instalarse en infra: el workflow usa su `GITHUB_TOKEN` para infra y solicita explícitamente el token de instalación para los cinco compañeros. No otorgar acceso a todos los repositorios como solución a un error.
 
 ## Comportamiento del workflow
 
-El job `migrations` verifica la infraestructura sin descargar repositorios externos. `integration` valida la configuración y usa `actions/create-github-app-token` v3, fijada a un commit registrado en `docs/action-pins.json`. Solicita los cuatro repositorios y `permission-contents: read`. La acción revoca el token al terminar el job; GitHub limita su duración a una hora y el job tiene timeout de 55 minutos.
+El job `migrations` verifica la infraestructura sin descargar repositorios externos. `integration` valida la configuración y usa `actions/create-github-app-token` v3, fijada a un commit registrado en `docs/action-pins.json`. Solicita los cinco repositorios y `permission-contents: read`. La acción revoca el token al terminar el job; GitHub limita su duración a una hora y el job tiene timeout de 55 minutos.
 
 El preflight comprueba lectura de las referencias antes de descargar código. Los checkouts no persisten credenciales. Las pruebas incluyen políticas de base de datos con los servicios compañeros, OIDC/API y navegador. La falta de configuración falla explícitamente: no se omiten pruebas para obtener un resultado verde. Ya no se consume `REPO_READ_TOKEN`.
 
-En push se lee la misma rama en los cuatro repositorios; en pull request, la rama base. Esas ramas deben existir en todos ellos. No hay fallback silencioso a main. No se usa `pull_request_target`: los PR de forks no reciben secretos y requieren integración desde una rama interna revisada. Revisar especialmente cambios de workflows y scripts ejecutados por CI antes de ejecutarlos con secretos. La App no incluye despliegue, producción, pagos ni escritura.
+En push y pull request se leen los cinco SHA completos de `ci/companion-revisions.json`. El preflight valida el conjunto exacto y comprueba acceso a cada commit. Los cambios de versión se revisan por PR; no hay fallback a una rama móvil. No se usa `pull_request_target`: los PR de forks no reciben secretos y requieren integración desde una rama interna revisada. Revisar especialmente cambios de workflows y scripts ejecutados por CI antes de ejecutarlos con secretos. La App no incluye despliegue, producción, pagos ni escritura.
 
 ## Verificación y diagnóstico
 
-Después de configurar App y Actions, ejecutar el workflow de la versión actual de main. Verificar emisión del token, comprobación de acceso, cuatro checkouts y pruebas reales. Los tests unitarios del preflight no sustituyen esta verificación.
+Después de configurar App y Actions, ejecutar el workflow de la versión actual de main. Verificar emisión del token, comprobación de acceso, cinco checkouts y pruebas reales. Los tests unitarios del preflight no sustituyen esta verificación.
 
 - Configuración ausente: comprobar nombres y que sean variable/secret **del repositorio infra**, no de un environment que el job no utiliza.
-- Fallo al emitir token: revisar Client ID, PEM completo e instalación en `cazocarma` con los cuatro repositorios.
-- HTTP 403/404: revisar instalación, Contents de lectura y existencia de rama. Un 404 no demuestra que el repositorio no exista.
+- Fallo al emitir token: revisar Client ID, PEM completo e instalación en `cazocarma` con los cinco repositorios.
+- HTTP 403/404: revisar instalación, Contents de lectura y existencia del commit fijado. Un 404 no demuestra que el repositorio no exista.
 - Error de red: reintentar y revisar el estado de GitHub. No ampliar permisos.
 - Si la emisión funciona pero una prueba falla, investigar esa prueba por separado.
 
-No registrar tokens, PEM ni cuerpos de respuestas de autenticación. El preflight solo informa repositorio, rama y código HTTP.
+No registrar tokens, PEM ni cuerpos de respuestas de autenticación. El preflight solo informa repositorio, revisión y código HTTP.
 
 ### Navegador Linux: idioma explícito
 

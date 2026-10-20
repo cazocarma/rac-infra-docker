@@ -96,7 +96,7 @@ y red, conservando volúmenes. No hay objetivo que elimine los datos.
    `envs/.env.qa.example` o `envs/.env.prd.example`, con credenciales diferentes
    por entorno. Codificar caracteres especiales en las URLs de conexión.
 3. Construir/publicar las imágenes mediante un proceso de entrega todavía
-   pendiente y configurar `AUTH_IMAGE`, `USER_IMAGE`, `MATCH_IMAGE` y
+   pendiente y configurar `AUTH_IMAGE`, `USER_IMAGE`, `MATCH_IMAGE`, `CHAT_IMAGE` y
    `FRONTEND_IMAGE` con digest o tag de commit; no usar `latest`.
 4. Configurar el realm `rentacompa`, el cliente `frontend`, los roles y sus
    mappers en Keycloak. QA/PRD no importan usuarios demo ni el realm DEV.

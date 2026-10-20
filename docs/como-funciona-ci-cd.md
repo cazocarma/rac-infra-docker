@@ -11,7 +11,7 @@ Un paso `uses:` llama una acción reutilizable, por ejemplo descargar código. U
 Los workflows de los servicios prueban su código. Go usa `go test -race`; Flutter usa `flutter analyze` y `flutter test`. El workflow de infra, `ci.yml`, comprueba el conjunto:
 
 1. `migrations`: prueba migraciones, configuración DEV/QA/PRD y controles de despliegue.
-2. `integration`, con `needs: migrations`: emite un token temporal con la GitHub App, descarga los cuatro repositorios y prueba las políticas de base de datos.
+2. `integration`, con `needs: migrations`: emite un token temporal con la GitHub App, descarga los cinco repositorios a los SHA de ci/companion-revisions.json y prueba las políticas de base de datos.
 3. Dentro de integración, `make up` levanta un DEV efímero. `make check test-integration` comprueba healthchecks y flujos de API/OIDC. Playwright abre Chromium y recorre reservas y onboarding en tamaños desktop y móvil.
 4. Al terminar se limpian contenedores y se revoca el token. Un fallo produce un check rojo y conserva los logs de Actions.
 
