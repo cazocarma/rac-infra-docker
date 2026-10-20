@@ -27,6 +27,8 @@ for environment in ("dev", "qa", "prd"):
         result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=True)
         config = json.loads(result.stdout)
         assert config["name"] == "rac-" + environment
+        assert config["volumes"]["profile-photos"]["name"] == "rac-" + environment + "_profile-photos"
+        assert any(v["target"] == "/var/lib/rac/photos" and v["source"] == "profile-photos" for v in config["services"]["backend-user"]["volumes"])
         assert config["services"]["migrate"]["environment"]["FLYWAY_DEFAULT_SCHEMA"] == "meta"
         if environment != "dev":
             for name in ("backend-auth","backend-user","backend-match","flutter-web"): assert "build" not in config["services"][name]

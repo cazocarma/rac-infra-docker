@@ -84,7 +84,9 @@ services:
       retries: 12
   backend-user:
     image: rac-${RAC_ENV}-user:local
+    volumes: ["profile-photos:/var/lib/rac/photos"]
     environment:
+      PROFILE_PHOTO_DIR: /var/lib/rac/photos
       PORT: "8080"
       DATABASE_URL: ${DATABASE_URL:?Configurar DATABASE_URL}
       OIDC_ISSUER: ${OIDC_ISSUER}
@@ -167,5 +169,6 @@ services:
       timeout: 10s
       retries: 12
 volumes:
+  profile-photos:
   pgdata:
   rabbitmq-data:

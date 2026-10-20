@@ -2,11 +2,11 @@
 
 ## Perfil personal
 
-`GET /api/user/me` sincroniza identidad, correo verificado y rol desde el token firmado, pero conserva y devuelve el nombre visible guardado en RAC. `PUT /api/user/me` reemplaza únicamente nombre, teléfono, país, región, ciudad e intereses del usuario autenticado. El nombre tiene entre 2 y 120 caracteres; se permiten hasta 15 intereses de 40 caracteres. Teléfono y ubicación son opcionales. Los valores vacíos permiten borrarlos.
+`GET /api/user/me` sincroniza identidad, correo verificado y rol desde el token firmado, pero conserva y devuelve el nombre visible guardado en RAC. `PUT /api/user/me` reemplaza únicamente nombre, biografía, teléfono, país, región, ciudad e intereses del usuario autenticado. El nombre tiene entre 2 y 120 caracteres; se permiten hasta 15 intereses de 40 caracteres. Teléfono y ubicación son opcionales. Los valores vacíos permiten borrarlos.
 
 El endpoint usa el subject verificado como propietario y rechaza campos desconocidos, identificadores ajenos, correo, roles y cuerpos excesivos. Los datos de contacto no se incorporan al catálogo público. El perfil compa, sus habilidades, descripción, tarifa y disponibilidad conservan su contrato separado.
 
-La pantalla permite guardar, descartar, reintentar y conservar cambios si hay un error. Al recargar una ruta válida como /profile se recupera esa pantalla después de verificar la sesión; una sesión ausente sigue pasando por el login. Correo es de solo lectura. La carga de foto continúa en construcción: requiere definir almacenamiento y procesamiento de imágenes; no se aceptan URLs arbitrarias ni archivos como texto dentro del perfil. Esta entrega utiliza columnas existentes y no requiere una migración nueva.
+La pantalla permite guardar, descartar, reintentar y conservar cambios si hay un error. Al recargar una ruta válida como /profile se recupera esa pantalla después de verificar la sesión; una sesión ausente sigue pasando por el login. Correo es de solo lectura. La evolución con fotos, biografía y vista previa se documenta en [perfiles públicos y fotos](perfiles-publicos-y-fotos.md); utiliza la migración V007 y un volumen persistente de imágenes. No se aceptan URLs externas como fotos.
 
 Las pruebas cubren validación, asignación indebida de campos, persistencia tras login, aislamiento de cuentas, guardado/reintento en navegador y layout móvil. Los fixtures se crean y eliminan únicamente en DEV.
 

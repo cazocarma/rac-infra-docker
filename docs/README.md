@@ -42,3 +42,5 @@ pero no están desplegados y conservan bloqueos explícitos.
 - [Resolver permisos de lectura entre repositorios en CI](ci-acceso-repositorios.md).
 
 - [Perfil personal y revisión de promoción](perfiles-y-promocion.md)
+
+- [Perfiles públicos, biografía y fotos](perfiles-publicos-y-fotos.md)

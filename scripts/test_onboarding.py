@@ -40,8 +40,10 @@ def cleanup(username):
     if user.get('email') != username+'@fixture.test' or user.get('firstName') != 'Prueba' or user.get('lastName') != 'Compa':
         raise RuntimeError('Identity lacks fixture ownership markers')
     with psycopg.connect(os.environ['DATABASE_URL']) as db:
-        row = db.execute('SELECT id FROM usuario WHERE keycloak_id=%s',(user['id'],)).fetchone()
+        row = db.execute('SELECT id,foto_clave FROM usuario WHERE keycloak_id=%s',(user['id'],)).fetchone()
         if row:
+            if row[1]:
+                api('DELETE','/api/user/me/photo',login(username))
             db.execute('DELETE FROM sesion WHERE cliente_id=%s OR compa_id=%s',(row[0],row[0]))
             db.execute('DELETE FROM compa_availability WHERE compa_id=%s',(row[0],))
             db.execute('DELETE FROM usuario WHERE id=%s',(row[0],))

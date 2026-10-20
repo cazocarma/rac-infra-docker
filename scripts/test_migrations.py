@@ -13,7 +13,9 @@ ROOT = Path(__file__).resolve().parent.parent
 NAME = "rac-migration-test-" + uuid.uuid4().hex[:12]
 def run(*args, ok=True, input=None):
     p = subprocess.run(list(args), input=input, text=True, capture_output=True)
-    if ok and p.returncode: raise RuntimeError(p.stdout[-2000:] + p.stderr[-2000:])
+    if ok and p.returncode:
+        failures = "\n".join(line for line in p.stdout.splitlines() if ".go:" in line or "FAIL" in line or "panic:" in line)
+        raise RuntimeError(failures + "\n" + p.stdout[-2000:] + p.stderr[-2000:])
     return p
 def sql(db, text):
     return run("docker", "exec", "-i", NAME, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", db, "-At", input=text).stdout.strip()
@@ -41,7 +43,7 @@ try:
     flyway("fresh", migration_dir)
     flyway("fresh", migration_dir)
     flyway("fresh", migration_dir, "validate")
-    assert sql("fresh", "SELECT count(*) FROM meta.schema_history WHERE success AND version IS NOT NULL;") == "6"
+    assert sql("fresh", "SELECT count(*) FROM meta.schema_history WHERE success AND version IS NOT NULL;") == str(len(list(migration_dir.glob("V*.sql"))))
     assert sql("fresh", "SELECT count(*) FROM information_schema.columns WHERE table_name='sesion' AND column_name IN ('creado_en','actualizado_en');") == "2"
     # Exercise the weekly quota against this disposable DB, including concurrent acceptance.
     quota_source = ROOT.parent / "rac-match-service"
@@ -59,7 +61,7 @@ try:
             "--mount", f"type=bind,source={onboarding_source},target=/sources,readonly",
             "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-user-go-build:/root/.cache/go-build",
             "-e", f"RAC_ONBOARDING_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
-            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v -run TestCompa ./internal/http")
+            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http")
         print("PASS: free compa activation transaction, failure rollback, retry and input validation")
     sql("legacy", (ROOT / "db/migrations/V001__initial_schema.sql").read_text())
     sql("legacy", "INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('00000000-0000-0000-0000-000000000001','Preservar','legacy@example.test','cliente','kc-legacy');")
@@ -68,7 +70,7 @@ try:
     assert sql("legacy", "SELECT nombre FROM usuario WHERE keycloak_id='kc-legacy';") == "Preservar"
     assert sql("legacy", "SELECT zona_horaria FROM compa_availability;") == "UTC"
     assert sql("legacy", "SELECT disponibilidad_json->'lunes'->>0 FROM compa_availability;") == "18:00-20:00"
-    assert sql("legacy", "SELECT count(*) FROM meta.schema_history WHERE success AND version IS NOT NULL;") == "6"
+    assert sql("legacy", "SELECT count(*) FROM meta.schema_history WHERE success AND version IS NOT NULL;") == str(len(list(migration_dir.glob("V*.sql"))))
     with tempfile.TemporaryDirectory(prefix=NAME) as temp:
         for src in migration_dir.glob("*.sql"): shutil.copy2(src, Path(temp)/src.name)
         with (Path(temp)/"V003__identity_indexes.sql").open("a") as f: f.write("\n-- drift must be rejected\n")
