@@ -54,6 +54,15 @@ try:
             "-e", f"RAC_QUOTA_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
             "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/repo")
         print("PASS: concurrent weekly allowance, refund, week boundary and subscription entitlement")
+    chat_source = ROOT.parent / "rac-chat-service"
+    if (chat_source / "internal/http/router_test.go").exists():
+        run("docker", "run", "--rm", "--network", NAME,
+            "--mount", f"type=bind,source={chat_source},target=/sources,readonly",
+            "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-chat-go-build:/root/.cache/go-build",
+            "-e", f"RAC_CHAT_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
+            "-e", "RAC_CHAT_MIGRATED=1",
+            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http")
+        print("PASS: private booking chat, idempotent concurrent messages, cursor pages and DB cancellation guard")
     sql("fresh", "CREATE DATABASE legacy;")
     onboarding_source = ROOT.parent / "rac-user-service"
     if onboarding_source.exists():
