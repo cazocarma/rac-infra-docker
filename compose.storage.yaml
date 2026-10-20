@@ -35,6 +35,21 @@ services:
     depends_on:
       rustfs:
         condition: service_healthy
+  storage-config:
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile: tools/storage/Dockerfile
+    entrypoint: [python, configure_storage.py]
+    environment:
+      AWS_ACCESS_KEY_ID: ${RUSTFS_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${RUSTFS_SECRET_KEY}
+      PROFILE_S3_ACCESS_KEY: ${PROFILE_S3_ACCESS_KEY}
+      PROFILE_S3_SECRET_KEY: ${PROFILE_S3_SECRET_KEY}
+      PROFILE_S3_BUCKET: ${PROFILE_S3_BUCKET}
+    depends_on:
+      rustfs:
+        condition: service_healthy
 volumes:
   rustfs-data:
   rustfs-logs:

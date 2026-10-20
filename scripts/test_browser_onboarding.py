@@ -27,6 +27,8 @@ def png_fixture(noisy=False):
     return path
 COMPOSE = ['docker','compose','--env-file','envs/.env.dev','-p','rac-dev','-f','compose.yaml',
     '-f','docker-compose.dev.yaml','-f','compose.observability.yaml','-f','compose.tests.yaml']
+if (ROOT/'envs/.env.photos-s3').exists():
+    COMPOSE += ['-f','compose.photos-s3.yaml']
 
 def fixture(*args):
     result = subprocess.run(COMPOSE+['run','--rm','test-integration','python','test_onboarding.py',*args],

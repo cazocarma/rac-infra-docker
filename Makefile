@@ -16,6 +16,11 @@ COMPOSE_FILES += -f compose.release.yaml
 endif
 COMPOSE_FILES += -f docker-compose.$(ENV).yaml
 COMPOSE_FILES += -f compose.observability.yaml -f compose.tests.yaml
+ifeq ($(ENV),dev)
+ifneq ($(wildcard envs/.env.photos-s3),)
+COMPOSE_FILES += -f compose.photos-s3.yaml
+endif
+endif
 COMPOSE := docker compose --env-file $(ENV_FILE) -p rac-$(ENV) $(COMPOSE_FILES)
 CHECK_URL ?= http://localhost$(if $(filter qa,$(ENV)),:8080,$(if $(filter prd,$(ENV)),:8088,))
 CURL := curl --fail --silent --show-error --max-time 15 --retry 5 --retry-all-errors --retry-delay 2
@@ -30,6 +35,7 @@ help:
 	@echo QA y PRD requieren secretos e imagenes publicadas; no se construyen localmente.
 	@echo make migrate / migration-info / migration-validate / identity-config / observe
 	@echo make test / test-go / test-flutter / test-integration
+	@echo make storage-up / storage-activate / storage-test / storage-test-persistence / storage-stop
 config:
 	$(COMPOSE) config --quiet
 up: config
@@ -83,18 +89,36 @@ check:
 	$(CURL) $(CHECK_URL)/api/match/health
 	$(CURL) $(CHECK_URL)/api/user/skills
 
-# Laboratorio independiente: nunca usa secretos ni volÃºmenes de QA/PRD.
+# Laboratorio independiente: nunca usa secretos ni volúmenes de QA/PRD.
 STORAGE_COMPOSE := docker compose --env-file envs/.env.storage -p rac-dev-storage -f compose.storage.yaml
 .PHONY: storage-up storage-test storage-stop storage-logs storage-test-persistence
 storage-up:
+ifeq ($(wildcard envs/.env.storage),)
+	$(PYTHON) scripts/init_storage.py
+endif
 	$(STORAGE_COMPOSE) up -d --wait --wait-timeout 180 rustfs
 storage-test: storage-up
 	$(STORAGE_COMPOSE) run --rm --build storage-test
 storage-stop:
-	$(STORAGE_COMPOSE) down
+	$(STORAGE_COMPOSE) stop
 storage-logs:
 	$(STORAGE_COMPOSE) logs --tail 100 rustfs
 storage-test-persistence: storage-test
 	$(STORAGE_COMPOSE) run --rm -e STORAGE_TEST_PHASE=seed storage-test
 	$(STORAGE_COMPOSE) up -d --force-recreate --wait --wait-timeout 180 rustfs
 	$(STORAGE_COMPOSE) run --rm -e STORAGE_TEST_PHASE=verify storage-test
+
+.PHONY: storage-activate
+storage-activate:
+ifeq ($(ENV),dev)
+	$(PYTHON) scripts/init_storage.py
+	$(PYTHON) scripts/activate_storage.py
+else
+	$(error storage-activate solo disponible para DEV)
+endif
+PYTHON ?= python
+ifeq ($(ENV),dev)
+ifneq ($(wildcard envs/.env.photos-s3),)
+up: storage-up
+endif
+endif

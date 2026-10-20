@@ -1,0 +1,9 @@
+# DEV opt-in overlay, enabled only after successful copy/verification.
+services:
+  backend-user:
+    env_file: [envs/.env.photos-s3]
+    networks: [default, photo-storage]
+networks:
+  photo-storage:
+    external: true
+    name: rac-dev-storage_default

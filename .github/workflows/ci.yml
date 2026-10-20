@@ -107,6 +107,10 @@ jobs:
           cp envs/.env.dev.example envs/.env.dev
           cp envs/realm.dev.example.json envs/realm.dev.json
           make up
+          make storage-activate
+      - name: S3 photo ownership and migration against disposable database
+        working-directory: rac-infra-docker
+        run: python scripts/test_photo_storage.py
       - name: API and PKCE integration
         working-directory: rac-infra-docker
         run: make check test-integration
@@ -125,4 +129,6 @@ jobs:
       - name: Clean ephemeral CI containers
         if: always()
         working-directory: rac-infra-docker
-        run: if [ -f envs/.env.dev ]; then make down; fi
+        run: |
+          if [ -f envs/.env.dev ]; then make down; fi
+          if [ -f envs/.env.storage ]; then make storage-stop; fi
