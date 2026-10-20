@@ -42,10 +42,27 @@ try:
             tile.click()
             expect(page.get_by_role('textbox',name='Mensaje',exact=True)).to_be_visible(timeout=30000)
         def send(page,text):
-            page.get_by_role('textbox',name='Mensaje',exact=True).fill(text)
-            with page.expect_response(lambda r:'/api/chat/bookings/' in r.url and r.request.method=='POST') as response:
-                page.get_by_role('button',name='Enviar mensaje',exact=True).click()
+            page.bring_to_front()
+            editor=page.get_by_role('textbox',name='Mensaje',exact=True)
+            # Focus before resolving Flutter's live editor; its accessible name
+            # changes on focus. Wait for Flutter to consume the input event.
+            editor.click()
+            native_editor=page.locator('textarea[data-semantics-role="text-field"]')
+            expect(native_editor).to_be_visible()
+            expect(native_editor).to_have_attribute('aria-label','Mensaje\nEscribe un mensaje…')
+            native_editor.fill(text)
+            expect(native_editor).to_have_value(text)
+            expect(page.get_by_text('2000 characters remaining',exact=True)).to_have_count(0)
+            try:
+                with page.expect_response(lambda r:'/api/chat/bookings/' in r.url and r.request.method=='POST') as response:
+                    page.get_by_role('button',name='Enviar mensaje',exact=True).click()
+            except Exception:
+                (ARTIFACTS/'chat-send-failure.txt').write_text(page.locator('body').aria_snapshot(),encoding='utf-8')
+                page.screenshot(path=str(ARTIFACTS/'chat-send-failure.png'))
+                raise
             assert response.value.status in (200,201), response.value.text()
+            expect(page.get_by_text('2000 characters remaining',exact=True)).to_be_visible()
+            expect(page.get_by_role('button',name='Enviar mensaje',exact=True)).to_be_enabled()
         login(buyer,info['username']);login(provider,'compa2')
         open_chat(buyer);open_chat(provider)
         first='Hola 👋 coordinemos nuestro plan de prueba.'

@@ -157,9 +157,13 @@ with sync_playwright() as p:
         mobile_page.get_by_role('button', name='Back', exact=True).click()
         mobile_page.get_by_role('button', name='Back', exact=True).click()
         mobile_page.get_by_role('button', name='Open navigation menu').click()
-        mobile_page.get_by_role('button', name='Mensajes', exact=True).click()
+        with mobile_page.expect_response(lambda r: '/api/chat/conversations' in r.url and r.request.method == 'GET') as conversations:
+            mobile_page.get_by_role('button', name='Mensajes', exact=True).click()
+        assert conversations.value.status == 200, conversations.value.text()
+        assert isinstance(conversations.value.json()['items'], list)
         expect(mobile_page.get_by_role('heading', name='Mensajes', exact=True)).to_be_visible()
-        assert 'En construcción' in mobile_page.locator('body').aria_snapshot()
+        expect(mobile_page.get_by_text('Conversemos el próximo plan', exact=True)).to_be_visible()
+        expect(mobile_page.get_by_role('button', name='Actualizar conversaciones', exact=True)).to_be_visible()
         page.get_by_role('button', name='Back', exact=True).click()
         with page.expect_response(lambda r: r.url.startswith(BASE.rstrip('/')+'/redirect.html') and r.request.method == 'GET', timeout=60000):
             page.get_by_text('Salir', exact=True).click()
@@ -181,4 +185,4 @@ with sync_playwright() as p:
             data={'estado': 'cancelada'})
         assert cleanup.status == 200, "Unable to cancel this run's test booking"
     browser.close()
-print('PASS: same-tab desktop/mobile login, reload persistence, real booking, provider acceptance, cancellation, construction and logout')
+print('PASS: same-tab desktop/mobile login, reload persistence, real booking, provider acceptance, cancellation, chat list and logout')

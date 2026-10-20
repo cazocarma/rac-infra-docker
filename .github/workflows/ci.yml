@@ -131,16 +131,26 @@ jobs:
       - name: API and PKCE integration
         working-directory: rac-infra-docker
         run: make check test-integration
-      - name: Web OIDC integration
+      - name: Install browser test runtime
         working-directory: rac-infra-docker
         run: |
           python -m pip install playwright==1.55.0
           python -m playwright install --with-deps chromium
-          python scripts/test_browser.py
-          python scripts/test_browser_onboarding.py
-          python scripts/test_reviews_browser.py
-          python scripts/test_chat_browser.py
-          python scripts/test_identity_ui.py
+      - name: Web login and booking integration
+        working-directory: rac-infra-docker
+        run: python scripts/test_browser.py
+      - name: Web onboarding integration
+        working-directory: rac-infra-docker
+        run: python scripts/test_browser_onboarding.py
+      - name: Web reviews integration
+        working-directory: rac-infra-docker
+        run: python scripts/test_reviews_browser.py
+      - name: Web private chat integration
+        working-directory: rac-infra-docker
+        run: python scripts/test_chat_browser.py
+      - name: Identity theme integration
+        working-directory: rac-infra-docker
+        run: python scripts/test_identity_ui.py
       - name: Logs
         if: failure()
         working-directory: rac-infra-docker

@@ -49,6 +49,12 @@ No registrar tokens, PEM ni cuerpos de respuestas de autenticación. El prefligh
 
 Tras corregir el acceso, el intento 2 llegó a las pruebas web pero no encontró el botón inicial. La reproducción con Chromium de Playwright 1.55.0 en Linux mostró `navigator.language = en-US@posix` y un error de Flutter: `Incorrect locale information provided`. Con `locale='es-CL'`, el mismo navegador mostró el login correctamente. Las pruebas de reservas y onboarding fijan ahora idioma `es-CL` y zona `America/Santiago`, sin depender del locale del sistema del runner. Un fallo de arranque informa también los errores JavaScript recolectados. Esto es independiente de las credenciales de la App; no se amplían permisos ni se oculta el fallo con reintentos.
 
+### Pantallas implementadas y pruebas de aceptación
+
+La ejecución `39447271885`, intento 2, pudo emitir el token y descargar los cinco repositorios después de incluir `rac-chat-service` en la instalación. El siguiente fallo fue una expectativa antigua de `test_browser.py`: exigía «En construcción» al abrir Mensajes, aunque el frontend fijado ya implementaba el chat. La prueba ahora exige una respuesta HTTP 200 del listado privado, su colección `items` y los controles reales de Mensajes. El recorrido bidireccional, la recuperación de red y el acceso de solo lectura se verifican en `test_chat_browser.py`. Actions muestra cada recorrido web en un paso separado; no se omiten pruebas ni se amplían permisos para resolver errores de aceptación.
+
+La regresión completa local también detectó una carrera en la automatización del editor Flutter: el campo semántico cambia su nombre al recibir foco, y la respuesta HTTP de envío puede llegar antes de que se restablezca el compositor. El test enfoca la pestaña, espera el editor listo y verifica el contador y el botón habilitado después de enviar. No agrega pausas fijas ni reintentos de envío para ocultar el fallo. Ante un envío fallido guarda captura y árbol accesible localmente, sin registrar credenciales.
+
 ## Operación y rotación
 
 La clave privada es persistente y **no expira automáticamente**. Rotarla periódicamente (política inicial RAC: cada 90 días) y al sospechar exposición: generar una segunda clave, actualizar el secret, validar una ejecución y eliminar la anterior en GitHub. GitHub admite varias claves durante la transición. Ante exposición confirmada, revocar inmediatamente la clave afectada y los tokens activos.
