@@ -1,0 +1,40 @@
+# Laboratorio S3 independiente de DEV; no cambia el backend de fotos.
+services:
+  rustfs:
+    image: rustfs/rustfs:1.0.3@sha256:9ca9559533b537d10482fe923288b676ad08f92a7069d9a17327fbae3cab688b
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:?Configurar credencial local}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?Configurar secreto local}
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_VOLUMES: /data
+      RUSTFS_OBS_LOG_DIRECTORY: /logs
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - rustfs-data:/data
+      - rustfs-logs:/logs
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://localhost:9000/health]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+  storage-test:
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile: tools/storage/Dockerfile
+    environment:
+      AWS_ACCESS_KEY_ID: ${RUSTFS_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${RUSTFS_SECRET_KEY}
+      S3_ENDPOINT: http://rustfs:9000
+    depends_on:
+      rustfs:
+        condition: service_healthy
+volumes:
+  rustfs-data:
+  rustfs-logs:

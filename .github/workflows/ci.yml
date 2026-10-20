@@ -7,6 +7,17 @@ on:
 permissions:
   contents: read
 jobs:
+  storage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - run: python scripts/init_storage.py
+      - run: make storage-test-persistence
+      - if: always()
+        run: make storage-stop
   migrations:
     runs-on: ubuntu-latest
     steps:

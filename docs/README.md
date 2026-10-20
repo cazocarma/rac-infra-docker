@@ -44,3 +44,5 @@ pero no están desplegados y conservan bloqueos explícitos.
 - [Perfil personal y revisión de promoción](perfiles-y-promocion.md)
 
 - [Perfiles públicos, biografía y fotos](perfiles-publicos-y-fotos.md)
+
+- [RustFS: laboratorio S3](almacenamiento-rustfs.md)

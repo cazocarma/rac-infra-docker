@@ -82,3 +82,19 @@ check:
 	$(CURL) $(CHECK_URL)/api/user/health
 	$(CURL) $(CHECK_URL)/api/match/health
 	$(CURL) $(CHECK_URL)/api/user/skills
+
+# Laboratorio independiente: nunca usa secretos ni volÃºmenes de QA/PRD.
+STORAGE_COMPOSE := docker compose --env-file envs/.env.storage -p rac-dev-storage -f compose.storage.yaml
+.PHONY: storage-up storage-test storage-stop storage-logs storage-test-persistence
+storage-up:
+	$(STORAGE_COMPOSE) up -d --wait --wait-timeout 180 rustfs
+storage-test: storage-up
+	$(STORAGE_COMPOSE) run --rm --build storage-test
+storage-stop:
+	$(STORAGE_COMPOSE) down
+storage-logs:
+	$(STORAGE_COMPOSE) logs --tail 100 rustfs
+storage-test-persistence: storage-test
+	$(STORAGE_COMPOSE) run --rm -e STORAGE_TEST_PHASE=seed storage-test
+	$(STORAGE_COMPOSE) up -d --force-recreate --wait --wait-timeout 180 rustfs
+	$(STORAGE_COMPOSE) run --rm -e STORAGE_TEST_PHASE=verify storage-test
