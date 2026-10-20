@@ -75,7 +75,15 @@ try:
     sql("legacy", (ROOT / "db/migrations/V001__initial_schema.sql").read_text())
     sql("legacy", "INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('00000000-0000-0000-0000-000000000001','Preservar','legacy@example.test','cliente','kc-legacy');")
     sql("legacy", "INSERT INTO compa_availability(compa_id,disponibilidad_json) VALUES('00000000-0000-0000-0000-000000000001','{\"lunes\":[\"18:00-20:00\"]}');")
+    # Preserve and backfill real pre-outbox history, including text that exceeds
+    # the new-message limit; V009 deliberately does not rewrite old content.
+    sql("legacy", "INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('00000000-0000-0000-0000-000000000002','Companion','compa-legacy@example.test','compa','kc-legacy-compa');")
+    sql("legacy", "INSERT INTO sesion(id,cliente_id,compa_id,fecha_inicio,fecha_fin,estado) VALUES('00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002',now(),now()+interval '1 hour','activa');")
+    sql("legacy", "INSERT INTO mensaje(id,sesion_id,remitente_id,contenido) VALUES('00000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000001',repeat('x',2001));")
     flyway("legacy", migration_dir)
+    assert sql("legacy", "SELECT char_length(contenido) FROM mensaje WHERE id='00000000-0000-0000-0000-000000000004';") == "2001"
+    assert sql("legacy", "SELECT version FROM chat_outbox WHERE mensaje_id='00000000-0000-0000-0000-000000000004';") == "1"
+    assert sql("legacy", "SELECT version FROM chat_cursor WHERE sesion_id='00000000-0000-0000-0000-000000000003';") == "1"
     assert sql("legacy", "SELECT nombre FROM usuario WHERE keycloak_id='kc-legacy';") == "Preservar"
     assert sql("legacy", "SELECT zona_horaria FROM compa_availability;") == "UTC"
     assert sql("legacy", "SELECT disponibilidad_json->'lunes'->>0 FROM compa_availability;") == "18:00-20:00"
