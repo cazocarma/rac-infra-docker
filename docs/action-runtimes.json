@@ -1,0 +1,47 @@
+{
+  "actions/checkout": {
+    "sha": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "tag": "v7.0.1",
+    "runtime": "node24"
+  },
+  "actions/setup-go": {
+    "sha": "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+    "tag": "v7.0.0",
+    "runtime": "node24"
+  },
+  "actions/upload-artifact": {
+    "sha": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+    "tag": "v7.0.2",
+    "runtime": "node24"
+  },
+  "docker/setup-buildx-action": {
+    "sha": "f87e5991a6d7451dcb8d9637bfbc97413f497069",
+    "tag": "v4.4.1",
+    "runtime": "node24"
+  },
+  "docker/login-action": {
+    "sha": "dbcb813823bdd20940b903addbd779551569679f",
+    "tag": "v4.6.0",
+    "runtime": "node24"
+  },
+  "docker/build-push-action": {
+    "sha": "c3c9e263c25d99ce0380d002d59b67737d91b0dc",
+    "tag": "v7.4.0",
+    "runtime": "node24"
+  },
+  "subosito/flutter-action": {
+    "sha": "1a449444c387b1966244ae4d4f8c696479add0b2",
+    "tag": "v2.23.0",
+    "runtime": "composite"
+  },
+  "actions/setup-java": {
+    "sha": "b843ebf9b913146b38da2eaa7aeddf76074ae1ad",
+    "tag": "v6.1.0",
+    "runtime": "node24"
+  },
+  "actions/create-github-app-token": {
+    "sha": "64ab729a6294000f5aa4a4bc0b73d1f32bc45510",
+    "tag": "v3.3.0",
+    "runtime": "node24"
+  }
+}

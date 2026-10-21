@@ -11,10 +11,10 @@ concurrency:
   cancel-in-progress: true
 jobs:
   storage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - run: python scripts/init_storage.py
@@ -22,9 +22,9 @@ jobs:
       - if: always()
         run: make storage-stop
   migrations:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
           path: rac-infra-docker
@@ -38,14 +38,19 @@ jobs:
         working-directory: rac-infra-docker
       - run: python scripts/test_deployment_guards.py
         working-directory: rac-infra-docker
+      - name: Validate reviewed Actions and runner policy
+        working-directory: rac-infra-docker
+        run: |
+          python scripts/check_actions.py
+          python -m unittest discover -s scripts -p "test_actions.py"
       - run: python -m unittest discover -s scripts -p "test_release_policy.py"
         working-directory: rac-infra-docker
   integration:
     timeout-minutes: 55
     needs: migrations
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
           path: rac-infra-docker
@@ -81,28 +86,28 @@ jobs:
           CI_REPOSITORY_TOKEN: ${{ steps.repository-token.outputs.token }}
           CI_REPOSITORY_REFS: ${{ steps.revisions.outputs.repositories }}
         run: python scripts/check_ci_access.py
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
           repository: ${{ github.repository_owner }}/rac-auth-service
           ref: ${{ fromJSON(steps.revisions.outputs.repositories)['rac-auth-service'] }}
           path: rac-auth-service
           token: ${{ steps.repository-token.outputs.token }}
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
           repository: ${{ github.repository_owner }}/rac-user-service
           ref: ${{ fromJSON(steps.revisions.outputs.repositories)['rac-user-service'] }}
           path: rac-user-service
           token: ${{ steps.repository-token.outputs.token }}
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
           repository: ${{ github.repository_owner }}/rac-match-service
           ref: ${{ fromJSON(steps.revisions.outputs.repositories)['rac-match-service'] }}
           path: rac-match-service
           token: ${{ steps.repository-token.outputs.token }}
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
           repository: ${{ github.repository_owner }}/rac-frontend-flutter
@@ -110,7 +115,7 @@ jobs:
           path: rac-frontend-flutter
           token: ${{ steps.repository-token.outputs.token }}
 
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
           repository: ${{ github.repository_owner }}/rac-chat-service
@@ -118,7 +123,7 @@ jobs:
           path: rac-chat-service
           token: ${{ steps.repository-token.outputs.token }}
 
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
           repository: ${{ github.repository_owner }}/rac-alert-service
@@ -175,7 +180,7 @@ jobs:
         run: python scripts/test_identity_ui.py
       - name: Preserve synthetic browser failure diagnostics
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: browser-failure-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: 3
