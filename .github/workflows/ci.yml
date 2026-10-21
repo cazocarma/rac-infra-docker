@@ -132,25 +132,44 @@ jobs:
         working-directory: rac-infra-docker
         run: make check test-integration
       - name: Install browser test runtime
+        id: browser-runtime
         working-directory: rac-infra-docker
         run: |
           python -m pip install playwright==1.55.0
           python -m playwright install --with-deps chromium
       - name: Web login and booking integration
+        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_browser.py
       - name: Web onboarding integration
+        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_browser_onboarding.py
       - name: Web reviews integration
+        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_reviews_browser.py
       - name: Web private chat integration
+        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_chat_browser.py
       - name: Identity theme integration
+        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_identity_ui.py
+      - name: Preserve synthetic browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: browser-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 3
+          include-hidden-files: true
+          if-no-files-found: warn
+          path: |
+            rac-infra-docker/.local/chat-ui/*.png
+            rac-infra-docker/.local/chat-ui/*.txt
+            rac-infra-docker/.local/review-ui/*.png
+            rac-infra-docker/.local/review-ui/*.txt
       - name: Logs
         if: failure()
         working-directory: rac-infra-docker

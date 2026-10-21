@@ -39,10 +39,15 @@ try:
         (ARTIFACTS/'review-dialog-aria.txt').write_text(page.locator('body').aria_snapshot(),encoding='utf-8')
         page.get_by_role('checkbox',name=re.compile(r'^5 de 5 estrellas')).click()
         comment='Una experiencia excelente y muy buena compañía.'
-        page.get_by_role('textbox',name='Comentario (opcional)').click()
-        editor=page.locator('textarea[data-semantics-role="text-field"]')
+        dialog=page.get_by_role('alertdialog')
+        dialog.get_by_role('textbox',name='Comentario (opcional)').click()
+        editor=dialog.locator('textarea[data-semantics-role="text-field"]')
+        expect(editor).to_have_attribute('autocorrect','on')
         editor.fill(comment)
-        expect(page.get_by_text(f'{1000-len(comment)} characters remaining',exact=True)).to_be_visible()
+        expect(editor).to_have_value(comment)
+        # Live announcements can repeat the counter inside the dialog; the
+        # rendered counter is a span, not flt-announcement-polite.
+        expect(dialog.locator('span').filter(has_text=re.compile(f'^{1000-len(comment)} characters remaining$'))).to_be_visible()
         with page.expect_response(lambda response:'/api/user/bookings/' in response.url and response.request.method=='POST') as sent:
             page.get_by_role('button',name='Publicar reseña',exact=True).click()
         assert sent.value.status in (200,201), 'Review submission failed: '+sent.value.text()

@@ -52,7 +52,7 @@ try:
             expect(native_editor).to_have_attribute('aria-label','Mensaje\nEscribe un mensaje…')
             native_editor.fill(text)
             expect(native_editor).to_have_value(text)
-            expect(page.get_by_text('2000 characters remaining',exact=True)).to_have_count(0)
+            expect(page.locator('flt-semantics-host span').filter(has_text=re.compile('^2000 characters remaining$'))).to_have_count(0)
             try:
                 with page.expect_response(lambda r:'/api/chat/bookings/' in r.url and r.request.method=='POST') as response:
                     page.get_by_role('button',name='Enviar mensaje',exact=True).click()
@@ -61,7 +61,7 @@ try:
                 page.screenshot(path=str(ARTIFACTS/'chat-send-failure.png'))
                 raise
             assert response.value.status in (200,201), response.value.text()
-            expect(page.get_by_text('2000 characters remaining',exact=True)).to_be_visible()
+            expect(page.locator('flt-semantics-host span').filter(has_text=re.compile('^2000 characters remaining$'))).to_be_visible()
             expect(page.get_by_role('button',name='Enviar mensaje',exact=True)).to_be_enabled()
         login(buyer,info['username']);login(provider,'compa2')
         open_chat(buyer);open_chat(provider)
@@ -103,7 +103,8 @@ try:
             editor=page.locator('textarea[data-semantics-role="text-field"]')
             expect(editor).to_have_attribute('autocorrect','on')
             editor.fill(value)
-            expect(page.get_by_text(f'{limit-len(value)} characters remaining',exact=True)).to_be_visible()
+            expect(editor).to_have_value(value)
+            expect(page.locator('flt-semantics-host span').filter(has_text=re.compile(f'^{limit-len(value)} characters remaining$'))).to_be_visible()
         fill_flutter(buyer,'Describe qué ocurrió','Incidente sintético para verificar el flujo de moderación.',1000)
         reveal(buyer,buyer.get_by_role('button',name='Enviar reporte',exact=True))
         with buyer.expect_response(lambda r:r.url.endswith('/reports') and r.request.method=='POST') as reported:
