@@ -88,8 +88,11 @@ No se purgan ni reproducen automáticamente mensajes fallidos.
 
 ## Operación y recuperación
 
-Desde infra: `make up`, `make ps` y `make check`. Para la prueba aislada:
-`python scripts/test_messaging.py`. Crea PostgreSQL y RabbitMQ con nombres aleatorios,
+Desde infra: `make up`, `make ps` y `make check`.
+`make check` valida también la readiness de ambos workers, de modo que el gate de
+promoción requiere las imágenes coordinadas con sus ejecutables y un consumidor
+conectado, además de las APIs HTTP.
+La prueba aislada es `python scripts/test_messaging.py`. Crea PostgreSQL y RabbitMQ con nombres aleatorios,
 no lee archivos .env y elimina solo sus recursos al terminar. Se ejecuta también en
 CI integrado usando los SHAs fijados de match y alertas.
 
