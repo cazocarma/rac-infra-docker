@@ -9,9 +9,7 @@ endif
 ENV_FILE ?= envs/.env.$(ENV)
 COMPOSE_FILES := -f compose.yaml
 UP_FLAGS := --no-build
-ifeq ($(ENV),dev)
-UP_FLAGS := --build
-else
+ifneq ($(ENV),dev)
 COMPOSE_FILES += -f compose.release.yaml
 endif
 COMPOSE_FILES += -f docker-compose.$(ENV).yaml
@@ -47,6 +45,9 @@ help:
 config:
 	$(COMPOSE) config --quiet
 up: config
+ifeq ($(ENV),dev)
+	$(PYTHON) scripts/build_dev.py $(COMPOSE)
+endif
 	$(COMPOSE) up -d $(UP_FLAGS)
 ifeq ($(ENV),dev)
 	$(COMPOSE) run --rm --build identity-config
@@ -78,7 +79,7 @@ down:
 	$(COMPOSE) --profile observability down
 build:
 ifeq ($(ENV),dev)
-	$(COMPOSE) build
+	$(PYTHON) scripts/build_dev.py $(COMPOSE)
 else
 	$(error build solo esta disponible para dev; promover imagenes a QA y PRD)
 endif

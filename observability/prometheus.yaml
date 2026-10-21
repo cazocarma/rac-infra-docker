@@ -15,3 +15,11 @@ scrape_configs:
         labels: {service: rac-chat-service}
       - targets: [backend-alert:8080]
         labels: {service: rac-alert-service}
+  - job_name: rac-messaging
+    static_configs:
+      - targets: [rabbitmq:15692]
+        labels: {service: rabbitmq}
+      - targets: [booking-events-relay:8080]
+        labels: {service: booking-events-relay}
+      - targets: [alert-events-consumer:8080]
+        labels: {service: alert-events-consumer}

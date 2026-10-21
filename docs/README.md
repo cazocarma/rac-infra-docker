@@ -54,6 +54,6 @@ pero no están desplegados y conservan bloqueos explícitos.
 - [Bloqueos, reportes y acceso administrativo trazable](moderacion-chat.md)
 
 - [Bandeja privada y servicio de alertas](alertas.md)
-- [Evaluación de mensajería interna con RabbitMQ](mensajeria-rabbitmq.md)
+- [Mensajería de reservas con RabbitMQ, recuperación y garantías](mensajeria-rabbitmq.md)
 
 - [Ronda de anotaciones y runtimes de Actions](anotaciones-ci.md)

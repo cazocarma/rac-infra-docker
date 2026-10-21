@@ -1,34 +1,137 @@
-# Evaluación de RabbitMQ para RAC
+# Reservas, outbox y RabbitMQ
 
-Estado: propuesta de arquitectura; todavía no hay publicador ni consumidor AMQP en las aplicaciones. La instalación del contenedor no equivale a tener mensajería integrada.
+Implementación del 21 de octubre de 2026. El flujo es:
 
-## Decisión propuesta
+`transacción de reserva + booking_outbox → events-relay → RabbitMQ → consumer → inbox + notificaciones`
 
-Usar RabbitMQ para eventos de dominio asíncronos, empezando por cambios de reservas que alimenten alertas. Mantener HTTP para consultas y acciones que necesitan una respuesta inmediata. El chat actual conserva su outbox y recuperación por cursor; RabbitMQ no sustituye la autorización por reserva ni se expone al navegador.
+## Propiedad y garantías
 
-Actualmente V005 genera los avisos dentro de la misma transacción que cambia la reserva. El nuevo servicio de alertas es dueño de su API de lectura y marcado, pero PostgreSQL sigue compartido y el trigger sigue escribiendo la bandeja. Esta es una transición explícita, no una separación completa de datos por microservicio.
+V013 reemplaza atómicamente el productor de V005. No modifica las migraciones ya
+aplicadas ni regenera avisos históricos. Los IDs y fechas de lectura existentes se
+conservan. El trigger genera un evento solo al crear una reserva o cambiar realmente
+su estado; asigna una revisión creciente por reserva en esa misma transacción.
+Una operación revertida no deja evento. No hay envío AMQP desde el handler HTTP.
 
-## Flujo objetivo y garantías
+Match contiene el relay como ejecutable separado en su misma imagen. Cada publicación
+usa mensaje persistente, `mandatory` y publisher confirms. Solo después del confirm,
+sin retorno por falta de ruta, marca `published_at`. Un timeout, nack o resultado
+incierto conserva la misma ID para reintentar. PostgreSQL coordina relays concurrentes
+con `FOR UPDATE SKIP LOCKED`; una revisión posterior no adelanta una pendiente de
+la misma reserva, incluso si esta espera su próximo intento. Las demás reservas
+pueden continuar. El lock dura como máximo el timeout de la operación, no una espera
+indefinida del broker. El backoff de publicación crece hasta 64 segundos.
 
-1. Match guarda reserva y evento outbox en una transacción PostgreSQL. Evento inmutable con `event_id` UUID, `event_type`, versión del contrato, `booking_id`, revisión del agregado, instante y destinatarios mínimos. Sin JWT, correo, teléfono, descripción del incidente ni mensajes privados.
-2. Un relay publica el evento persistente en un exchange durable de tipo topic, con `mandatory` y publisher confirms. Solo marca el outbox como publicado cuando hay confirmación y no hubo retorno por ausencia de ruta. Un cierre o timeout deja el evento disponible para reintento; el relay se reconecta con backoff limitado y jitter.
-3. Una cola durable exclusiva del consumidor de alertas recibe los tipos de evento que necesita. El consumidor guarda `event_id` procesado y las notificaciones en una única transacción. Una restricción única impide duplicados incluso con consumidores concurrentes. Solo entonces envía ACK manual; si el proceso cae entre commit y ACK, la reentrega no repite el efecto.
-4. Los fallos transitorios tienen reintentos demorados y acotados. Los contratos inválidos y los eventos que agotan los intentos pasan a una cola de fallos, con diagnóstico sin datos privados. No usar requeue infinito ni ACK antes de persistir.
+Alertas contiene un consumidor separado con ACK manual y prefetch 1. Valida el
+contrato, guarda el marcador único de inbox y los avisos en una transacción y confirma
+al broker después del commit. Una caída entre commit y ACK produce reentrega, pero
+no repite efectos ni borra marcas de leído. La revisión ordena la publicación; no
+promete orden global de procesamiento con múltiples consumidores. Los avisos conservan
+la fecha del evento. Reservas o identidades eliminadas no se recrean por entrega tardía.
 
-La entrega es al menos una vez; no se promete exactly-once entre PostgreSQL y RabbitMQ. Los duplicados y las interrupciones son parte normal del modelo. Los confirms del publicador y los ACK del consumidor son garantías distintas. Fuentes: [Reliability Guide](https://www.rabbitmq.com/docs/reliability) y [Consumer Acknowledgements and Publisher Confirms](https://www.rabbitmq.com/docs/confirms).
+La entrega es **al menos una vez**, con efectos idempotentes. Los confirms y los ACK
+son garantías diferentes: [documentación oficial](https://www.rabbitmq.com/docs/confirms).
+La BD aún es compartida y usa las credenciales existentes: la separación de permisos
+PostgreSQL por servicio sigue pendiente antes de PRD.
 
-## Topología y operación
+## Broker y permisos
 
-Propuesta de nombres versionados: exchange `rac.domain.v1`, routing key `booking.state_changed.v1`, cola `rac.alert.booking.v1` y cola de fallos `rac.alert.booking.failed.v1`. Otros consumidores tendrán sus propias colas, no competirán por la de alertas. Los contratos se versionarán en rac-shared-contracts antes de publicar.
+RabbitMQ 4.3.6 management está fijado por digest, como parche soportado de la serie
+4.3. No se reutiliza el directorio de datos de 3.13: `rabbitmq-events-data` es nuevo;
+el volumen histórico `rabbitmq-data` queda conservado. El broker anterior fue
+verificado sin colas antes del cambio local. No hacer este cambio sobre otro entorno
+sin inventario de sus mensajes y procedimiento de migración.
 
-Separar usuario/vhost del broker por ambiente y permisos de publicar/consumir por servicio. Las credenciales no van al frontend ni al repositorio. Fijar una versión soportada y digest al implementar; no reutilizar sin revisión la etiqueta histórica `rabbitmq:3-management`. La consola queda restringida al entorno local. Fuera de DEV harán falta TLS, límites, métricas y una decisión explícita de disponibilidad/replicación. Un único contenedor con volumen no ofrece alta disponibilidad.
+Al adoptar el volumen nuevo desde un DEV antiguo, cambiar `RABBITMQ_USER` de
+`guest` a `rac-operator` y generar una contraseña local en el archivo ignorado.
+Guest solo admite loopback y no sirve para el inicializador por red; no se desactiva
+esa protección. Las plantillas DEV ya usan el administrador con nombre propio.
 
-Medir cantidad/edad del outbox pendiente, retornos/nacks, reconexiones, profundidad de cola, mensajes sin ACK, reintentos y cola de fallos. No usar IDs de usuario/reserva como etiquetas de métricas. Definir retención y procedimiento de replay; los respaldos actuales no incluyen las colas de RabbitMQ.
+El hostname del nodo es estable. Los healthchecks y las sondas del test ejecutan
+`rabbitmq-diagnostics` como el usuario rabbitmq: ejecutarlo como root al primer
+arranque puede crear la cookie de Erlang con propietario incorrecto.
 
-## Transición verificable
+`messaging-config` configura de forma idempotente el vhost `rac-dev`, `rac-qa` o
+`rac-prd`, exchanges, colas quorum, bindings y política. Es el único proceso que
+recibe el administrador del broker. Genera credenciales aleatorias separadas:
 
-No reemplazar V005 con un envío directo desde el handler: introduciría el problema de doble escritura. En una migración coordinada, pasar del trigger de notificaciones al outbox de reservas. Solo un camino debe crear cada aviso; para conservar avisos existentes sin duplicados, el corte requiere contrato de identidad, prueba de migración y revisión de los datos históricos. Las migraciones V001–V012 aplicadas no se reescriben.
+- Publisher: escribir únicamente en `rac.bookings`.
+- Consumer: leer únicamente `rac.alert.bookings`.
+- Ninguno puede configurar topología ni acceder a otro vhost.
 
-Antes de activar el consumidor: probar caída del broker durante una reserva, publicador reiniciado antes/después del confirm, consumidor reiniciado antes/después del commit, duplicados concurrentes, mensaje sin ruta, contrato inválido, agotamiento de reintentos, orden/revisión del agregado y replay desde la cola de fallos. La reserva debe persistir durante la caída y el aviso llegar al recuperarse sin duplicar efectos.
+Las URLs se guardan en dos volúmenes distintos montados de solo lectura en cada
+worker. Nunca se registran ni se pasan al navegador. La consola y AMQP solo se
+publican sobre loopback en DEV; QA/PRD no publican esos puertos. Las APIs de reservas
+y bandeja no dependen del estado del broker. Los workers requieren la configuración
+inicial, y se reconectan con backoff y jitter tras interrupciones.
 
-Primero se entrega la bandeja privada y sus pruebas. La implementación de este flujo AMQP es el siguiente incremento independiente, para ensayar recuperación sin mezclarla con el cambio de propietario de la API.
+## Topología y fallos
+
+Exchange topic durable `rac.bookings`; routing key `booking.state_changed.v1`;
+cola quorum `rac.alert.bookings`. Otros futuros consumidores necesitan colas propias.
+El contrato ejecutable está en `rac-shared-contracts/events`; solo contiene UUIDs,
+estado, revisión y fecha. No contiene correos, nombres, tokens ni conversaciones.
+
+Los contratos inválidos y las colisiones de ID con distinto cuerpo se guardan en
+`alert_event_quarantine` antes del ACK. Se limita el cuerpo guardado a 16 KiB, con
+hash del original y razón controlada. No se imprimen cuerpos en logs. El acceso a
+esa tabla es operativo y restringido; no se expone en la API de usuarios.
+
+Los errores de persistencia cierran la conexión sin ACK y esperan con backoff.
+Después de 20 entregas fallidas, la política quorum remite el mensaje al exchange
+`rac.bookings.failed`, routing key `failed`, cola `rac.alert.bookings.failed`.
+Usa `dead-letter-strategy=at-least-once` y `overflow=reject-publish` para evitar la
+pérdida del DLX por defecto. Véase [quorum queues](https://www.rabbitmq.com/docs/4.3/quorum-queues).
+No se purgan ni reproducen automáticamente mensajes fallidos.
+
+## Operación y recuperación
+
+Desde infra: `make up`, `make ps` y `make check`. Para la prueba aislada:
+`python scripts/test_messaging.py`. Crea PostgreSQL y RabbitMQ con nombres aleatorios,
+no lee archivos .env y elimina solo sus recursos al terminar. Se ejecuta también en
+CI integrado usando los SHAs fijados de match y alertas.
+
+Prometheus recoge broker y workers. Grafana provisiona el dashboard `RAC · Mensajería`
+con salud, backlog, antigüedad, colas, procesamiento, deduplicación y fallos. Se observan cantidad/edad de outbox pendiente,
+publicaciones, errores, reentregas deduplicadas, cuarentena, conexión y profundidad
+de colas. Las reglas alertan por demora, desconexión y mensajes fallidos. IDs de
+usuarios/eventos/reservas no son etiquetas. La readiness del consumidor exige conexión
+y BD; la del relay verifica BD, mientras el backlog muestra bloqueos de publicación.
+
+Ante cola de fallidos: corregir primero la causa y verificar consumer/BD. Un operador
+puede recuperar un evento concreto desde el outbox canónico, conservando la ID:
+
+```sql
+BEGIN;
+UPDATE booking_outbox SET published_at=NULL,next_attempt_at=now()
+WHERE id = '<UUID verificado del evento>';
+COMMIT;
+```
+
+Verificar el marcador de `alert_event_inbox` y los avisos esperados antes de retirar
+esa entrega de la cola de fallidos. Una repetición ya procesada es inocua. No resetear
+todo el outbox ni usar purge. La cuarentena requiere revisión del contrato/cuerpo;
+no se debe reenviar ciegamente. La automatización de este procedimiento queda para
+una herramienta operativa con auditoría y permisos propios.
+
+Antes de revertir V013, detener ambos workers y drenar/verificar el outbox. Volver
+solo a la imagen anterior dejaría eventos nuevos sin consumidor; no reactivar V005
+mientras haya entregas pendientes. Las migraciones aplicadas se corrigen con una
+migración nueva, nunca editando su checksum.
+
+## Validación y límites
+
+Las pruebas verifican preservación V012→V013, rollback sin evento, no-op sin evento,
+orden por reserva, relays concurrentes, confirm perdido, mandatory sin ruta,
+deduplicación concurrente, rollback del inbox, conflicto de ID, persistencia de
+cuarentena, y conexión cortada después del commit y antes del ACK con broker real.
+`python scripts/test_messaging_recovery.py` detiene solo el broker DEV, confirma
+un cambio de reserva por HTTP con el broker caído y verifica su entrega única al
+restaurarlo; usa un comprador OIDC desechable y restaura el broker en `finally`.
+Las pruebas HTTP/navegador esperan el efecto asíncrono con un plazo acotado y fallan
+inmediatamente ante errores HTTP.
+
+DEV sigue teniendo un solo nodo: durabilidad no equivale a alta disponibilidad.
+Antes de PRD faltan TLS del transporte, capacidad/replicación, retención de outbox,
+inbox y cuarentena, rotación de credenciales y permisos PostgreSQL separados. Los
+respaldos de BD incluyen el outbox/inbox; no incluyen el volumen del broker. La copia
+fuera del PC continúa aplazada por decisión del usuario. Correo y push siguen pendientes.

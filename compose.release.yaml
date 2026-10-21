@@ -26,3 +26,7 @@ services:
     restart: unless-stopped
   nginx:
     restart: unless-stopped
+  booking-events-relay:
+    image: ${MATCH_IMAGE:?Configurar MATCH_IMAGE}
+  alert-events-consumer:
+    image: ${ALERT_IMAGE:?Configurar ALERT_IMAGE}

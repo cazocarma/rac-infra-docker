@@ -15,7 +15,7 @@ class ReleasePolicyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             source = Path(__file__).resolve().parent.parent
-            for name in ("Makefile", "nginx/environments.conf", "scripts/deploy.py", "scripts/release_policy.py", "compose.yaml", "db/bootstrap/001-keycloak.sh"):
+            for name in ("Makefile", "nginx/environments.conf", "scripts/deploy.py", "scripts/release_policy.py", "scripts/configure_messaging.py", "scripts/build_dev.py", "tools/Dockerfile", "compose.yaml", "db/bootstrap/001-keycloak.sh"):
                 dest = root / name
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(source / name, dest)
@@ -70,12 +70,12 @@ class ReleasePolicyTests(unittest.TestCase):
     def test_qa_proof_covers_bootstrap_and_compose_inputs(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            for name in ("Makefile", "nginx/environments.conf", "scripts/deploy.py", "scripts/release_policy.py", "compose.tests.yaml", "db/bootstrap/001-keycloak.sh"):
+            for name in ("Makefile", "nginx/environments.conf", "scripts/deploy.py", "scripts/release_policy.py", "scripts/configure_messaging.py", "scripts/build_dev.py", "tools/Dockerfile", "rabbitmq/rabbitmq.conf", "compose.tests.yaml", "db/bootstrap/001-keycloak.sh"):
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(b"original\n")
             original = infrastructure_digest(root)
-            for name in ("compose.tests.yaml", "db/bootstrap/001-keycloak.sh", "scripts/release_policy.py"):
+            for name in ("compose.tests.yaml", "db/bootstrap/001-keycloak.sh", "scripts/release_policy.py", "scripts/configure_messaging.py", "scripts/build_dev.py", "tools/Dockerfile", "rabbitmq/rabbitmq.conf"):
                 path = root / name
                 path.write_bytes(b"changed\n")
                 self.assertNotEqual(original, infrastructure_digest(root))

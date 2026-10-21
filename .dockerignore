@@ -3,3 +3,4 @@ envs/.env.*
 envs/realm.dev.json
 __pycache__
 *.log
+.local

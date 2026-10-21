@@ -8,7 +8,7 @@ import sys
 import urllib.parse
 import urllib.request
 import psycopg
-from oidc_test_support import api, login, TOKENS, KC
+from oidc_test_support import api, login, TOKENS, KC, wait_booking_notifications
 
 def request(method, path, token=None, data=None, form=False):
     headers = {"Content-Type": "application/x-www-form-urlencoded" if form else "application/json"}
@@ -114,7 +114,7 @@ else:
         booking=api('POST','/api/match/session',buyer,{'compa_id':own['profile']['id'], 'fecha_inicio':start.isoformat(),'fecha_fin':(start+dt.timedelta(hours=1)).isoformat()},expected=201)
         api('PUT',f"/api/match/session/{booking['id']}/state",token,{'estado':'activa'})
         assert api('GET',slots_path,buyer)['slots']==[]
-        assert any(n['sesion_id']==booking['id'] for n in api('GET','/api/user/notifications',token)['items'])
+        wait_booking_notifications(token, booking['id'], ['pendiente', 'activa'])
         print('PASS: base account activates for free, refreshes signed role, edits skills, publishes availability and receives/accepts reservation')
     finally:
         cleanup(username)

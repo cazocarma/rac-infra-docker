@@ -13,3 +13,26 @@ groups:
         labels: {severity: warning}
         annotations:
           summary: "Más de 5% de errores en {{ $labels.service }}"
+      - alert: RACBookingEventsDelayed
+        expr: rac_booking_outbox_oldest_seconds > 120
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "Eventos de reserva pendientes por más de dos minutos"
+      - alert: RACAlertConsumerDisconnected
+        expr: rac_alert_broker_connected == 0 or up{job="rac-messaging"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "Mensajería RAC requiere revisión"
+      - alert: RACAlertEventsQuarantined
+        expr: increase(rac_alert_events_quarantined_total[5m]) > 0
+        labels: {severity: warning}
+        annotations:
+          summary: "Evento de reserva rechazado; revisar cuarentena sin exponer su contenido"
+      - alert: RACBookingEventsFailed
+        expr: rabbitmq_queue_messages{queue="rac.alert.bookings.failed"} > 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Hay entregas agotadas en la cola de fallidos; requiere recuperación controlada"

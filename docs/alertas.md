@@ -14,7 +14,7 @@ Las antiguas rutas `/api/user/notifications` y `/api/user/notifications/:id/read
 
 ## Persistencia y despliegue
 
-No se reescriben migraciones aplicadas ni se borra/backfillea la bandeja. V005 sigue generando avisos transaccionales con las reservas. La API de bandeja pertenece a alertas, pero la BD continúa compartida y el trigger de reservas sigue siendo el productor: la separación completa de datos/eventos es una fase posterior.
+No se reescriben migraciones aplicadas ni se borra/backfillea la bandeja. V013 sustituye el productor V005 por outbox transaccional de reservas. El consumidor de alertas guarda inbox y notificaciones antes del ACK. La BD continúa compartida; ver [mensajería](mensajeria-rabbitmq.md) para garantías y operación.
 
 Compose agrega backend-alert, checks de readiness sobre las columnas usadas, métricas internas Prometheus y logs estructurados sin contenido de avisos. No se expone puerto del backend al host. QA/PRD requieren `ALERT_IMAGE` por digest junto a las otras cinco imágenes. Los manifiestos anteriores sin alertas son rechazados por preflight, en lugar de desplegar una versión incompleta.
 
@@ -24,4 +24,4 @@ El CI integrado descarga seis repositorios por SHA; requiere sumar únicamente r
 
 Go: JWT real firmado, rol/anonimato, paginación inválida, identidad ignorada en query, error 503 sin filtrado, aislamiento por propietario, timestamp idempotente, marcado concurrente, contador global y aviso posterior. Usuarios mantiene sus pruebas sin handlers duplicados. Flutter verifica renovación con el mismo PUT, error sin ocultar pendientes y marcado confirmado. El navegador usa un comprador OIDC desechable, comprueba alias antiguo, contador, reintento masivo y cancelación posterior que genera un aviso nuevo; limpia únicamente su fixture.
 
-Correo/push y el consumo AMQP no están implementados en esta entrega. Ver la [evaluación de RabbitMQ](mensajeria-rabbitmq.md) para la transición con outbox y consumo idempotente.
+Correo/push siguen pendientes. El [flujo RabbitMQ](mensajeria-rabbitmq.md) implementa outbox y consumo idempotente.
