@@ -51,3 +51,4 @@ pero no están desplegados y conservan bloqueos explícitos.
 - [Respaldos automaticos y prueba de recuperacion](respaldos-automaticos.md)
 
 - [Chat privado, outbox y reconexión](chat-reservas.md)
+- [Bloqueos, reportes y acceso administrativo trazable](moderacion-chat.md)

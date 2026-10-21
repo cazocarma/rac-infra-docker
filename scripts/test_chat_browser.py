@@ -84,12 +84,75 @@ try:
         # Reopening from the list restores the persisted messages through OIDC.
         open_chat(buyer);expect(buyer.get_by_text(first,exact=True)).to_be_visible(timeout=30000)
         expect(buyer.get_by_text(recovered,exact=True)).to_be_visible(timeout=30000)
+        # Safety controls use real authenticated APIs, not intercepted responses.
+        buyer.get_by_role('button',name='Seguridad de la conversación',exact=True).click()
+        expect(buyer.get_by_text('Tu tranquilidad importa',exact=True)).to_be_visible()
+        def reveal(page,locator):
+            page.mouse.move(page.viewport_size['width']*.75,page.viewport_size['height']*.75)
+            page.mouse.wheel(0,-10000)
+            for _ in range(70):
+                if locator.count() and locator.is_visible():return
+                page.mouse.wheel(0,140);page.wait_for_timeout(100)
+            (ARTIFACTS/'chat-safety-failure.txt').write_text(page.locator('body').aria_snapshot(),encoding='utf-8')
+            page.screenshot(path=str(ARTIFACTS/'chat-safety-failure.png'))
+            raise AssertionError('Safety control is not visible: '+str(locator))
+        def fill_flutter(page,label,value,limit):
+            page.bring_to_front()
+            field=page.get_by_role('textbox',name=label,exact=True)
+            reveal(page,field);field.click()
+            editor=page.locator('textarea[data-semantics-role="text-field"]')
+            expect(editor).to_have_attribute('autocorrect','on')
+            editor.fill(value)
+            expect(page.get_by_text(f'{limit-len(value)} characters remaining',exact=True)).to_be_visible()
+        fill_flutter(buyer,'Describe qué ocurrió','Incidente sintético para verificar el flujo de moderación.',1000)
+        reveal(buyer,buyer.get_by_role('button',name='Enviar reporte',exact=True))
+        with buyer.expect_response(lambda r:r.url.endswith('/reports') and r.request.method=='POST') as reported:
+            buyer.get_by_role('button',name='Enviar reporte',exact=True).click()
+        assert reported.value.status==201,reported.value.text()
+        report_id=reported.value.json()['id']
+        expect(buyer.get_by_text('Reporte recibido.',exact=False)).to_be_visible()
+        reveal(buyer,buyer.get_by_role('button',name='Bloquear conversación',exact=True))
+        buyer.get_by_role('button',name='Bloquear conversación',exact=True).click()
+        buyer.get_by_role('button',name='Confirmar bloqueo',exact=True).click()
+        expect(buyer.get_by_role('button',name='Retirar mi bloqueo',exact=True)).to_be_visible()
+        expect(provider.get_by_role('checkbox',name='Solo lectura',exact=True)).to_be_visible(timeout=15000)
+        buyer.mouse.move(1,1);buyer.screenshot(path=str(ARTIFACTS/'chat-safety-mobile.png'))
+        buyer.get_by_role('button',name='Retirar mi bloqueo',exact=True).click()
+        buyer.get_by_role('button',name='Retirar bloqueo',exact=True).click()
+        expect(buyer.get_by_role('button',name='Bloquear conversación',exact=True)).to_be_visible()
+        buyer.get_by_role('button',name='Back',exact=True).click()
+        provider.get_by_role('button',name='Actualizar conversación',exact=True).click()
+        expect(buyer.get_by_role('textbox',name='Mensaje',exact=True)).to_be_visible()
+        later='Mensaje posterior al reporte, fuera del contexto autorizado.'
+        send(provider,later)
+        expect(buyer.get_by_text(later,exact=True)).to_be_visible(timeout=15000)
+        moderator_context=browser.new_context(viewport={"width":1280,"height":900},locale="es-CL",timezone_id="America/Santiago")
+        moderator=moderator_context.new_page();login(moderator,'admin1')
+        moderator.goto(BASE+'/#/chat',wait_until='networkidle');semantics(moderator)
+        moderator.get_by_role('button',name='Moderación de reportes',exact=True).click()
+        moderator.get_by_role('button',name=re.compile('Caso '+re.escape(report_id[:8]))).click()
+        expect(moderator.get_by_text(first,exact=True)).to_have_count(0)
+        fill_flutter(moderator,'Justificación de la consulta o resolución','Verificación autorizada del caso sintético de prueba.',500)
+        with moderator.expect_response(lambda r:r.url.endswith('/access') and r.request.method=='POST') as accessed:
+            moderator.get_by_role('button',name='Consultar y registrar acceso',exact=True).click()
+        assert accessed.value.status==200,accessed.value.text()
+        assert all(item['contenido']!=later for item in accessed.value.json()['items']), 'Moderator accessed messages after the report cutoff'
+        reveal(moderator,moderator.get_by_text(first,exact=True))
+        expect(moderator.get_by_text(first,exact=True)).to_be_visible()
+        moderator.mouse.move(1,1);moderator.screenshot(path=str(ARTIFACTS/'chat-moderation-desktop.png'),full_page=True)
+        close_case=moderator.get_by_role('button',name='Marcar atendido',exact=True)
+        moderator.mouse.move(900,700)
+        for _ in range(25):
+            if close_case.count() and close_case.is_visible():break
+            moderator.mouse.wheel(0,250);moderator.wait_for_timeout(100)
+        close_case.click();moderator.get_by_role('button',name='Confirmar cierre',exact=True).click()
+        expect(moderator.get_by_text('Casos pendientes',exact=True)).to_be_visible()
         fixture('cancel',info['username'],info['booking'])
         expect(buyer.get_by_role('checkbox',name='Solo lectura',exact=True)).to_be_visible(timeout=15000)
         expect(provider.get_by_role('checkbox',name='Solo lectura',exact=True)).to_be_visible(timeout=15000)
         expect(buyer.get_by_role('textbox',name='Mensaje',exact=True)).to_have_count(0)
         buyer.screenshot(path=str(ARTIFACTS/'chat-readonly-mobile.png'),full_page=True)
         browser.close()
-        print('PASS: two real OIDC identities, mobile/desktop chat, bidirectional delivery, offline replay, persisted history and cancellation')
+        print('PASS: real OIDC chat, offline replay, history, block/unblock, report, justified moderation, resolution and cancellation')
 finally:
     fixture('cleanup',info['username'])

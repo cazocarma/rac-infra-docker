@@ -56,7 +56,7 @@ El CI propio de chat obtiene V010 del repo público infra mediante checkout a un
 
 Este outbox es un mecanismo de entrega recuperable, no un registro forense inalterable. Los roles actuales de BD siguen siendo privilegiados y compartidos; no hay todavía almacenamiento de auditoría independiente ni sellado de tiempo externo. La hora del servidor y el usuario autenticado no prueban por sí solos qué persona física escribió.
 
-Antes de usuarios reales: acordar retención/eliminación y preservación por incidentes con asesoría jurídica; definir acceso excepcional a conversaciones, con justificación y auditoría; separar roles de BD, configurar TLS y cifrado en reposo del host y establecer respuesta a incidentes. Hoy no se agregan plazos arbitrarios ni acceso de administrador al contenido. Los logs operativos conservan rutas parametrizadas y estados, sin tokens ni cuerpos de mensajes. La copia fuera del PC continúa diferida; no hay garantía de recuperación si se pierde ese equipo.
+Antes de usuarios reales: acordar retención/eliminación y preservación por incidentes con asesoría jurídica; separar roles de BD, configurar TLS y cifrado en reposo del host y establecer respuesta a incidentes. El acceso excepcional de administrador se limita ahora a reportes abiertos, con justificación y auditoría; ver [moderación](moderacion-chat.md). No se agregan plazos de retención arbitrarios. Los logs operativos conservan rutas parametrizadas y estados, sin tokens ni cuerpos de mensajes. La copia fuera del PC continúa diferida; no hay garantía de recuperación si se pierde ese equipo.
 
 
 ## Recorrido integrado en DEV
@@ -65,7 +65,7 @@ Antes de usuarios reales: acordar retención/eliminación y preservación por in
 - El historial inicial trae su cursor; los eventos autenticados incluyen el mensaje original mediante JOIN, evitando perder mensajes intermedios por consultar solo los 50 últimos.
 - Flutter combina por id, conserva la clave de un envío incierto, reconoce un envío ya guardado por envio_id, y renueva una vez la sesión ante un 401. El borrador queda solo en memoria de esa pantalla; cerrar/recargar la página no lo conserva.
 - El canal se cierra al ocultar/cerrar la app y se recupera por cursor al volver. Los errores transitorios aplican backoff/jitter. Historial anterior se carga por páginas sin avanzar el cursor de eventos.
-- Cancelar/finalizar conserva el historial y retira el editor. No hay adjuntos, indicadores de lectura, notificaciones push ni moderación administrativa del contenido.
+- Cancelar/finalizar conserva el historial y retira el editor. Los bloqueos también detienen los mensajes nuevos. La revisión administrativa se limita a reportes abiertos con justificación y auditoría; ver [moderación](moderacion-chat.md). No hay adjuntos, indicadores de lectura ni notificaciones push.
 - NGINX usa un timeout de 40 segundos para polls de hasta 25; el servicio no publica puerto directo. Prometheus lo observa por la red interna. Los tokens solo viajan en Authorization.
 
 Los manifiestos de release ahora requieren CHAT_IMAGE, además de AUTH/USER/MATCH/FRONTEND. Los releases incompletos fallan antes del despliegue. El CI de infra clona los cinco repositorios a los commits de ci/companion-revisions.json y comprueba su acceso mediante el token temporal de la GitHub App. Actualizar ese archivo mediante PR al integrar nuevas versiones; las ramas móviles no cambian silenciosamente el conjunto probado.
