@@ -1,11 +1,12 @@
 # Manifiestos de entrega
 
-Crear `<release-id>.json` después de que los cinco pipelines de aplicación
+Crear `<release-id>.json` después de que los seis pipelines de aplicación
 publiquen sus imágenes y entreguen los artefactos `image-digest`. Ejemplo de
 estructura (los digests deben ser los reales; no publicar esta plantilla como entrega):
 
 ```json
 {
+  "ALERT_IMAGE": "ghcr.io/cazocarma/rac-alert-service@sha256:<digest>",
   "AUTH_IMAGE": "ghcr.io/cazocarma/rac-auth-service@sha256:<digest>",
   "USER_IMAGE": "ghcr.io/cazocarma/rac-user-service@sha256:<digest>",
   "CHAT_IMAGE": "ghcr.io/cazocarma/rac-chat-service@sha256:<digest>",
@@ -14,7 +15,7 @@ estructura (los digests deben ser los reales; no publicar esta plantilla como en
 }
 ```
 
-El manifiesto se revisa por PR y se promueve sin cambiar las cinco referencias.
+El manifiesto se revisa por PR y se promueve sin cambiar las seis referencias.
 El host debe tener esas mismas referencias en su archivo de entorno.
 El workflow requiere confirmación explícita, reviewers del GitHub Environment
 y, para PRD, un registro exitoso de QA con el mismo manifiesto.

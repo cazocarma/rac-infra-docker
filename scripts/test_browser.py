@@ -136,7 +136,7 @@ with sync_playwright() as p:
         expect(page.get_by_text(re.compile('Novedades de tus reservas'))).to_be_visible(timeout=30000)
         expect(page.get_by_role('group', name=re.compile('Reserva '+booking_id[:8])).first).to_be_visible(timeout=30000)
         before_read = page.get_by_role('button', name='Marcar como leída', exact=True).count()
-        with page.expect_response(lambda r: '/api/user/notifications/' in r.url and r.url.endswith('/read') and r.request.method == 'PUT') as marked:
+        with page.expect_response(lambda r: '/api/alert/notifications/' in r.url and r.url.endswith('/read') and r.request.method == 'PUT') as marked:
             page.get_by_role('button', name='Marcar como leída', exact=True).first.click()
         assert marked.value.status == 200
         expect(page.get_by_role('button', name='Marcar como leída', exact=True)).to_have_count(before_read-1)

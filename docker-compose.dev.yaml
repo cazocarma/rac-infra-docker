@@ -14,6 +14,8 @@ services:
     build: ../rac-match-service
   backend-chat:
     build: ../rac-chat-service
+  backend-alert:
+    build: ../rac-alert-service
   flutter-web:
     build:
       context: ../rac-frontend-flutter

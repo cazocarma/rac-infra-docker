@@ -52,3 +52,6 @@ pero no están desplegados y conservan bloqueos explícitos.
 
 - [Chat privado, outbox y reconexión](chat-reservas.md)
 - [Bloqueos, reportes y acceso administrativo trazable](moderacion-chat.md)
+
+- [Bandeja privada y servicio de alertas](alertas.md)
+- [Evaluación de mensajería interna con RabbitMQ](mensajeria-rabbitmq.md)

@@ -67,6 +67,7 @@ jobs:
             rac-user-service
             rac-match-service
             rac-chat-service
+            rac-alert-service
             rac-frontend-flutter
           permission-contents: read
           skip-token-revoke: 'false'
@@ -117,6 +118,14 @@ jobs:
           path: rac-chat-service
           token: ${{ steps.repository-token.outputs.token }}
 
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository_owner }}/rac-alert-service
+          ref: ${{ fromJSON(steps.revisions.outputs.repositories)['rac-alert-service'] }}
+          path: rac-alert-service
+          token: ${{ steps.repository-token.outputs.token }}
+
       - name: Database policies against companion services
         working-directory: rac-infra-docker
         run: python scripts/test_migrations.py
@@ -144,6 +153,10 @@ jobs:
         if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_browser.py
+      - name: Web notification inbox integration
+        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
+        working-directory: rac-infra-docker
+        run: python scripts/test_notifications_browser.py
       - name: Web onboarding integration
         if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
