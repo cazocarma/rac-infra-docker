@@ -10,7 +10,10 @@ V013 reemplaza atómicamente el productor de V005. No modifica las migraciones y
 aplicadas ni regenera avisos históricos. Los IDs y fechas de lectura existentes se
 conservan. El trigger genera un evento solo al crear una reserva o cambiar realmente
 su estado; asigna una revisión creciente por reserva en esa misma transacción.
-Una operación revertida no deja evento. No hay envío AMQP desde el handler HTTP.
+Una operación revertida no deja evento. Se retiraron la conexión/publicación
+AMQP legacy de los handlers, sus errores descartados y la configuración antigua
+`RABBITMQ_URL`/`RABBIT_EXCHANGE`. HTTP no hace doble escritura ni abre conexión
+al broker durante el arranque.
 
 Match contiene el relay como ejecutable separado en su misma imagen. Cada publicación
 usa mensaje persistente, `mandatory` y publisher confirms. Solo después del confirm,
