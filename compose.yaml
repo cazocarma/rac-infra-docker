@@ -152,6 +152,26 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+  backend-alert:
+    image: rac-${RAC_ENV}-alert:local
+    environment:
+      PORT: "8080"
+      DATABASE_URL: ${DATABASE_URL}
+      OIDC_ISSUER: ${OIDC_ISSUER}
+      OIDC_JWKS_URL: http://keycloak:8080/realms/rentacompa/protocol/openid-connect/certs
+      OIDC_AUDIENCE: rac-api
+      RAC_ENV: ${RAC_ENV}
+      GIN_MODE: release
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
   flutter-web:
     image: rac-${RAC_ENV}-frontend:local
     environment:
@@ -176,6 +196,8 @@ services:
       backend-match:
         condition: service_healthy
       backend-chat:
+        condition: service_healthy
+      backend-alert:
         condition: service_healthy
       flutter-web:
         condition: service_healthy

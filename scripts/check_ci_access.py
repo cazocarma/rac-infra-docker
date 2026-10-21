@@ -7,7 +7,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-REPOSITORIES = ("rac-auth-service", "rac-user-service", "rac-match-service", "rac-chat-service", "rac-frontend-flutter")
+REPOSITORIES = ("rac-auth-service", "rac-user-service", "rac-match-service", "rac-chat-service", "rac-alert-service", "rac-frontend-flutter")
 
 
 def app_configuration_error(environment):
@@ -21,7 +21,7 @@ def app_configuration_error(environment):
 def check_access(environment, opener=urllib.request.urlopen):
     token = environment.get("CI_REPOSITORY_TOKEN", "").strip()
     if not token:
-        return "Missing temporary CI_REPOSITORY_TOKEN. Check the preceding GitHub App token-generation step and App installation on the five companion repositories."
+        return "Missing temporary CI_REPOSITORY_TOKEN. Check the preceding GitHub App token-generation step and App installation on the six companion repositories."
     branch = environment.get("GITHUB_BASE_REF") or environment.get("GITHUB_REF_NAME") or "main"
     owner = environment.get("GITHUB_REPOSITORY_OWNER") or "cazocarma"
     refs = None

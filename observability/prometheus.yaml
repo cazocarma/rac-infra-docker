@@ -13,3 +13,5 @@ scrape_configs:
         labels: {service: rac-match-service}
       - targets: [backend-chat:8080]
         labels: {service: rac-chat-service}
+      - targets: [backend-alert:8080]
+        labels: {service: rac-alert-service}

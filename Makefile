@@ -96,6 +96,7 @@ check:
 	$(CURL) $(CHECK_URL)/api/user/health
 	$(CURL) $(CHECK_URL)/api/match/health
 	$(CURL) $(CHECK_URL)/api/chat/health
+	$(CURL) $(CHECK_URL)/api/alert/health
 	$(CURL) $(CHECK_URL)/api/user/skills
 
 # Laboratorio independiente: nunca usa secretos ni volúmenes de QA/PRD.

@@ -8,7 +8,7 @@ from check_ci_access import REPOSITORIES
 def load_revisions(path):
     refs = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(refs, dict) or set(refs) != set(REPOSITORIES):
-        raise ValueError("Expected exactly the five companion repositories")
+        raise ValueError("Expected exactly the six companion repositories")
     if any(not isinstance(ref, str) or not re.fullmatch(r"[a-f0-9]{40}", ref) for ref in refs.values()):
         raise ValueError("Every companion revision must be a full commit SHA")
     return refs

@@ -69,6 +69,9 @@ try:
     session = api("POST", "/api/match/session", base, {"compa_id": profile["id"], "fecha_inicio": start.isoformat(), "fecha_fin": (start + dt.timedelta(hours=1)).isoformat()}, expected=201)
     created.append(session["id"])
     assert session["cliente_id"] == buyer["id"] and session["compa_id"] == provider["id"]
+    api("GET", "/api/alert/notifications", expected=401)
+    new_inbox = api("GET", "/api/alert/notifications?limit=100", base)
+    assert isinstance(new_inbox['no_leidas'], int)
     # Durable alerts are private to each participant; read operations are idempotent.
     api("GET", "/api/user/notifications", expected=401)
     api("GET", "/api/user/notifications?limit=101", base, expected=400)

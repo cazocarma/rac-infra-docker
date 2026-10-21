@@ -27,7 +27,7 @@ La App no necesita instalarse en infra: el workflow usa su `GITHUB_TOKEN` para i
 
 ## Comportamiento del workflow
 
-El job `migrations` verifica la infraestructura sin descargar repositorios externos. `integration` valida la configuración y usa `actions/create-github-app-token` v3, fijada a un commit registrado en `docs/action-pins.json`. Solicita los cinco repositorios y `permission-contents: read`. La acción revoca el token al terminar el job; GitHub limita su duración a una hora y el job tiene timeout de 55 minutos.
+El job `migrations` verifica la infraestructura sin descargar repositorios externos. `integration` valida la configuración y usa `actions/create-github-app-token` v3, fijada a un commit registrado en `docs/action-pins.json`. Solicita los seis repositorios y `permission-contents: read`. La acción revoca el token al terminar el job; GitHub limita su duración a una hora y el job tiene timeout de 55 minutos.
 
 El preflight comprueba lectura de las referencias antes de descargar código. Los checkouts no persisten credenciales. Las pruebas incluyen políticas de base de datos con los servicios compañeros, OIDC/API y navegador. La falta de configuración falla explícitamente: no se omiten pruebas para obtener un resultado verde. Ya no se consume `REPO_READ_TOKEN`.
 
@@ -38,7 +38,7 @@ En push y pull request se leen los cinco SHA completos de `ci/companion-revision
 Después de configurar App y Actions, ejecutar el workflow de la versión actual de main. Verificar emisión del token, comprobación de acceso, cinco checkouts y pruebas reales. Los tests unitarios del preflight no sustituyen esta verificación.
 
 - Configuración ausente: comprobar nombres y que sean variable/secret **del repositorio infra**, no de un environment que el job no utiliza.
-- Fallo al emitir token: revisar Client ID, PEM completo e instalación en `cazocarma` con los cinco repositorios.
+- Fallo al emitir token: revisar Client ID, PEM completo e instalación en `cazocarma` con los seis repositorios.
 - HTTP 403/404: revisar instalación, Contents de lectura y existencia del commit fijado. Un 404 no demuestra que el repositorio no exista.
 - Error de red: reintentar y revisar el estado de GitHub. No ampliar permisos.
 - Si la emisión funciona pero una prueba falla, investigar esa prueba por separado.
@@ -57,6 +57,8 @@ La regresión completa local también detectó una carrera en la automatización
 
 La siguiente ejecución, `39456030382`, aprobó login/reservas y onboarding, pero detectó una carrera al buscar la reseña pública. El test debe esperar la carga del perfil y la respuesta de reseñas antes de recorrerlo; desplazar durante la transición puede saltarse el contenido. Se verifica también que el POST incluya el comentario y que la API pública lo devuelva, para distinguir escritura, lectura y presentación. El identificador del perfil de compa y el de su usuario son distintos; la observación de la respuesta usa la ruta pública real.
 
+Al ampliar el chat, `39520731959` encontró dos nodos con el mismo contador de caracteres: el contador visible y `flt-announcement-polite`, el anuncio del lector de pantalla. Las comprobaciones ahora se limitan al diálogo de reseña o al árbol `flt-semantics-host`, excluyendo anuncios globales sin deshabilitar accesibilidad. Verifican además el valor del editor y el cuerpo realmente enviado. Los recorridos web independientes continúan aunque falle otro, siempre que el runtime se haya instalado; el job mantiene el resultado de fallo. Solo al fallar se conservan durante tres días capturas y árboles accesibles de chat/reseñas de los fixtures sintéticos de CI, mediante rutas explícitas que excluyen `.env`, tokens y claves.
+
 ## Operación y rotación
 
 La clave privada es persistente y **no expira automáticamente**. Rotarla periódicamente (política inicial RAC: cada 90 días) y al sospechar exposición: generar una segunda clave, actualizar el secret, validar una ejecución y eliminar la anterior en GitHub. GitHub admite varias claves durante la transición. Ante exposición confirmada, revocar inmediatamente la clave afectada y los tokens activos.
@@ -72,3 +74,5 @@ Para retirar acceso, suspender o desinstalar la App y eliminar secret y variable
 - [Tokens de instalación y duración](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app)
 - [Administración y rotación de claves privadas](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/managing-private-keys-for-github-apps)
 - [Secrets de Actions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)
+
+Al incorporar alertas, la lista vigente agrega `rac-alert-service`, manteniendo Contents read-only. Las menciones a cinco repositorios en diagnósticos históricos describen esas ejecuciones anteriores.
