@@ -25,7 +25,9 @@ El administrador no puede usar los endpoints normales para leer conversaciones a
 
 ## Concurrencia y trazabilidad
 
-V011 crea `chat_bloqueo`, `chat_reporte` y `chat_auditoria`, con índices de cola, usuario y reserva. Bloqueo, reporte e inserción de mensaje usan primero el lock de la reserva, evitando intercalaciones que permitan escribir después de confirmar un bloqueo. El trigger de mensajes verifica el bloqueo además del estado y remitente. Los eventos reevalúan permisos y devuelven `can_send=false`; el cliente conserva historial y retira el compositor. Tras desbloquear se actualiza la conversación para reabrirlo.
+V011 crea `chat_bloqueo`, `chat_reporte` y `chat_auditoria`, con índices de cola, usuario y reserva. V012 fija el contexto con la versión transaccional de `chat_cursor` y consulta mediante el outbox, cuyo orden respeta los commits. Una identidad reservada antes pero confirmada después del reporte queda excluida, aunque su número sea menor. Los valores de V011 se conservan en `hasta_numero_legacy`; los reportes previos a V012 mantienen detalle y auditoría, pero reciben contexto cero: no se reconstruye ni amplía retrospectivamente un límite que no se puede garantizar. Las consultas de versiones antiguas fallan al no existir el nombre anterior; desplegar el servicio junto a V012.
+
+Bloqueo, reporte e inserción de mensaje usan primero el lock de la reserva, evitando intercalaciones que permitan escribir después de confirmar un bloqueo. El trigger de mensajes verifica el bloqueo además del estado y remitente. Los eventos reevalúan permisos y devuelven `can_send=false`; el cliente conserva historial y retira el compositor. Tras desbloquear se actualiza la conversación para reabrirlo.
 
 La auditoría guarda subject OIDC, caso/reserva, acción, hora de servidor y justificación. Un fallo al insertar auditoría impide devolver contenido o confirmar la resolución. Los logs operativos no contienen descripciones ni mensajes. No hay exportación ni búsqueda global de conversaciones.
 
