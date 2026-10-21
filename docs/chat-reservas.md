@@ -71,3 +71,7 @@ Antes de usuarios reales: acordar retención/eliminación y preservación por in
 Los manifiestos de release ahora requieren CHAT_IMAGE, además de AUTH/USER/MATCH/FRONTEND. Los releases incompletos fallan antes del despliegue. El CI de infra clona los cinco repositorios a los commits de ci/companion-revisions.json y comprueba su acceso mediante el token temporal de la GitHub App. Actualizar ese archivo mediante PR al integrar nuevas versiones; las ramas móviles no cambian silenciosamente el conjunto probado.
 
 Prueba integrada: python scripts/test_chat_browser.py con Playwright/Chromium y DEV levantado. Crea un comprador de prueba, usa el compa demo solo para una reserva propiedad del fixture y elimina sus datos al terminar. Comprueba dos sesiones reales de Keycloak, mensajes en ambas direcciones, pérdida/restablecimiento de red, historial persistido, vista mobile/web y cierre por cancelación. Artefactos en RAC_BROWSER_ARTIFACTS.
+
+## Lectura del historial por día
+
+La conversación separa los mensajes consecutivos por fecha del dispositivo. Cada encabezado muestra la fecha completa con el idioma de la aplicación y se identifica como encabezado para lectores de pantalla. Se conserva la fecha y hora de cada mensaje. La agrupación se calcula desde los instantes UTC del servidor, después de convertirlos a la zona local, incluyendo los cambios de día; no modifica mensajes ni su orden.

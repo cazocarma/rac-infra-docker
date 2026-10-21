@@ -68,6 +68,7 @@ try:
         first='Hola 👋 coordinemos nuestro plan de prueba.'
         second='Perfecto, te responderé aunque se corte tu conexión.'
         send(buyer,first)
+        expect(buyer.get_by_role('heading',name=re.compile(r'\d{4}'))).to_be_visible()
         try: expect(provider.get_by_text(first,exact=True)).to_be_visible(timeout=15000)
         except Exception:
             (ARTIFACTS/'chat-provider-aria.txt').write_text(provider.locator('body').aria_snapshot(),encoding='utf-8');provider.screenshot(path=str(ARTIFACTS/'chat-provider-failure.png'));raise
