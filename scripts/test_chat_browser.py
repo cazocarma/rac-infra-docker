@@ -150,6 +150,21 @@ try:
             moderator.mouse.wheel(0,250);moderator.wait_for_timeout(100)
         close_case.click();moderator.get_by_role('button',name='Confirmar cierre',exact=True).click()
         expect(moderator.get_by_text('Casos pendientes',exact=True)).to_be_visible()
+        with moderator.expect_response(lambda r:'/api/chat/moderation/reports?' in r.url and 'estado=atendido' in r.url) as history_response:
+            moderator.get_by_role('checkbox',name='Atendidos',exact=True).click()
+        history=history_response.value.json()
+        assert history_response.value.status==200
+        closed=next(item for item in history['items'] if item['id']==report_id)
+        assert closed['estado']=='atendido' and closed['resuelto_en']
+        assert set(closed)=={'id','sesion_id','motivo','creado_en','estado','resuelto_en'}
+        expect(moderator.get_by_text('Historial de reportes',exact=True)).to_be_visible()
+        history_semantics=moderator.locator('body').aria_snapshot()
+        (ARTIFACTS/'moderation-history.txt').write_text(history_semantics,encoding='utf-8')
+        assert 'Caso cerrado. La consulta del contenido está deshabilitada.' in history_semantics
+        moderator.mouse.move(1,1);moderator.screenshot(path=str(ARTIFACTS/'moderation-history-desktop.png'),full_page=True)
+        moderator.set_viewport_size({'width':390,'height':844})
+        moderator.screenshot(path=str(ARTIFACTS/'moderation-history-mobile.png'))
+        moderator.set_viewport_size({'width':1366,'height':1000})
         buyer.bring_to_front()
         buyer.get_by_role('button',name='Seguridad de la conversación',exact=True).click()
         buyer.get_by_role('button',name='Actualizar seguridad',exact=True).click()
