@@ -31,7 +31,7 @@ for environment in ("dev", "qa", "prd"):
         assert any(v["target"] == "/var/lib/rac/photos" and v["source"] == "profile-photos" for v in config["services"]["backend-user"]["volumes"])
         assert config["services"]["migrate"]["environment"]["FLYWAY_DEFAULT_SCHEMA"] == "meta"
         if environment != "dev":
-            for name in ("backend-auth","backend-user","backend-match","flutter-web"): assert "build" not in config["services"][name]
+            for name in ("backend-auth","backend-user","backend-match","backend-chat","flutter-web"): assert "build" not in config["services"][name]
             assert "ports" not in config["services"]["postgres"]
             assert "ports" not in config["services"]["rabbitmq"]
             assert "start-dev" not in config["services"]["keycloak"]["command"]

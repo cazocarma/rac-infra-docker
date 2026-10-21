@@ -1,11 +1,13 @@
 """Fail clearly before checkout when cross-repository CI access is unavailable."""
 import os
+import json
+import re
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 
-REPOSITORIES = ("rac-auth-service", "rac-user-service", "rac-match-service", "rac-frontend-flutter")
+REPOSITORIES = ("rac-auth-service", "rac-user-service", "rac-match-service", "rac-chat-service", "rac-frontend-flutter")
 
 
 def app_configuration_error(environment):
@@ -19,11 +21,20 @@ def app_configuration_error(environment):
 def check_access(environment, opener=urllib.request.urlopen):
     token = environment.get("CI_REPOSITORY_TOKEN", "").strip()
     if not token:
-        return "Missing temporary CI_REPOSITORY_TOKEN. Check the preceding GitHub App token-generation step and App installation on the four companion repositories."
+        return "Missing temporary CI_REPOSITORY_TOKEN. Check the preceding GitHub App token-generation step and App installation on the five companion repositories."
     branch = environment.get("GITHUB_BASE_REF") or environment.get("GITHUB_REF_NAME") or "main"
     owner = environment.get("GITHUB_REPOSITORY_OWNER") or "cazocarma"
+    refs = None
+    if environment.get("CI_REPOSITORY_REFS"):
+        try:
+            refs = json.loads(environment["CI_REPOSITORY_REFS"])
+            if not isinstance(refs,dict) or set(refs)!=set(REPOSITORIES) or any(not isinstance(v,str) or not re.fullmatch(r"[a-f0-9]{40}",v) for v in refs.values()):
+                return "Invalid pinned companion revisions"
+        except ValueError:
+            return "Invalid pinned companion revisions"
     for repository in REPOSITORIES:
         url = "https://api.github.com/repos/" + urllib.parse.quote(owner, safe="") + "/" + repository + "/git/ref/heads/" + urllib.parse.quote(branch, safe="")
+        if refs is not None: url = "https://api.github.com/repos/" + urllib.parse.quote(owner,safe="") + "/" + repository + "/git/commits/" + refs[repository]
         request = urllib.request.Request(url, headers={
             "Authorization": "Bearer " + token,
             "Accept": "application/vnd.github+json",
@@ -33,7 +44,7 @@ def check_access(environment, opener=urllib.request.urlopen):
             with opener(request, timeout=15):
                 pass
         except urllib.error.HTTPError as error:
-            return f"CI GitHub App token cannot read {owner}/{repository} branch {branch} (HTTP {error.code}). Check App installation, selected repositories, Contents: read, and branch existence."
+            return f"CI GitHub App token cannot read {owner}/{repository} revision {refs[repository] if refs else branch} (HTTP {error.code}). Check App installation, selected repositories, Contents: read, and branch existence."
         except (OSError, urllib.error.URLError):
             return "GitHub API is unavailable while verifying companion repository access. Retry the workflow."
     return None

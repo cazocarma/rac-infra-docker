@@ -54,6 +54,15 @@ try:
             "-e", f"RAC_QUOTA_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
             "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/repo")
         print("PASS: concurrent weekly allowance, refund, week boundary and subscription entitlement")
+    chat_source = ROOT.parent / "rac-chat-service"
+    if (chat_source / "internal/http/router_test.go").exists():
+        run("docker", "run", "--rm", "--network", NAME,
+            "--mount", f"type=bind,source={chat_source},target=/sources,readonly",
+            "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-chat-go-build:/root/.cache/go-build",
+            "-e", f"RAC_CHAT_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
+            "-e", "RAC_CHAT_MIGRATED=1",
+            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http")
+        print("PASS: private booking chat, idempotent concurrent messages, cursor pages and DB cancellation guard")
     sql("fresh", "CREATE DATABASE legacy;")
     onboarding_source = ROOT.parent / "rac-user-service"
     if onboarding_source.exists():
@@ -66,7 +75,15 @@ try:
     sql("legacy", (ROOT / "db/migrations/V001__initial_schema.sql").read_text())
     sql("legacy", "INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('00000000-0000-0000-0000-000000000001','Preservar','legacy@example.test','cliente','kc-legacy');")
     sql("legacy", "INSERT INTO compa_availability(compa_id,disponibilidad_json) VALUES('00000000-0000-0000-0000-000000000001','{\"lunes\":[\"18:00-20:00\"]}');")
+    # Preserve and backfill real pre-outbox history, including text that exceeds
+    # the new-message limit; V009 deliberately does not rewrite old content.
+    sql("legacy", "INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('00000000-0000-0000-0000-000000000002','Companion','compa-legacy@example.test','compa','kc-legacy-compa');")
+    sql("legacy", "INSERT INTO sesion(id,cliente_id,compa_id,fecha_inicio,fecha_fin,estado) VALUES('00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002',now(),now()+interval '1 hour','activa');")
+    sql("legacy", "INSERT INTO mensaje(id,sesion_id,remitente_id,contenido) VALUES('00000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000001',repeat('x',2001));")
     flyway("legacy", migration_dir)
+    assert sql("legacy", "SELECT char_length(contenido) FROM mensaje WHERE id='00000000-0000-0000-0000-000000000004';") == "2001"
+    assert sql("legacy", "SELECT version FROM chat_outbox WHERE mensaje_id='00000000-0000-0000-0000-000000000004';") == "1"
+    assert sql("legacy", "SELECT version FROM chat_cursor WHERE sesion_id='00000000-0000-0000-0000-000000000003';") == "1"
     assert sql("legacy", "SELECT nombre FROM usuario WHERE keycloak_id='kc-legacy';") == "Preservar"
     assert sql("legacy", "SELECT zona_horaria FROM compa_availability;") == "UTC"
     assert sql("legacy", "SELECT disponibilidad_json->'lunes'->>0 FROM compa_availability;") == "18:00-20:00"

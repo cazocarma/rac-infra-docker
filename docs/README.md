@@ -49,3 +49,5 @@ pero no están desplegados y conservan bloqueos explícitos.
 
 - [Resenas de reservas verificadas](resenas-verificadas.md)
 - [Respaldos automaticos y prueba de recuperacion](respaldos-automaticos.md)
+
+- [Chat privado, outbox y reconexión](chat-reservas.md)

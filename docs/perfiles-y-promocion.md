@@ -19,7 +19,7 @@ Por ello una promoción ahora no podría completarse. Antes de usarla se requier
 1. Revisar y llevar el código aprobado a las ramas QA/PRD mediante PR, sin recompilar las imágenes al promoverlas.
 2. Disponer de hosts Linux separados con Docker, Make, Python y runners etiquetados `rac-qa` / `rac-prd`.
 3. Configurar los environments GitHub `qa` y `prd`, sus reviewers y la variable `RAC_ENV_FILE` con la ruta del archivo de secretos del host.
-4. Crear y revisar un manifiesto con los cuatro digests reales publicados. Conceder al repositorio de infra acceso Actions a los paquetes privados necesarios en GHCR.
+4. Crear y revisar un manifiesto con los cinco digests (auth, user, match, chat y frontend) reales publicados. Conceder al repositorio de infra acceso Actions a los paquetes privados necesarios en GHCR.
 5. Provisionar secretos, OIDC/realm/clientes/cuenta de servicio, TLS y proxy externo en cada ambiente. El configurador y tema montado actuales son DEV; QA/PRD no se aprovisionan copiando usuarios demo.
 6. Completar un despliegue QA exitoso. PRD exige las mismas imágenes y el mismo hash de infraestructura.
 
