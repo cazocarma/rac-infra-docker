@@ -57,3 +57,5 @@ pero no están desplegados y conservan bloqueos explícitos.
 - [Mensajería de reservas con RabbitMQ, recuperación y garantías](mensajeria-rabbitmq.md)
 
 - [Ronda de anotaciones y runtimes de Actions](anotaciones-ci.md)
+
+- [Historial de moderación, filtros y paginación](historial-moderacion.md)
