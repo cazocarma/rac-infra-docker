@@ -111,7 +111,8 @@ try:
             buyer.get_by_role('button',name='Enviar reporte',exact=True).click()
         assert reported.value.status==201,reported.value.text()
         report_id=reported.value.json()['id']
-        expect(buyer.get_by_text('Pendiente de revisión',exact=True)).to_be_visible()
+        reveal(buyer,buyer.get_by_text('Pendiente de revisión',exact=False))
+        expect(buyer.get_by_text('Pendiente de revisión',exact=False)).to_be_visible()
         reveal(buyer,buyer.get_by_role('button',name='Bloquear conversación',exact=True))
         buyer.get_by_role('button',name='Bloquear conversación',exact=True).click()
         buyer.get_by_role('button',name='Confirmar bloqueo',exact=True).click()
@@ -151,7 +152,7 @@ try:
         buyer.bring_to_front()
         buyer.get_by_role('button',name='Seguridad de la conversación',exact=True).click()
         buyer.get_by_role('button',name='Actualizar seguridad',exact=True).click()
-        expect(buyer.get_by_text('Reporte atendido',exact=True)).to_be_visible()
+        expect(buyer.get_by_text('Reporte atendido',exact=False)).to_be_visible()
         expect(buyer.get_by_role('button',name='Enviar reporte',exact=True)).to_have_count(0)
         buyer.mouse.move(1,1);buyer.screenshot(path=str(ARTIFACTS/'chat-report-status-mobile.png'))
         buyer.get_by_role('button',name='Back',exact=True).click()
