@@ -113,7 +113,6 @@ services:
       PORT: "8080"
       DATABASE_URL: ${DATABASE_URL}
       BACKEND_USER_URL: http://backend-user:8080
-      RABBITMQ_URL: ${RABBITMQ_URL:?Configurar RABBITMQ_URL}
       AUTH_MOCK: "false"
       OIDC_ISSUER: ${OIDC_ISSUER}
       OIDC_JWKS_URL: http://keycloak:8080/realms/rentacompa/protocol/openid-connect/certs
@@ -122,8 +121,6 @@ services:
       GIN_MODE: release
     depends_on:
       postgres:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -202,17 +199,75 @@ services:
       flutter-web:
         condition: service_healthy
   rabbitmq:
-    image: rabbitmq:3-management
+    hostname: rabbitmq
+    image: rabbitmq:4.3.6-management@sha256:54cb013d76cd1fd6c0a0708f34062ad61c452bb6f016b434c6c33f1a765d2b58
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Configurar RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Configurar RABBITMQ_PASSWORD}
-    volumes: ["rabbitmq-data:/var/lib/rabbitmq"]
+    volumes:
+      - rabbitmq-events-data:/var/lib/rabbitmq
+      - ./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     healthcheck:
-      test: [CMD, rabbitmq-diagnostics, -q, ping]
+      test: [CMD, gosu, rabbitmq, rabbitmq-diagnostics, -q, ping]
       interval: 10s
       timeout: 10s
+      retries: 12
+  messaging-config:
+    build:
+      context: .
+      dockerfile: tools/Dockerfile
+    environment:
+      RAC_ENV: ${RAC_ENV}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+    volumes:
+      - messaging-publisher:/credentials/publisher
+      - messaging-consumer:/credentials/consumer
+    command: [python, configure_messaging.py]
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+  booking-events-relay:
+    image: rac-${RAC_ENV}-match:local
+    entrypoint: [/app/events-relay]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      RABBITMQ_URL_FILE: /run/messaging/url
+    volumes: ["messaging-publisher:/run/messaging:ro"]
+    restart: unless-stopped
+    depends_on:
+      messaging-config:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  alert-events-consumer:
+    image: rac-${RAC_ENV}-alert:local
+    entrypoint: [/app/consumer]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      RABBITMQ_URL_FILE: /run/messaging/url
+    volumes: ["messaging-consumer:/run/messaging:ro"]
+    restart: unless-stopped
+    depends_on:
+      messaging-config:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
       retries: 12
 volumes:
   profile-photos:
   pgdata:
   rabbitmq-data:
+  rabbitmq-events-data:
+  messaging-publisher:
+  messaging-consumer:

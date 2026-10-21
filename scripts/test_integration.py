@@ -5,7 +5,7 @@ import urllib.error
 import urllib.request
 import urllib.parse
 import psycopg
-from oidc_test_support import api, login, TOKENS, KC
+from oidc_test_support import api, login, TOKENS, KC, wait_booking_notifications
 
 created = []
 try:
@@ -70,6 +70,7 @@ try:
     created.append(session["id"])
     assert session["cliente_id"] == buyer["id"] and session["compa_id"] == provider["id"]
     api("GET", "/api/alert/notifications", expected=401)
+    wait_booking_notifications(base, session["id"], ["pendiente"])
     new_inbox = api("GET", "/api/alert/notifications?limit=100", base)
     assert isinstance(new_inbox['no_leidas'], int)
     # Durable alerts are private to each participant; read operations are idempotent.
@@ -89,6 +90,7 @@ try:
     api("GET", "/api/match/session/" + session["id"], base)
     api("GET", "/api/match/session/" + session["id"], stranger, expected=403)
     api("PUT", "/api/match/session/" + session["id"] + "/state", base, {"estado": "cancelada"})
+    wait_booking_notifications(base, session["id"], ["cancelada"])
     cancelled = [n for n in api("GET", "/api/user/notifications?limit=100", base)['items'] if n['sesion_id'] == session['id'] and n['tipo'] == 'cancelada']
     assert len(cancelled) == 1
     api("PUT", "/api/match/session/" + session["id"] + "/state", base, {"estado": "cancelada"})

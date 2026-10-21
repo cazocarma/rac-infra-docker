@@ -34,6 +34,9 @@ jobs:
         working-directory: rac-infra-docker
       - run: python scripts/check_configuration.py
         working-directory: rac-infra-docker
+      - name: Validate Prometheus configuration and alert expressions
+        working-directory: rac-infra-docker
+        run: docker run --rm --entrypoint promtool --mount type=bind,source="$PWD/observability",target=/etc/prometheus,readonly prom/prometheus:v3.5.0 check config /etc/prometheus/prometheus.yaml
       - run: python scripts/check_backup_configuration.py
         working-directory: rac-infra-docker
       - run: python scripts/test_deployment_guards.py
@@ -43,6 +46,8 @@ jobs:
         run: |
           python scripts/check_actions.py
           python -m unittest discover -s scripts -p "test_actions.py"
+      - run: python -m unittest discover -s scripts -p "test_build_dev.py"
+        working-directory: rac-infra-docker
       - run: python -m unittest discover -s scripts -p "test_release_policy.py"
         working-directory: rac-infra-docker
   integration:
@@ -134,6 +139,9 @@ jobs:
       - name: Database policies against companion services
         working-directory: rac-infra-docker
         run: python scripts/test_migrations.py
+      - name: Transactional messaging against disposable PostgreSQL and RabbitMQ
+        working-directory: rac-infra-docker
+        run: python scripts/test_messaging.py
       - name: Prepare ephemeral DEV
         working-directory: rac-infra-docker
         run: |
@@ -148,6 +156,9 @@ jobs:
       - name: API and PKCE integration
         working-directory: rac-infra-docker
         run: make check test-integration
+      - name: Recover notification delivery after broker outage
+        working-directory: rac-infra-docker
+        run: python scripts/test_messaging_recovery.py
       - name: Install browser test runtime
         id: browser-runtime
         working-directory: rac-infra-docker
