@@ -14,7 +14,7 @@ Todas las rutas requieren access token OIDC en `Authorization`, con respuesta `n
 
 | Ruta | Autorización y efecto |
 | --- | --- |
-| GET `/api/chat/bookings/:id/safety` | Participante; estado agregado y bloqueo propio, sin identificar al otro usuario. |
+| GET `/api/chat/bookings/:id/safety` | Participante; estado agregado, bloqueo propio y `estado_reporte` del reporte propio (`abierto`, `atendido`, `desestimado`, o `null` si no existe). Conserva `reportada` por compatibilidad. No expone el reporte ajeno, justificaciones ni notas internas. |
 | POST `/api/chat/bookings/:id/block` | Participante de reserva confirmada/cerrada; `bloqueado` booleano; reintento idempotente. |
 | POST `/api/chat/bookings/:id/reports` | Participante; `motivo` entre acoso/spam/contenido_inapropiado/otro y `detalle` de 10–1000 caracteres. |
 | GET `/api/chat/moderation/reports?offset=0` | Solo admin; 20 casos abiertos más indicador de siguiente página. Metadatos, sin descripción ni mensajes. |
@@ -36,3 +36,5 @@ Este registro no es una prueba legal inalterable: los roles de BD actuales sigue
 ## Validación
 
 Tests de Go con PostgreSQL real: IDOR, bloqueo ajeno, reintento, protección del trigger, historial/eventos en solo lectura, rol de moderación, conflicto de interés, acceso justificado, fallo inyectado de auditoría y cierre. Flutter verifica confirmación de bloqueo, validación de reportes y ausencia de consulta de contenido antes de una acción justificada. El recorrido de navegador complementa estas pruebas con sesiones reales.
+
+La pantalla de seguridad muestra «Pendiente de revisión», «Reporte atendido» o «Reporte desestimado». El botón de actualizar consulta el estado actual; un cierre no habilita un segundo reporte para la misma persona y conversación.
