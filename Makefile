@@ -98,6 +98,8 @@ check:
 	$(CURL) $(CHECK_URL)/api/match/health
 	$(CURL) $(CHECK_URL)/api/chat/health
 	$(CURL) $(CHECK_URL)/api/alert/health
+	$(COMPOSE) exec -T booking-maintenance wget -q -T 5 -O /dev/null http://localhost:8080/ready
+	$(COMPOSE) exec -T backend-admin wget -q -T 5 -O /dev/null http://localhost:8080/ready
 	$(CURL) $(CHECK_URL)/api/user/skills
 	$(COMPOSE) exec -T booking-events-relay wget -q -T 5 -O /dev/null http://localhost:8080/ready
 	$(COMPOSE) exec -T alert-events-consumer wget -q -T 5 -O /dev/null http://localhost:8080/ready

@@ -36,3 +36,9 @@ groups:
         labels: {severity: critical}
         annotations:
           summary: "Hay entregas agotadas en la cola de fallidos; requiere recuperación controlada"
+      - alert: RACPendingBookingExpiryDelayed
+        expr: rac_booking_expiry_oldest_seconds > 60
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          summary: "Solicitudes sin aceptar siguen pendientes después de su inicio"

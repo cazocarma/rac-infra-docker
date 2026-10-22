@@ -59,3 +59,6 @@ pero no están desplegados y conservan bloqueos explícitos.
 - [Ronda de anotaciones y runtimes de Actions](anotaciones-ci.md)
 
 - [Historial de moderación, filtros y paginación](historial-moderacion.md)
+
+- [Dashboard, días libres y vencimientos](dashboard-administrativo.md).
+- [Preparación de integraciones externas](integraciones-externas.md).

@@ -17,15 +17,13 @@ La integración futura de pagos deberá verificar la notificación del proveedor
 
 ## Alcance pendiente
 
-El flujo gratuito de creación/publicación de un perfil compa está implementado en Sé Compa, incluyendo habilidades, tarifa referencial y disponibilidad UTC. Véase [activación-compa.md](activacion-compa.md). Tampoco se implementó un plazo automático de vencimiento de solicitudes: falta acordar ese plazo y cómo liberar horarios cuando expire. No se sustituyó la falta de pago por un rechazo de la solicitud.
+El flujo gratuito de creación/publicación de un perfil compa está implementado en Sé Compa, incluyendo habilidades, tarifa referencial y disponibilidad con zona IANA. Véase [activación-compa.md](activacion-compa.md). Las solicitudes sin aceptar vencen al llegar su hora de inicio mediante booking-maintenance. La falta de pago no las rechaza anticipadamente ni acepta automáticamente al pagar. Véase [agenda y vencimientos](dashboard-administrativo.md).
 
 ## Verificación
 
 `test_migrations.py` usa PostgreSQL desechable y ejecuta el test Go del repositorio: ocho aceptaciones paralelas producen exactamente tres confirmadas, cinco bloqueadas; verifica restitución antes del inicio, consumo tras cancelación tardía, cambio de semana en Chile, reintento y derechos de suscripción activos/cancelados. Solo el test aislado inserta derechos de suscripción.
 
 Las pruebas Flutter verifican el manejo de HTTP 402. La prueba de navegador intercepta una respuesta 402 exclusivamente para comprobar el aviso y la navegación a planes; luego retira la interceptación y acepta/cancela contra la API real. La autorización del endpoint de cupos se prueba con tokens OIDC reales en DEV.
-
-Cambios locales, sin commits ni push.
 
 ## Resultado en DEV — 15 de octubre de 2026
 

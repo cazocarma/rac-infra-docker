@@ -4,7 +4,7 @@ RAC usa verde profundo (#183F31), verde de acción (#176B58), superficies claras
 
 ## Flutter
 
-Los tokens viven en `lib/shared/widgets/design.dart` y la marca y composición decorativa en `lib/shared/widgets/brand.dart` del frontend. Login, exploración, navegación, perfiles y planes comparten esos componentes. Reservas, onboarding y notificaciones conservan sus flujos reales. Mensajes y pagos aún no implementados se identifican como En construcción. Los layouts ajustan columnas y espaciado a pantallas estrechas.
+Los tokens viven en `lib/shared/widgets/design.dart` y la marca y composición decorativa en `lib/shared/widgets/brand.dart` del frontend. Login, exploración, navegación, perfiles y planes comparten esos componentes. Reservas, onboarding y notificaciones conservan sus flujos reales. Mensajes implementa conversación privada, seguridad y moderación. El checkout de pagos continúa en construcción. Los layouts ajustan columnas y espaciado a pantallas estrechas.
 
 ## Keycloak local
 

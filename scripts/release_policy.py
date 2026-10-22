@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 IMAGES = {"AUTH_IMAGE": "rac-auth-service", "USER_IMAGE": "rac-user-service",
-          "ALERT_IMAGE": "rac-alert-service", "CHAT_IMAGE": "rac-chat-service", "MATCH_IMAGE": "rac-match-service", "FRONTEND_IMAGE": "rac-frontend-flutter"}
+          "ADMIN_IMAGE": "rac-admin-service", "ALERT_IMAGE": "rac-alert-service", "CHAT_IMAGE": "rac-chat-service", "MATCH_IMAGE": "rac-match-service", "FRONTEND_IMAGE": "rac-frontend-flutter"}
 
 def load_release(root, release_id):
     if not re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,79}", release_id):
@@ -15,7 +15,7 @@ def load_release(root, release_id):
         raise RuntimeError("Release manifest does not exist on this branch")
     manifest = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(manifest, dict) or set(manifest) != set(IMAGES):
-        raise RuntimeError("Release must contain exactly the six application images")
+        raise RuntimeError("Release must contain exactly the seven application images")
     for key, repo in IMAGES.items():
         if not isinstance(manifest[key], str) or not re.fullmatch(r"ghcr\.io/cazocarma/" + repo + r"@sha256:[a-f0-9]{64}", manifest[key]):
             raise RuntimeError("Immutable image required: " + key)
