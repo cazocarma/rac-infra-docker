@@ -39,7 +39,7 @@ def cleanup(username):
     user = admin('GET','/users/'+users[0]['id'])
     if user.get('email') != username+'@fixture.test' or user.get('firstName') != 'Prueba' or user.get('lastName') != 'Compa':
         raise RuntimeError('Identity lacks fixture ownership markers')
-    with psycopg.connect(os.environ['DATABASE_URL']) as db:
+    with psycopg.connect() as db:
         row = db.execute('SELECT id,foto_clave FROM usuario WHERE keycloak_id=%s',(user['id'],)).fetchone()
         if row:
             if row[1]:

@@ -112,5 +112,5 @@ try:
     print("PASS: real OIDC code/PKCE, rejected wrong verifier, identity, inherited roles, publication, booking, IDOR and logout")
 finally:
     # Only records created by this test; never delete customer or seed data.
-    with psycopg.connect(os.environ["DATABASE_URL"]) as db:
+    with psycopg.connect() as db:
         for identity in created: db.execute("DELETE FROM sesion WHERE id=%s", (identity,))

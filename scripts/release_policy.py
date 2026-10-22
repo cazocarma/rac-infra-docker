@@ -28,7 +28,8 @@ def infrastructure_digest(root):
              root / "scripts/deploy.py", root / "scripts/release_policy.py",
              root / "scripts/configure_messaging.py", root / "scripts/build_dev.py", root / "tools/Dockerfile"]
     files += list(root.glob("compose*.yaml")) + list(root.glob("docker-compose.*.yaml"))
-    files += [p for folder in ("db", "observability", "rabbitmq") for p in (root / folder).rglob("*") if p.is_file()]
+    files += [p for folder in ("db", "observability", "rabbitmq", "keycloak") for p in (root / folder).rglob("*") if p.is_file()]
+    files += list(root.glob("scripts/*.py"))
     digest = hashlib.sha256()
     for file in sorted(set(files)):
         digest.update(file.relative_to(root).as_posix().encode() + b"\0" + file.read_bytes().replace(b"\r\n", b"\n"))

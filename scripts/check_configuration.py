@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import tempfile
+from database_roles import ROLES, validate_credentials
 ROOT = Path(__file__).resolve().parent.parent
 for environment in ("dev", "qa", "prd"):
     template = (ROOT / "envs" / (".env." + environment + ".example")).read_text()
@@ -13,10 +14,16 @@ for environment in ("dev", "qa", "prd"):
             key, value = line.split("=", 1); values[key] = value
     for key, value in values.items():
         if not value:
+            if key in ROLES:
+                role=ROLES[key]
+                values[key]=f"postgresql://{role}:synthetic-independent-{role}-123456@postgres:5432/{values['POSTGRES_DB']}?sslmode=disable"
+                continue
             values[key] = {
                 "KEYCLOAK_PUBLIC_URL": "https://auth.example.test",
+                "MIGRATION_DB_PASSWORD":"synthetic-independent-migrator-123456",
                 "DATABASE_URL": f"postgres://rac:synthetic@postgres:5432/rac_{environment}?sslmode=disable",
             }.get(key, "ghcr.io/cazocarma/synthetic:sha-test" if key.endswith("_IMAGE") else "synthetic-not-a-secret")
+    validate_credentials(values)
     with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as file:
         file.write("\n".join(key + "=" + value for key, value in values.items())); filename = file.name
     try:
@@ -30,6 +37,15 @@ for environment in ("dev", "qa", "prd"):
         assert any(v["target"] == "/var/lib/rac/photos" and v["source"] == "profile-photos" for v in config["services"]["backend-user"]["volumes"])
         assert config["services"]["migrate"]["environment"]["FLYWAY_DEFAULT_SCHEMA"] == "meta"
         services = config['services']
+        mapped={'backend-user':'USER_DB_URL','backend-match':'MATCH_DB_URL','backend-chat':'CHAT_DB_URL','backend-alert':'ALERT_DB_URL','booking-maintenance':'MAINTENANCE_DB_URL','booking-events-relay':'RELAY_DB_URL','alert-events-consumer':'ALERT_CONSUMER_DB_URL'}
+        for service,key in mapped.items():
+            assert services[service]['environment']['DATABASE_URL']==values[key]
+            assert 'POSTGRES_PASSWORD' not in services[service]['environment']
+            assert 'MIGRATION_DB_PASSWORD' not in services[service]['environment']
+        assert '@sha256:' in services['keycloak']['image']
+        assert services['migrate']['environment']['FLYWAY_USER']=='rac_migrator'
+        assert services['migrate']['depends_on']['database-config']['condition']=='service_completed_successfully'
+
         assert '@sha256:' in services['rabbitmq']['image']
         assert services['rabbitmq']['hostname'] == 'rabbitmq'
         assert any(v['source'] == 'rabbitmq-events-data' for v in services['rabbitmq']['volumes'])

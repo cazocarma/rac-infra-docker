@@ -30,7 +30,7 @@ elif len(sys.argv)>1 and sys.argv[1]=='expiry':
  provider_token=login(username);provider=api('GET','/api/user/me',provider_token)
  buyer_token=login('cliente1');start=(dt.datetime.now(dt.timezone.utc)+dt.timedelta(days=50)).replace(hour=15,minute=0,second=0,microsecond=0)
  booking=api('POST','/api/match/session',buyer_token,{'compa_id':provider['id'],'fecha_inicio':start.isoformat(),'fecha_fin':(start+dt.timedelta(hours=1)).isoformat()},expected=201)
- with psycopg.connect(os.environ['DATABASE_URL']) as db:
+ with psycopg.connect() as db:
   changed=db.execute("UPDATE sesion SET fecha_inicio=now()-interval '2 minutes',fecha_fin=now()+interval '58 minutes' WHERE id=%s AND compa_id=%s AND estado='pendiente'",(booking['id'],provider['id'])).rowcount
   assert changed==1
  for _ in range(30):

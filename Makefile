@@ -46,9 +46,14 @@ help:
 	@echo make test / test-go / test-flutter / test-integration
 	@echo make storage-up / storage-activate / storage-test / storage-test-persistence / storage-stop
 	@echo make backup-enable / backup-now / backup-status / backup-restore-test
+	@echo make database-init / test-database-permissions / test-identity-permissions
 config:
 	$(COMPOSE) config --quiet
+ifeq ($(ENV),dev)
+up: database-init config
+else
 up: config
+endif
 ifeq ($(ENV),dev)
 	$(PYTHON) scripts/build_dev.py $(COMPOSE)
 endif
@@ -171,3 +176,15 @@ ifeq ($(ENV),dev)
 else
 	$(error Prueba de restauracion solo disponible para DEV)
 endif
+
+.PHONY: database-init test-database-permissions test-identity-permissions
+database-init:
+ifeq ($(ENV),dev)
+	$(PYTHON) scripts/init_database_credentials.py --env-file $(ENV_FILE)
+else
+	$(error Generacion automatica de credenciales solo disponible en DEV)
+endif
+test-database-permissions:
+	$(PYTHON) scripts/test_database_permissions.py
+test-identity-permissions:
+	$(PYTHON) scripts/test_identity_permissions.py

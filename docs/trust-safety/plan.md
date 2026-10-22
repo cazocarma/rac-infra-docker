@@ -1,6 +1,6 @@
 # Plan de implementación — aprobado
 
-Fecha: 2026-10-22. El usuario aprobó ejecutar este plan después de revisar la Fase 0. [P01](P01-foundation.md) registra la primera implementación local y sus ensayos. La aprobación técnica no resuelve las decisiones jurídicas, operativas, de proveedores o activación indicadas abajo.
+Fecha: 2026-10-22. El usuario aprobó ejecutar este plan después de revisar la Fase 0. [P01](P01-foundation.md) y [P02](P02-service-isolation.md) registran implementaciones locales y sus ensayos, sin activación sobre DEV. La aprobación técnica no resuelve las decisiones jurídicas, operativas, de proveedores o activación indicadas abajo.
 
 ## Estrategia y dependencias
 
@@ -34,7 +34,7 @@ Cada fila es una unidad de entrega coordinada; puede necesitar PR enlazados en v
 | P14 | M8/M9: chat y reseñas; chat/user/admin/Flutter | Estados moderación reseña y eventos asociados | Advertencia cliente; servidor chat off; URLs sin preview; reporte y procedencia reseña |
 | P15 | M14 completo/M16/M17 restante: consolas, métricas, headers/rate limits, CI hardening; infra y todos | Políticas/permisos finales y cleanup de grants | E2E-01–14, carga, Loki sin PII, restauración, seguridad independiente y operación humana |
 
-Los números SQL reales se asignan al abrir cada PR tras revisar la rama base. La Fase 0 inspeccionó hasta V017; P01 agrega V018 sin reescribir V001–V017. V018 se ensayó en contenedores desechables y no está aplicada a la BD DEV. Los siguientes números no quedan reservados por esta tabla.
+Los números SQL reales se asignan al abrir cada PR tras revisar la rama base. La Fase 0 inspeccionó hasta V017; P01 agrega V018 y P02 agrega V019 sin reescribir V001–V017. Se ensayaron en contenedores desechables y no están aplicadas a la BD DEV. Los siguientes números no quedan reservados por esta tabla.
 
 ## Decisiones humanas
 
@@ -82,4 +82,4 @@ No incluir teléfonos de emergencia definitivos sin validar fuente oficial/juris
 
 Fase A: P01–P15, decisiones aplicables resueltas y matriz de aceptación con evidencia; bloqueante para usuarios reales. No anunciar prevención total de ilícitos. Fase B antes de cobros: proveedor de pagos, impuestos, retracto/cancelación, suscripción, disputas y señales de contracargo, todo tras decisión y textos aprobados. Fase C: DPIA y revisión adicional antes de imágenes externas, chat en servidor o scoring avanzado. El chat privado seguirá fuera del análisis servidor por defecto.
 
-Primer paso tras aprobar: P01 en rama aislada, con módulo común y auditoría verificable en DEV, contratos y tests. Cerrar esa unidad con evidencia antes de extender funcionalidades. No mezclar toda la plataforma en un único PR imposible de revisar.
+P01 y P02 tienen evidencia local separada. La siguiente unidad es P03, estado de cuenta y enforcement transversal, previa matriz D02/D03; la activación local de P02 requiere el respaldo/recuperación indicado en su runbook. Mantener entregas revisables, sin mezclar toda la plataforma en un único PR.

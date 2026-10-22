@@ -9,13 +9,14 @@ import runpy
 import shutil
 from unittest.mock import patch
 from release_policy import IMAGES, load_release, infrastructure_digest
+from database_roles import ROLES
 
 class ReleasePolicyTests(unittest.TestCase):
     def test_prd_requires_exact_successful_qa_before_any_host_command(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             source = Path(__file__).resolve().parent.parent
-            for name in ("Makefile", "nginx/environments.conf", "scripts/deploy.py", "scripts/release_policy.py", "scripts/configure_messaging.py", "scripts/build_dev.py", "tools/Dockerfile", "compose.yaml", "db/bootstrap/001-keycloak.sh"):
+            for name in ("Makefile", "nginx/environments.conf", "scripts/deploy.py", "scripts/release_policy.py", "scripts/configure_messaging.py", "scripts/build_dev.py", "scripts/database_roles.py", "tools/Dockerfile", "compose.yaml", "db/bootstrap/001-keycloak.sh"):
                 dest = root / name
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(source / name, dest)
@@ -23,7 +24,8 @@ class ReleasePolicyTests(unittest.TestCase):
             manifest = {key: "ghcr.io/cazocarma/" + repo + "@sha256:" + "a" * 64 for key, repo in IMAGES.items()}
             (root / "releases/demo.json").write_text(json.dumps(manifest))
             envfile = root / "target.env"
-            envfile.write_text("RAC_ENV=prd\nPOSTGRES_DB=rac_prd\nDATABASE_URL=postgres://rac:synthetic@postgres:5432/rac_prd\n" + "\n".join(k + "=" + v for k, v in manifest.items()))
+            scoped="\n".join(key+"=postgresql://"+role+":synthetic-independent-"+role+"-123456@postgres:5432/rac_prd?sslmode=disable" for key,role in ROLES.items())
+            envfile.write_text("RAC_ENV=prd\nPOSTGRES_DB=rac_prd\nMIGRATION_DB_USER=rac_migrator\nMIGRATION_DB_PASSWORD=synthetic-independent-migrator-123456\n"+scoped+"\n" + "\n".join(k + "=" + v for k, v in manifest.items()))
             proof = {"release_sha256": hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest(), "infra_sha256": infrastructure_digest(root)}
             available = False
             events = []
@@ -70,12 +72,12 @@ class ReleasePolicyTests(unittest.TestCase):
     def test_qa_proof_covers_bootstrap_and_compose_inputs(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            for name in ("Makefile", "nginx/environments.conf", "scripts/deploy.py", "scripts/release_policy.py", "scripts/configure_messaging.py", "scripts/build_dev.py", "tools/Dockerfile", "rabbitmq/rabbitmq.conf", "compose.tests.yaml", "db/bootstrap/001-keycloak.sh"):
+            for name in ("Makefile", "nginx/environments.conf", "scripts/deploy.py", "scripts/release_policy.py", "scripts/configure_messaging.py", "scripts/build_dev.py", "scripts/database_roles.py", "tools/Dockerfile", "rabbitmq/rabbitmq.conf", "compose.tests.yaml", "db/bootstrap/001-keycloak.sh"):
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(b"original\n")
             original = infrastructure_digest(root)
-            for name in ("compose.tests.yaml", "db/bootstrap/001-keycloak.sh", "scripts/release_policy.py", "scripts/configure_messaging.py", "scripts/build_dev.py", "tools/Dockerfile", "rabbitmq/rabbitmq.conf"):
+            for name in ("compose.tests.yaml", "db/bootstrap/001-keycloak.sh", "scripts/release_policy.py", "scripts/configure_messaging.py", "scripts/build_dev.py", "scripts/database_roles.py", "tools/Dockerfile", "rabbitmq/rabbitmq.conf"):
                 path = root / name
                 path.write_bytes(b"changed\n")
                 self.assertNotEqual(original, infrastructure_digest(root))

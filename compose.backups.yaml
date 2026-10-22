@@ -10,8 +10,7 @@ services:
     environment:
       PGHOST: postgres
       PGPORT: "5432"
-      PGUSER: ${POSTGRES_USER}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_DB_URL: ${BACKUP_DB_URL:?Inicializar credenciales separadas}
       PGDATABASE: ${POSTGRES_DB}
       BACKUP_S3_ENDPOINT: http://rustfs:9000
     volumes: ["${BACKUP_DIRECTORY:?Inicializar backups}:/backups"]
@@ -21,6 +20,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: [CMD, python, /tools/backup.py, health]
       interval: 30s

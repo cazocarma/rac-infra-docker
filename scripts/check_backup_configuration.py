@@ -4,12 +4,14 @@ import json
 import shutil
 import subprocess
 import tempfile
+from init_database_credentials import initialize
 
 ROOT=Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory() as directory:
     target=Path(directory);(target/"envs").mkdir()
     for path in ROOT.glob("*.yaml"):shutil.copy2(path,target/path.name)
     shutil.copy2(ROOT/"envs/.env.dev.example",target/"envs/.env.dev")
+    initialize(target/"envs/.env.dev")
     (target/"envs/.env.photos-s3").write_text("PROFILE_PHOTO_STORAGE=s3\nPROFILE_S3_ENDPOINT=http://rustfs:9000\nPROFILE_S3_BUCKET=rac-dev-profile-photos\nPROFILE_S3_REGION=us-east-1\nPROFILE_S3_ACCESS_KEY=app-only\nPROFILE_S3_SECRET_KEY=synthetic-app-secret\n")
     (target/"envs/.env.backups").write_text("BACKUP_DIRECTORY="+(target/"copies").as_posix()+"\nBACKUP_UID=10001\nBACKUP_GID=10001\nRESTIC_PASSWORD=synthetic-encryption-password\nBACKUP_S3_ACCESS_KEY=backup-only\nBACKUP_S3_SECRET_KEY=synthetic-read-only-secret\nBACKUP_S3_BUCKET=rac-dev-profile-photos\n")
     result=subprocess.run(["docker","compose","--env-file","envs/.env.dev","--env-file","envs/.env.backups","-p","rac-dev","-f","compose.yaml","-f","docker-compose.dev.yaml","-f","compose.photos-s3.yaml","-f","compose.backups.yaml","config","--format","json"],cwd=target,capture_output=True,text=True,check=True)
@@ -21,6 +23,8 @@ with tempfile.TemporaryDirectory() as directory:
     for service in (backup,user):
         assert "RUSTFS_ACCESS_KEY" not in service["environment"]
         assert "RUSTFS_SECRET_KEY" not in service["environment"]
+    assert 'PGPASSWORD' not in backup['environment'] and 'POSTGRES_PASSWORD' not in backup['environment']
+    assert backup['environment']['BACKUP_DB_URL'].startswith('postgresql://rac_backup:')
     assert backup["read_only"] is True
     assert not backup.get("privileged")
     assert len(backup["volumes"])==1 and backup["volumes"][0]["target"]=="/backups"
