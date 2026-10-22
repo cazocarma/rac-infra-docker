@@ -1,4 +1,8 @@
 .DEFAULT_GOAL := help
+
+.PHONY: test-audit-foundation
+test-audit-foundation:
+	python scripts/test_audit_foundation.py
 ENV ?= dev
 ifneq ($(words $(ENV)),1)
 $(error ENV debe ser dev, qa o prd)

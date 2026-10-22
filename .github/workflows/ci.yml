@@ -29,6 +29,9 @@ jobs:
           path: rac-infra-docker
       - run: python scripts/test_migrations.py
         working-directory: rac-infra-docker
+      - name: Audit chain permissions and concurrency (disposable PostgreSQL)
+        run: python scripts/test_audit_foundation.py
+        working-directory: rac-infra-docker
       - run: python -m unittest discover -s scripts -p "test_ci_access.py"
         working-directory: rac-infra-docker
       - run: python scripts/check_configuration.py
