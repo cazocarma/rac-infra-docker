@@ -1,6 +1,21 @@
 # ADR-001 — Standing autoritativo y propagación
 
-Estado: dirección técnica D01 aprobada; matriz D02 pendiente en [plan](plan.md).
+Estado: dirección técnica D01 y reglas D02/D03 aprobadas; P03 en implementación.
+
+## Decisiones D02/D03 confirmadas
+
+Suspensión y ban conservan acceso autenticado a seguridad, cancelación de
+reservas propias y solicitudes de privacidad, además de reportar/apelar cuando
+corresponda. La comprobación de propiedad y elegibilidad sigue siendo obligatoria.
+Recuperación y aceptación de documentos tampoco deben cerrar esos canales.
+
+El enforcement cancela solo reservas futuras; una actividad ya iniciada pasa a
+revisión de seguridad. Devuelve el cupo gratuito a la contraparte afectada y no
+reabre reservas al revertir la sanción. El modelo actual contabiliza cupos del
+compa: si el sancionado es el cliente se devuelve el cupo al compa afectado; no
+se inventa un cupo de cliente ni se devuelve automáticamente el cupo al propio
+compa sancionado. La devolución se aplica al registro original, aunque cambie
+la semana. Falta implementar y probar estos efectos transaccionales.
 
 ## Problema
 
@@ -10,7 +25,7 @@ Roles Keycloak y JWT válidos no expresan una suspensión reciente. Consultar so
 
 `rac-user-service` será autoridad de `account_standing` y `account_restrictions`, con FK al `usuario` real, no a la tabla ilustrativa `users` del prompt. Estados active/restricted/suspended/banned; versión monotónica por usuario y restricciones por capacidad/intervalo. `rac-platform/standing` contiene tipos y evaluación común; cada servicio mantiene su adaptador y autorización de propiedad.
 
-Capacidades iniciales del prompt: publish_listing, request_booking, accept_booking, send_message, write_review, submit_report, appeal. La matriz deberá agregar explícitamente los flujos de seguridad, cancelación, privacidad, aceptación de documentos y recuperación que no caben en ese enum. No se aplicará un bloqueo genérico a todo POST: no puede impedir reportar, apelar, cerrar sesión ni ejercer derechos. D02 define las excepciones para banned y ventanas vencidas.
+Capacidades iniciales del prompt: publish_listing, request_booking, accept_booking, send_message, write_review, submit_report, appeal. D02 agrega access_safety, cancel_own_booking, request_privacy, accept_documents y recover_account. No se aplicará un bloqueo genérico a todo POST: no puede impedir reportar, apelar, cerrar sesión ni ejercer derechos. Una sanción no elimina los canales de protección al vencer una ventana de apelación.
 
 El cambio y `user.standing.changed.v1` se guardan en una transacción. Payload mínimo: event_id, subject_id, status, effective_capabilities, standing_version, policy_version, occurred_at y referencia opaca al caso; sin descripción privada. Cada dueño recibe todos los eventos en su propia cola, inbox y actualización atómica `incoming.version > stored.version`. Duplicados/desorden no restauran privilegios. Reconciliación periódica compara versiones con la autoridad.
 

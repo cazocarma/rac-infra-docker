@@ -43,8 +43,8 @@ Salvo la dirección técnica D01 aprobada con este plan, siguen `DECISION_REQUIR
 | ID | Decisión / propuesta segura | Bloquea |
 |---|---|---|
 | D01 | Dirección técnica aprobada: rac-platform y dueño T&S en admin. Repo local creado. Publicación remota e instalación de lectura de CI aún no realizadas; sin permisos de escritura de App | Publicación integrada |
-| D02 | Matriz completa de capacidades: seguridad, cancelación, privacidad y recuperación además de siete iniciales; conservar login y derechos. Resolver banned fuera de plazo sin cerrar canales obligatorios | P03/P11 |
-| D03 | Enforcement cancela futuras reservas y devuelve cupo a contraparte aunque cambie semana; reversión no resucita reserva ni cargo. Definir tratamiento del cupo del sancionado y de actividad ya iniciada | P03/P13 |
+| D02 | Aprobada: conservar seguridad, cancelación propia y privacidad con suspensión/ban, además de reportar/apelar cuando corresponda. Recuperación y documentos conservan los canales de derechos | P03/P11 |
+| D03 | Aprobada: cancelar solo reservas futuras, devolver cupo a contraparte sin reabrir al revertir; actividad ya iniciada pasa a revisión de seguridad. Alcance del cupo actual explicado en ADR-001 | P03/P13 |
 | D04 | Catálogo permitido, geografía Chile, máximo cinco y tipos de lugar. Precios mínimo/máximo CLP y percentiles sin inventar cifras | P06/P08/P13 |
 | D05 | Adulto/KYC para publicar y primera reserva; proveedor, coste, cobertura chilena, liveness, DPA, error/recurso y borrado | Activación KYC/usuarios reales |
 | D06 | Autoocultar por P0/P1 versus denuncias abusivas: proponer triaje y señales corroboradas; P0 permite restricción preventiva reversible. Definir excepcional suspensión P0 y revisión rápida, nunca ban automático | P11 y E2E-07 |
@@ -82,4 +82,4 @@ No incluir teléfonos de emergencia definitivos sin validar fuente oficial/juris
 
 Fase A: P01–P15, decisiones aplicables resueltas y matriz de aceptación con evidencia; bloqueante para usuarios reales. No anunciar prevención total de ilícitos. Fase B antes de cobros: proveedor de pagos, impuestos, retracto/cancelación, suscripción, disputas y señales de contracargo, todo tras decisión y textos aprobados. Fase C: DPIA y revisión adicional antes de imágenes externas, chat en servidor o scoring avanzado. El chat privado seguirá fuera del análisis servidor por defecto.
 
-P01 y P02 tienen evidencia local separada. La siguiente unidad es P03, estado de cuenta y enforcement transversal, previa matriz D02/D03; la activación local de P02 requiere el respaldo/recuperación indicado en su runbook. Mantener entregas revisables, sin mezclar toda la plataforma en un único PR.
+P01 y P02 tienen evidencia local separada. La siguiente unidad es P03, estado de cuenta y enforcement transversal, con D02/D03 ya aprobadas; la activación local de P02 requiere el respaldo/recuperación indicado en su runbook. Mantener entregas revisables, sin mezclar toda la plataforma en un único PR.
