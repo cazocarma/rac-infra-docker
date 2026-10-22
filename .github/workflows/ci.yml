@@ -36,6 +36,9 @@ jobs:
       - name: Fresh and upgrade with non-superuser migration and scoped service roles
         run: python scripts/test_database_permissions.py
         working-directory: rac-infra-docker
+      - name: Standing authority atomicity, concurrency and permissions
+        run: python scripts/test_standing_authority.py
+        working-directory: rac-infra-docker
       - name: Keycloak least privilege and prepared staff MFA
         run: python scripts/test_identity_permissions.py
         working-directory: rac-infra-docker

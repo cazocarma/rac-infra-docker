@@ -44,25 +44,25 @@ def configure(values, connect=psycopg.connect):
         db.execute(sql.SQL('GRANT CREATE ON DATABASE {} TO rac_migrator').format(sql.Identifier(current)))
         # Ownership is required for forward ALTERs on existing DEV schemas. No
         # REASSIGN OWNED: that would also transfer cluster/shared objects.
-        for schema in ('public', 'meta', 'audit'):
+        for schema in ('public', 'meta', 'audit', 'standing'):
             if not db.execute('SELECT 1 FROM pg_namespace WHERE nspname=%s', (schema,)).fetchone():
                 continue
             db.execute(sql.SQL('ALTER SCHEMA {} OWNER TO rac_migrator').format(sql.Identifier(schema)))
         relations = db.execute("""SELECT n.nspname,c.relname,c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-          WHERE n.nspname IN ('public','meta','audit') AND c.relkind IN ('r','p','S','v','m')
+          WHERE n.nspname IN ('public','meta','audit','standing') AND c.relkind IN ('r','p','S','v','m')
           AND NOT EXISTS(SELECT FROM pg_depend d WHERE d.classid='pg_class'::regclass AND d.objid=c.oid AND d.deptype='e')
           ORDER BY CASE WHEN c.relkind='S' THEN 1 ELSE 0 END""").fetchall()
         for schema, name, kind in relations:
             object_kind = {'S': 'SEQUENCE', 'v': 'VIEW', 'm': 'MATERIALIZED VIEW'}.get(kind, 'TABLE')
             db.execute(sql.SQL('ALTER ' + object_kind + ' {}.{} OWNER TO rac_migrator').format(sql.Identifier(schema), sql.Identifier(name)))
         functions = db.execute("""SELECT p.oid::regprocedure::text FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-          WHERE n.nspname IN ('public','meta','audit') AND NOT EXISTS
+          WHERE n.nspname IN ('public','meta','audit','standing') AND NOT EXISTS
           (SELECT FROM pg_depend d WHERE d.classid='pg_proc'::regclass AND d.objid=p.oid AND d.deptype='e')""").fetchall()
         for (signature,) in functions:
             # regprocedure comes only from this database's catalog, not a user payload.
             db.execute(sql.SQL('ALTER FUNCTION ' + signature + ' OWNER TO rac_migrator'))
         types = db.execute("""SELECT n.nspname,t.typname,t.typtype FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace
-          WHERE n.nspname IN ('public','meta','audit') AND t.typtype IN ('e','d') AND NOT EXISTS
+          WHERE n.nspname IN ('public','meta','audit','standing') AND t.typtype IN ('e','d') AND NOT EXISTS
           (SELECT FROM pg_depend d WHERE d.classid='pg_type'::regclass AND d.objid=t.oid AND d.deptype='e')""").fetchall()
         for schema, name, kind in types:
             db.execute(sql.SQL('ALTER ' + ('DOMAIN' if kind == 'd' else 'TYPE') + ' {}.{} OWNER TO rac_migrator').format(sql.Identifier(schema), sql.Identifier(name)))

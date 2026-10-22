@@ -188,3 +188,7 @@ test-database-permissions:
 	$(PYTHON) scripts/test_database_permissions.py
 test-identity-permissions:
 	$(PYTHON) scripts/test_identity_permissions.py
+
+.PHONY: test-standing-authority
+test-standing-authority:
+	$(PYTHON) scripts/test_standing_authority.py

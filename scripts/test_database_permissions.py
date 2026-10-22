@@ -67,6 +67,11 @@ def main():
             bootstrap(database)
             bootstrap(database)
             migrate(database, ROOT / 'db/migrations')
+            bootstrap(database)  # Reconcile again with the standing schema present.
+            assert sql(database, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname='standing';").stdout.strip() == 'rac_migrator'
+            assert sql(database, "SELECT count(*) FROM standing.account;", 'rac_user').returncode == 0
+            assert sql(database, "UPDATE standing.account SET status='active';", 'rac_user', ok=False).returncode != 0
+            assert sql(database, "SELECT count(*) FROM standing.account;", 'rac_match', ok=False).returncode != 0
             assert sql(database, "SELECT rolsuper OR rolcreaterole OR rolcreatedb OR rolbypassrls FROM pg_roles WHERE rolname='rac_migrator';").stdout.strip() == 'f'
             for role in ROLES.values():
                 assert sql(database, 'CREATE TABLE public.unauthorized(id int);', role, ok=False).returncode != 0

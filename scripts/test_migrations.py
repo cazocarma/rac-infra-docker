@@ -85,6 +85,7 @@ try:
     assert sql("legacy", "SELECT version FROM chat_outbox WHERE mensaje_id='00000000-0000-0000-0000-000000000004';") == "1"
     assert sql("legacy", "SELECT version FROM chat_cursor WHERE sesion_id='00000000-0000-0000-0000-000000000003';") == "1"
     assert sql("legacy", "SELECT nombre FROM usuario WHERE keycloak_id='kc-legacy';") == "Preservar"
+    assert sql("legacy", "SELECT status||':'||version FROM standing.account WHERE subject_id='00000000-0000-0000-0000-000000000001';") == "active:1"
     assert sql("legacy", "SELECT zona_horaria FROM compa_availability;") == "UTC"
     assert sql("legacy", "SELECT disponibilidad_json->'lunes'->>0 FROM compa_availability;") == "18:00-20:00"
     assert sql("legacy", "SELECT count(*) FROM meta.schema_history WHERE success AND version IS NOT NULL;") == str(len(list(migration_dir.glob("V*.sql"))))
