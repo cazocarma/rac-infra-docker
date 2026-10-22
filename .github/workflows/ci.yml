@@ -77,6 +77,7 @@ jobs:
             rac-match-service
             rac-chat-service
             rac-alert-service
+            rac-admin-service
             rac-frontend-flutter
           permission-contents: read
           skip-token-revoke: 'false'
@@ -135,6 +136,14 @@ jobs:
           path: rac-alert-service
           token: ${{ steps.repository-token.outputs.token }}
 
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository_owner }}/rac-admin-service
+          ref: ${{ fromJSON(steps.revisions.outputs.repositories)['rac-admin-service'] }}
+          path: rac-admin-service
+          token: ${{ steps.repository-token.outputs.token }}
+
       - name: Database policies against companion services
         working-directory: rac-infra-docker
         run: python scripts/test_migrations.py
@@ -168,6 +177,14 @@ jobs:
         if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_browser.py
+      - name: Administrative dashboard integration
+        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
+        working-directory: rac-infra-docker
+        run: python scripts/test_admin_browser.py
+      - name: Time off and pending expiry integration
+        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
+        working-directory: rac-infra-docker
+        run: python scripts/test_schedule_browser.py
       - name: Web notification inbox integration
         if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
@@ -201,6 +218,9 @@ jobs:
             rac-infra-docker/.local/chat-ui/*.txt
             rac-infra-docker/.local/review-ui/*.png
             rac-infra-docker/.local/review-ui/*.txt
+            rac-infra-docker/.local/admin-ui/*.png
+            rac-infra-docker/.local/admin-ui/*.txt
+            rac-infra-docker/.local/schedule-ui/*.png
       - name: Logs
         if: failure()
         working-directory: rac-infra-docker

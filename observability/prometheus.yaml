@@ -13,6 +13,10 @@ scrape_configs:
         labels: {service: rac-match-service}
       - targets: [backend-chat:8080]
         labels: {service: rac-chat-service}
+      - targets: [booking-maintenance:8080]
+        labels: {service: rac-booking-maintenance}
+      - targets: [backend-admin:8080]
+        labels: {service: rac-admin-service}
       - targets: [backend-alert:8080]
         labels: {service: rac-alert-service}
   - job_name: rac-messaging
