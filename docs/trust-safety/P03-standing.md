@@ -3,6 +3,27 @@
 D02 y D03 fueron confirmadas por el usuario el 22 de octubre de 2026.
 La matriz y el alcance del cupo están en [ADR-001](ADR-001-standing.md).
 
+## Autenticación de lectores internos (preparada, sin activar)
+
+User incorpora `platform.NewStandingReader`, un autenticador separado de la
+herencia de roles de la API pública. Verifica firma RS256 con JWKS, issuer,
+audience dedicada, expiración, issued-at, not-before y vida máxima de 300 s.
+Exige además `azp` permitido, el subject exacto de su cuenta de servicio
+provisionada y el rol de cliente `standing.read` en esa misma audience.
+Un usuario admin, un rol de realm o un permiso en otra audience no bastan.
+La configuración inválida falla al construir; HTTPS es obligatorio salvo la
+opción explícita de desarrollo. La consulta JWKS tiene timeout y no sigue
+redirecciones. Los errores de autenticación no incluyen el token.
+
+Las pruebas usan JWT RS256 realmente firmados y un servidor JWKS desechable;
+cubren firma incorrecta, issuer/audience, usuarios humanos, vinculación
+cliente/subject, permisos, caducidad, fechas futuras, duración excesiva y
+cabeceras duplicadas. Pasan `go vet ./...` y `go test -race ./...` de user.
+Esto prepara el adaptador para el handler compartido; **todavía no expone el
+endpoint ni provisiona clientes Keycloak**, y no demuestra revocación de
+operaciones de negocio. Continúan pendientes el consumo versionado del módulo
+privado en builds/CI, el endpoint interno y los controles de escritura/commit.
+
 ## Entrega local: motor compartido
 
 `rac-platform/standing` implementa evaluación de capacidades y restricciones
