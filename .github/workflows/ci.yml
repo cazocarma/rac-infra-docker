@@ -99,6 +99,7 @@ jobs:
             rac-alert-service
             rac-admin-service
             rac-frontend-flutter
+            rac-platform
           permission-contents: read
           skip-token-revoke: 'false'
       - name: Read pinned companion revisions
@@ -164,6 +165,15 @@ jobs:
           path: rac-admin-service
           token: ${{ steps.repository-token.outputs.token }}
 
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository_owner }}/rac-platform
+          ref: ${{ fromJSON(steps.revisions.outputs.repositories)['rac-platform'] }}
+          path: rac-platform
+          token: ${{ steps.repository-token.outputs.token }}
+      - name: Shared platform race tests at pinned revision
+        run: docker run --rm --mount type=bind,source="$PWD/rac-platform",target=/src,readonly -w /src golang:1.27.2 go test -race -count=1 ./...
       - name: Database policies against companion services
         working-directory: rac-infra-docker
         run: python scripts/test_migrations.py

@@ -7,7 +7,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-REPOSITORIES = ("rac-auth-service", "rac-user-service", "rac-match-service", "rac-chat-service", "rac-alert-service", "rac-admin-service", "rac-frontend-flutter")
+REPOSITORIES = ("rac-auth-service", "rac-user-service", "rac-match-service", "rac-chat-service", "rac-alert-service", "rac-admin-service", "rac-frontend-flutter", "rac-platform")
 
 
 def app_configuration_error(environment):

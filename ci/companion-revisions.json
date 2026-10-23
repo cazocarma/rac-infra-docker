@@ -5,5 +5,6 @@
   "rac-chat-service": "1cdd512bf50d7f789d45a283d22a563400eb81ba",
   "rac-frontend-flutter": "422dcc9adadaff4d9f8409cb93aca4bf64202247",
   "rac-alert-service": "47460452446b6b0339a059201024f5845bfe524e",
-  "rac-admin-service": "f8e46217fdc97d21ffa3b5bfa611885c38bfaed1"
+  "rac-admin-service": "f8e46217fdc97d21ffa3b5bfa611885c38bfaed1",
+  "rac-platform": "c9761fac4d0ce2a590ac8236549b893318f668e9"
 }

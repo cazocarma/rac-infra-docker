@@ -109,8 +109,11 @@ este expediente no acredita que GitHub pueda descargarlas todavía.
 
 ## Pendiente para completar P03
 
-1. Publicación privada y versión fijada del módulo, acceso mínimo de CI y builds
-   reproducibles sin secretos en capas Docker ni `replace` local permanente.
+1. Completar Confirm access e instalar el acceso de lectura autorizado de CI al
+   módulo privado publicado v0.2.0. El manifiesto fija su commit y el workflow
+   prepara checkout y pruebas `-race` sin persistir credenciales de Git. Falta
+   conectar los builds de servicios sin secretos en capas Docker ni `replace`
+   local permanente.
 2. Conectar la autoridad al ingreso autenticado de staff y a políticas aprobadas;
    transporte autenticado, publicación del outbox e inbox por consumidor.
 3. Integración de todos los escritores y contrapartes, catálogo y medios,
@@ -122,3 +125,28 @@ este expediente no acredita que GitHub pueda descargarlas todavía.
 
 No hay enforcement nuevo activo en las APIs ni migraciones P03 aplicadas a DEV.
 Las pruebas unitarias no prueban el objetivo de revocación p99 de cinco segundos.
+
+## Transporte de autoridad preparado (v0.2.0)
+
+El módulo privado `cazocarma/rac-platform` está publicado con tags inmutables
+v0.1.0 y v0.2.0. La versión 0.2.0 añade el transporte HTTP de standing y proveedor
+OAuth2 client credentials. HTTPS verificado es obligatorio fuera del permiso
+explícito de HTTP para DEV; las redirecciones se rechazan tanto para consulta
+como para emisión de tokens. Se acotan tiempos, tamaño y subject de respuestas.
+
+El secreto se lee desde archivo montado; no se guarda en URL, logs ni imágenes.
+Tokens con duración superior a 300 s o tipo incorrecto se rechazan. Renovaciones
+simultáneas se serializan y el token se retira de caché antes de su vencimiento.
+No hay refresh tokens ni un autenticador permisivo por defecto en el handler.
+
+Pruebas locales Go con `-race`: autoridad suspendida/no disponible, autenticador
+ausente, redirecciones sin transmisión a destino, respuestas de otro subject,
+cuerpos inválidos/excesivos, fallos de credenciales y renovación concurrente.
+Estas son pruebas de transporte con identidad técnica de fixture, no una prueba
+de JWT real ni de endpoints de negocio. Falta provisionar clientes con audience
+y rol mínimos, conectar su verificador OIDC y enlazar las APIs.
+
+El usuario autorizó añadir únicamente rac-platform a la App RAC CI Read con
+Contents de lectura. GitHub aún muestra Confirm access; la selección de repos
+de la instalación no se ha modificado. No se ha ejecutado el CI integrado remoto
+con el nuevo acceso.

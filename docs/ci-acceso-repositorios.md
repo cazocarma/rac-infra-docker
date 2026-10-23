@@ -1,5 +1,14 @@
 # Acceso entre repositorios en CI
 
+## Ampliación preparada para Trust & Safety
+
+La lista solicitada por el workflow incorpora `rac-platform` además de los siete
+compañeros actuales. El módulo es privado, está publicado y su commit se fija en
+`ci/companion-revisions.json`. El usuario autorizó su incorporación con Contents
+read-only; GitHub aún exige completar Confirm access antes de editar la instalación.
+Esta preparación del workflow no prueba que el acceso ya esté concedido. No
+publicar este cambio de infra hasta guardar la selección y verificar el acceso.
+
 ## Causa y decisión
 
 La ejecución [39255195701](https://github.com/cazocarma/rac-infra-docker/actions/runs/39255195701) falló al descargar `rac-match-service`, antes de ejecutar migraciones. La anotación fue `repository ... not found`: GitHub también responde así cuando el token no puede leer un repositorio privado. Los 34 segundos correspondieron a preparación y reintentos del checkout. Las advertencias de Node no fueron la causa.
