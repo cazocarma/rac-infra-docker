@@ -55,13 +55,14 @@ try:
     if quota_source.exists() and "match" in args.services:
         quota_tests = run("docker", "run", "--rm", "--network", NAME,
             "--mount", f"type=bind,source={quota_source},target=/sources,readonly",
-            "-v", "rac-quota-go-cache:/go/pkg/mod",
+            "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-match-go-build:/root/.cache/go-build",
             "-e", f"RAC_QUOTA_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
             "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/repo ./internal/http")
         print("PASS: concurrent weekly allowance, refund, week boundary and subscription entitlement")
         if (quota_source / 'internal/http/standing_test.go').exists():
             assert '--- PASS: TestOldJWTBookingStandingPostgres' in quota_tests.stdout
             assert '--- PASS: TestBookingStandingPostgresHTTP' in quota_tests.stdout
+            assert '--- PASS: TestBookingStandingPostgresHTTP/schedule-writers' in quota_tests.stdout
             assert '--- PASS: TestStandingReconciliationPostgres' in quota_tests.stdout
             print('PASS: old signed JWT denied on two API instances, participant restrictions, pre-commit rollback, quota rollback, expired lock wait and protective cancellation during outage')
             print('PASS: post-event commit reconciliation, newer authorization survives delayed sanction, concurrent repairs, rollback/retry and bounded batches')

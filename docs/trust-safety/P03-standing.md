@@ -409,3 +409,32 @@ integridad/checksum de todas las migraciones. No activa el preview en DEV.
 Pendientes: integrar el aviso en Flutter, escritores de disponibilidad/medios,
 resincronización desde autoridad y mediciones de revocación/latencia. Este avance
 no completa P03 ni acredita cumplimiento jurídico o del objetivo p99.
+
+
+## Agenda y reemplazo de fotos (avance 2026-10-23)
+
+Match aplica publish_listing a la disponibilidad semanal y al alta/borrado de
+bloqueos de agenda. Comprueba tanto al dueño como al actor que la modifica, sin
+excepción por rol admin. El repositorio de time-off recibe la misma fuente que
+el servidor; ya no crea una ruta sin autoridad. Las transacciones vuelven a
+comprobar el permiso antes del commit, incluso al reintentar un bloqueo existente.
+Las lecturas propias de agenda permanecen disponibles durante un fallo de autoridad.
+
+User comprueba publish_listing para reemplazar la foto después de normalizarla
+y antes de abrir la transacción. Al finalizar la escritura del objeto vuelve a
+comprobar la versión; si hay una sanción concurrente, conserva la referencia
+anterior y elimina el objeto nuevo. Consultar y borrar la foto propia no requiere
+permiso comercial. Los errores de commit con resultado incierto siguen conservando
+el objeto para no romper una referencia que pudiera haberse confirmado.
+
+Evidencia local: go vet y go test -race en ambos servicios. PostgreSQL migrado
+desechable con roles rac_match/rac_user: dueño o actor suspendido, autoridad caída,
+lectura protegida y rollback de borrado de time-off revocado durante el commit;
+foto suspendida, sanción durante Put, referencia preservada y ausencia de objeto
+local sobrante. La ruta local del almacenamiento fue ejercitada; el subtest S3
+requiere su fixture y no se presenta como ejecutado en esta ronda.
+`test_migrations.py --services match` pasó, incluyendo adopción, integridad y
+checksums. El runner incorpora caché de compilación de match y exige evidencia
+del subtest schedule-writers para evitar que una omisión silenciosa se anuncie
+como cobertura. Continúan pendientes Flutter, otros escritores de perfil,
+resincronización, pruebas amplias de fallo y mediciones de latencia.
