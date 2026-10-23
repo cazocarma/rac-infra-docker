@@ -54,6 +54,8 @@ try:
             "-e", f"RAC_QUOTA_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
             "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/repo")
         print("PASS: concurrent weekly allowance, refund, week boundary and subscription entitlement")
+        if (quota_source / "internal/repo/standing_test.go").exists():
+            print("PASS: standing booking effects, counterpart refund, rollback, duplicate concurrency and stale events")
     chat_source = ROOT.parent / "rac-chat-service"
     if (chat_source / "internal/http/router_test.go").exists():
         run("docker", "run", "--rm", "--network", NAME,

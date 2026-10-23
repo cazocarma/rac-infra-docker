@@ -57,6 +57,37 @@ devuelve errores opacos. El publicador y los consumidores aún no están conecta
 El respaldo tiene lectura y el bootstrap incluye el nuevo esquema al reconciliar
 propiedad, sin ampliar permisos de otros servicios.
 
+## Entrega local: efectos de reservas V021
+
+Match mantiene inbox, proyección monotónica y efectos en tablas propias.
+`Repositorio.ApplyStanding` recibe una entrada interna validada por el futuro
+consumidor autenticado, no una petición HTTP. La huella del inbox cubre la entrada
+semántica de match (evento, usuario, versión y estado); el transporte deberá
+validar el contrato completo. Las entregas duplicadas se confirman sin repetir
+efectos; un mismo evento con contenido distinto o misma versión con estado
+contradictorio falla. Versiones anteriores no revierten la proyección.
+
+Suspensión/ban cancela pendientes y activas cuyo inicio aún es futuro al procesar
+el evento. La comparación usa el reloj de PostgreSQL después de bloquear las
+reservas, no la fecha de emisión ni el reloj del consumidor. Si el sancionado es
+cliente, restituye el registro de cupo de su compa contraparte sin cambiar la
+semana original. Si es compa, no devuelve su propio cupo. Una activa ya iniciada
+conserva estado y genera un efecto durable `safety_review`, todavía pendiente de
+ingreso al módulo de casos. Las finalizadas y canceladas permanecen intactas.
+
+Los efectos, cambios de estado, devolución, inbox y proyección confirman juntos;
+la cancelación genera el evento de reservas mediante el trigger existente.
+Se toma el mismo lock de proveedor que usa la aceptación de cupos. Una reversión
+solo actualiza la proyección; no reactiva ninguna reserva.
+
+Esta entrega no activa un worker RabbitMQ ni protege por sí sola las nuevas
+reservas creadas durante entrega tardía. Falta el control autoritativo en las
+escrituras, su comprobación al commit y reconciliación. La proyección no es un
+lease fresco y no debe usarse para autorizar operaciones por sí sola.
+El manifiesto integrado fija el commit local de match con estas pruebas. Antes
+de publicar infra se deben publicar también las revisiones de servicios fijadas;
+este expediente no acredita que GitHub pueda descargarlas todavía.
+
 ## Evidencia local
 
 - Go 1.27.2 en contenedor: `gofmt`, `go vet ./...`, `go test -race ./...`.
@@ -71,6 +102,10 @@ propiedad, sin ampliar permisos de otros servicios.
   checksum y regresiones de cupos, chat y alta de compa.
 - Suite de permisos: migrador sin superusuario, reconciliación del esquema
   standing, lecturas limitadas al dueño y respaldo/restauración con ACL.
+- Match Go: `go vet ./...`, `go test -race ./...`; en PostgreSQL desechable,
+  sanción de cliente versus compa, futuras versus iniciadas/finalizadas,
+  devolución a contraparte, fallo a mitad de transacción, entrega duplicada en
+  paralelo, ID/versión contradictorios y reversión seguida de evento antiguo.
 
 ## Pendiente para completar P03
 
@@ -80,8 +115,8 @@ propiedad, sin ampliar permisos de otros servicios.
    transporte autenticado, publicación del outbox e inbox por consumidor.
 3. Integración de todos los escritores y contrapartes, catálogo y medios,
    invalidación/reconciliación, controles al commit y aviso en Flutter.
-4. Cancelación futura idempotente y devolución de cupo a contraparte; actividad
-   iniciada a revisión y reversión sin resucitar reservas.
+4. Conectar los efectos de reservas al consumidor autenticado y al módulo de casos;
+   probar integración con los controles autoritativos concurrentes.
 5. Pruebas E2E con JWT anterior, particiones, dos instancias y carreras, además
    de medición de latencia bajo carga definida.
 
