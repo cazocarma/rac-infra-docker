@@ -1,5 +1,12 @@
 # P03 — Estado de cuenta (en desarrollo)
 
+La recuperación vigente está descrita en [P03-recovery](P03-recovery.md), con
+rac-platform v0.6.0 y V025. Sustituye la reconciliación basada únicamente en la
+proyección actual de las entregas intermedias documentadas más abajo: conserva
+trabajo de sanciones históricas y recupera eventos originales por cursor.
+Este documento conserva también evidencia de etapas anteriores; no declara
+P03 completo ni activado en el DEV persistente.
+
 D02 y D03 fueron confirmadas por el usuario el 22 de octubre de 2026.
 La matriz y el alcance del cupo están en [ADR-001](ADR-001-standing.md).
 

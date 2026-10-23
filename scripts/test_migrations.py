@@ -68,6 +68,16 @@ try:
             print('PASS: post-event commit reconciliation, newer authorization survives delayed sanction, concurrent repairs, rollback/retry and bounded batches')
         if (quota_source / "internal/repo/standing_test.go").exists():
             print("PASS: standing booking effects, counterpart refund, rollback, duplicate concurrency and stale events")
+    if quota_source.exists() and "match" in args.services:
+        sql("fresh", "CREATE DATABASE standing_recovery;")
+        flyway("standing_recovery", migration_dir)
+        recovery_tests = run("docker", "run", "--rm", "--network", NAME,
+            "--mount", f"type=bind,source={quota_source},target=/sources,readonly",
+            "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-match-go-build:/root/.cache/go-build",
+            "-e", f"RAC_STANDING_RECOVERY_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/standing_recovery?sslmode=disable",
+            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v -run '^TestStandingRecoveryPostgresHTTP$' ./internal/events")
+        assert '--- PASS: TestStandingRecoveryPostgresHTTP' in recovery_tests.stdout
+        print('PASS: original-event recovery without broker, missed sanction followed by reversal, fresh authorization preserved, counterpart quota, outages, claim expiry/fencing and event gaps')
     chat_source = ROOT.parent / "rac-chat-service"
     if (chat_source / "internal/http/router_test.go").exists() and "chat" in args.services:
         run("docker", "run", "--rm", "--network", NAME,
@@ -121,6 +131,7 @@ try:
     flyway('standing_upgrade', migration_dir)
     assert sql('standing_upgrade', f"SELECT source_event_id::text||':'||version||':'||status FROM match_standing_projection WHERE subject_id='{subject}';") == event + ':2:suspended'
     assert sql('standing_upgrade', "SELECT reconciled_at='-infinity'::timestamptz FROM match_standing_projection;") == 't'
+    assert sql('standing_upgrade', f"SELECT event_id::text||':'||version||':'||status FROM match_standing_sanction WHERE subject_id='{subject}';") == event + ':2:suspended'
     print('PASS: V023 projection upgrade retains authenticated event provenance and schedules repair')
     with tempfile.TemporaryDirectory(prefix=NAME) as temp:
         for src in migration_dir.glob("*.sql"): shutil.copy2(src, Path(temp)/src.name)

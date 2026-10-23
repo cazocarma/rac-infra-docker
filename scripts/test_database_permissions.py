@@ -81,6 +81,13 @@ def main():
             assert sql(database, "SELECT count(*) FROM match_booking_standing;", 'rac_standing_match').returncode == 0
             assert sql(database, "UPDATE match_booking_standing SET client_version=999;", 'rac_standing_match', ok=False).returncode != 0
             assert sql(database, "SELECT count(*) FROM match_booking_standing;", 'rac_user', ok=False).returncode != 0
+            assert sql(database, "SELECT event_id,subject_id,standing_version,payload FROM standing.outbox;", 'rac_user').returncode == 0
+            assert sql(database, "SELECT command FROM standing.outbox;", 'rac_user', ok=False).returncode != 0
+            assert sql(database, "SELECT payload FROM standing.outbox;", 'rac_standing_match', ok=False).returncode != 0
+            assert sql(database, "UPDATE match_standing_projection SET status=status;", 'rac_match', ok=False).returncode != 0
+            assert sql(database, "UPDATE match_standing_sync SET version=version;", 'rac_match', ok=False).returncode != 0
+            assert sql(database, "SELECT count(*) FROM match_standing_sanction;", 'rac_user', ok=False).returncode != 0
+
             assert sql(database, "SELECT rolsuper OR rolcreaterole OR rolcreatedb OR rolbypassrls FROM pg_roles WHERE rolname='rac_migrator';").stdout.strip() == 'f'
             for role in ROLES.values():
                 assert sql(database, 'CREATE TABLE public.unauthorized(id int);', role, ok=False).returncode != 0

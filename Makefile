@@ -60,7 +60,7 @@ help:
 	@echo make storage-up / storage-activate / storage-test / storage-test-persistence / storage-stop
 	@echo make backup-enable / backup-now / backup-status / backup-restore-test
 	@echo make database-init / test-database-permissions / test-identity-permissions
-	@echo STANDING_PREVIEW=1 habilita solo el ensayo DEV de reservas. Ver docs/trust-safety/P03-standing.md
+	@echo STANDING_PREVIEW=1 habilita solo el preview DEV de standing. Ver docs/trust-safety/P03-standing.md
 config:
 	$(COMPOSE) config --quiet
 ifeq ($(ENV),dev)

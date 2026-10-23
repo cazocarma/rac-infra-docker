@@ -66,3 +66,9 @@ groups:
         labels: {severity: critical}
         annotations:
           summary: "La reconciliación de reservas por sanciones dejó de completar ciclos"
+      - alert: RACStandingRecoveryDelayed
+        expr: rac_standing_recovery_lag_seconds > 30
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Hay cuentas sin contrastar recientemente con la autoridad de sanciones"
