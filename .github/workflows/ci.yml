@@ -9,6 +9,56 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  repository-access:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: rac-infra-docker
+      - name: Verify GitHub App configuration
+        working-directory: rac-infra-docker
+        env:
+          RAC_CI_APP_CLIENT_ID: ${{ vars.RAC_CI_APP_CLIENT_ID }}
+          RAC_CI_APP_PRIVATE_KEY: ${{ secrets.RAC_CI_APP_PRIVATE_KEY }}
+        run: python scripts/check_ci_access.py --app-config
+      - name: Create temporary repository read token
+        id: repository-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
+        with:
+          client-id: ${{ vars.RAC_CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RAC_CI_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            rac-auth-service
+            rac-user-service
+            rac-match-service
+            rac-chat-service
+            rac-alert-service
+            rac-admin-service
+            rac-frontend-flutter
+            rac-platform
+          permission-contents: read
+          skip-token-revoke: 'false'
+      - name: Read pinned companion revisions
+        id: revisions
+        working-directory: rac-infra-docker
+        run: python scripts/ci_revisions.py
+      - name: Verify repository read access
+        working-directory: rac-infra-docker
+        env:
+          CI_REPOSITORY_TOKEN: ${{ steps.repository-token.outputs.token }}
+          CI_REPOSITORY_REFS: ${{ steps.revisions.outputs.repositories }}
+        run: python scripts/check_ci_access.py
+      - name: Verify private platform checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository_owner }}/rac-platform
+          ref: ${{ fromJSON(steps.revisions.outputs.repositories)['rac-platform'] }}
+          path: rac-platform
+          token: ${{ steps.repository-token.outputs.token }}
   storage:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -71,7 +121,7 @@ jobs:
         working-directory: rac-infra-docker
   integration:
     timeout-minutes: 55
-    needs: migrations
+    needs: [migrations, repository-access]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

@@ -10,6 +10,11 @@ repositorios seleccionados, conservando los siete anteriores. La emisión del
 token temporal y el checkout se verifican aparte en Actions; guardar la selección
 no acredita por sí solo que una ejecución integrada haya pasado.
 
+El job corto `repository-access` verifica las revisiones y realiza checkout del
+módulo privado antes de habilitar integración. Su token se revoca al terminar el
+job. Integración emite otro token de lectura para su propio ciclo de vida; no se
+transportan tokens entre jobs ni se desactiva su revocación para reutilizarlos.
+
 ## Causa y decisión
 
 La ejecución [39255195701](https://github.com/cazocarma/rac-infra-docker/actions/runs/39255195701) falló al descargar `rac-match-service`, antes de ejecutar migraciones. La anotación fue `repository ... not found`: GitHub también responde así cuando el token no puede leer un repositorio privado. Los 34 segundos correspondieron a preparación y reintentos del checkout. Las advertencias de Node no fueron la causa.
