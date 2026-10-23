@@ -48,7 +48,7 @@ for environment in ("dev", "qa", "prd"):
         if environment == 'dev':
             preview = subprocess.run(command[:-3] + ['-f', 'compose.standing.yaml', 'config', '--format', 'json'], cwd=ROOT, capture_output=True, text=True, check=True)
             preview = json.loads(preview.stdout)['services']
-            for name in ('backend-user', 'backend-match'):
+            for name in ('backend-user', 'backend-match', 'backend-chat'):
                 assert preview[name]['environment']['STANDING_ENFORCEMENT_ENABLED'] == 'true'
                 assert not preview[name].get('ports')
                 assert 'KEYCLOAK_ADMIN_PASSWORD' not in preview[name]['environment']
@@ -56,6 +56,8 @@ for environment in ("dev", "qa", "prd"):
             assert any(v['source']=='identity-standing-match' and v['read_only'] for v in preview['backend-match']['volumes'])
             assert not any(v['source']=='identity-standing-match' for v in preview['backend-user']['volumes'])
             assert any(v['source']=='identity-standing-readers' and v['read_only'] for v in preview['backend-user']['volumes'])
+            assert any(v['source']=='identity-standing-chat' and v['read_only'] for v in preview['backend-chat']['volumes'])
+            assert not any(v['source']=='identity-standing-match' for v in preview['backend-chat']['volumes'])
 
         assert '@sha256:' in services['rabbitmq']['image']
         assert services['rabbitmq']['hostname'] == 'rabbitmq'

@@ -7,6 +7,7 @@ services:
     volumes:
       - identity-standing-readers:/credentials/standing/readers
       - identity-standing-match:/credentials/standing/match
+      - identity-standing-chat:/credentials/standing/chat
   backend-user:
     environment:
       STANDING_ENFORCEMENT_ENABLED: "true"
@@ -21,6 +22,15 @@ services:
       STANDING_CLIENT_SECRET_FILE: /run/standing-client/secret
     volumes:
       - identity-standing-match:/run/standing-client:ro
+  backend-chat:
+    environment:
+      STANDING_ENFORCEMENT_ENABLED: "true"
+      STANDING_AUTHORITY_URL: http://backend-user:8082/internal/standing
+      STANDING_TOKEN_URL: http://keycloak:8080/realms/rentacompa/protocol/openid-connect/token
+      STANDING_CLIENT_SECRET_FILE: /run/standing-client/secret
+    volumes:
+      - identity-standing-chat:/run/standing-client:ro
 volumes:
   identity-standing-readers:
   identity-standing-match:
+  identity-standing-chat:

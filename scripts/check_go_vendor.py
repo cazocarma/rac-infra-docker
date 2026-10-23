@@ -16,7 +16,7 @@ def check(workspace):
     if not (platform / 'go.mod').is_file():
         raise ValueError('Pinned platform checkout required')
     versions = set()
-    for name in ('rac-user-service', 'rac-match-service'):
+    for name in ('rac-user-service', 'rac-match-service', 'rac-chat-service'):
         service = workspace / name
         match = re.search(r'^\s*' + re.escape(MODULE) + r'\s+(v[0-9]+\.[0-9]+\.[0-9]+)\s*$', (service / 'go.mod').read_text(), re.M)
         if not match:
@@ -45,4 +45,4 @@ def check(workspace):
 
 if __name__ == '__main__':
     check(ROOT)
-    print('PASS: generated shared rules match pinned platform sources in both consumers')
+    print('PASS: generated shared rules match pinned platform sources in all consumers')

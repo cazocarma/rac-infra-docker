@@ -109,6 +109,15 @@ def main():
         standing_directory = directory / 'standing'
         bindings = configure_standing(admin, standing_directory)
         standing_secret = (standing_directory / 'match/secret').read_text().strip()
+        chat_secret = (standing_directory / 'chat/secret').read_text().strip()
+        assert chat_secret != standing_secret
+        chat_token = request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
+            'client_id': 'rac-chat-standing', 'client_secret': chat_secret, 'grant_type': 'client_credentials'}, form=True)
+        chat_claims = json.loads(base64.urlsafe_b64decode(chat_token['access_token'].split('.')[1] + '=='))
+        assert chat_claims['sub'] == bindings['rac-chat-standing']
+        assert chat_claims['resource_access']['rac-standing']['roles'] == ['standing.read']
+        assert 'realm-management' not in chat_claims.get('resource_access', {})
+        request('GET', '/admin/realms/rentacompa/users', token=chat_token['access_token'], expected=403)
         assert configure_standing(admin, standing_directory) == bindings
         assert (standing_directory / 'match/secret').read_text().strip() == standing_secret
         reader = admin('GET', '/clients?clientId=rac-match-standing')[0]

@@ -46,7 +46,32 @@ abajo recupera reservas que confirman después del primer pase del evento.
 No se declara aún el objetivo
 p99 de revocación ni el objetivo de latencia del hot path.
 
-## Reconciliación de reservas V024
+## Envío de chat en preview
+
+Chat consume platform v0.4.0 con vendor generado y un cliente técnico propio
+`rac-chat-standing`, separado del secreto de match. El bootstrap conserva ambos
+secretos en volúmenes independientes; user solo recibe sus subjects públicos.
+La configuración habilitada falla al arrancar si faltan credenciales o transporte
+válido. El preview DEV monta únicamente el secreto de chat en ese servicio.
+
+Antes de iniciar la transacción de envío se verifica pertenencia a la reserva y
+se consultan ambos participantes para `send_message`. El contexto de la
+transacción conserva el plazo del permiso, incluidos los locks de reserva y de
+idempotencia. Justo antes del commit se verifican otra vez las versiones;
+denegación revierte mensaje y outbox juntos. Admin no reemplaza pertenencia.
+Una repetición ya persistida conserva la idempotencia, pero también exige pasar
+la autorización inicial cuando este preview está habilitado.
+
+Historial, seguridad, bloqueo y reportes mantienen sus verificaciones de
+autenticación/propiedad independientes de standing. No se desconectan esos
+canales por una caída de la autoridad. Falta reflejar la restricción en
+`can_send`/Flutter: el servidor ya rechaza envíos, aunque la UI pueda ofrecerlos.
+Las pruebas de chat cubren ambas partes sancionadas, autoridad caída, lectura y
+bloqueo disponibles, cambio de versión al commit, rollback y reintentos. El
+escenario de negocio usa una fuente de prueba; JWT/firma y el bootstrap real
+de Keycloak se validan por las suites separadas, sin afirmar un E2E completo.
+
+## Detalle de reconciliación V024
 
 `match_booking_standing` guarda las versiones de cliente y compa usadas para
 crear, aceptar o extender una reserva. Se escribe en la misma transacción de
@@ -130,7 +155,7 @@ medición de carga del stack completo.
 
 ## Build y ensayo explícito
 
-User y match usan vendoring generado según [ADR-008](ADR-008-private-go-dependencies.md).
+User, match y chat usan vendoring generado según [ADR-008](ADR-008-private-go-dependencies.md).
 Los builds Docker y pruebas independientes no reciben credenciales de platform.
 El CI integrado compara las reglas generadas con el checkout fijado de platform.
 
@@ -148,8 +173,8 @@ make ENV=dev STANDING_PREVIEW=1 config
 make ENV=dev STANDING_PREVIEW=1 up
 ```
 
-Es un preview de **reservas**, no un control completo de la plataforma. Publicar
-perfil, disponibilidad, mensajes, reseñas, catálogo/medios y otras superficies
+Es un preview de **reservas y envío de chat**, no un control completo de la plataforma. Publicar
+perfil, disponibilidad, reseñas, catálogo/medios y otras superficies
 siguen pendientes. No habilitar sanciones operativas como si todo P03 estuviera
 completo. Deshabilitar el flag retira este enforcement y requiere un rollback
 operativo deliberado, no un fallback automático por fallas de autoridad.
