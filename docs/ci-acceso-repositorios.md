@@ -1,5 +1,20 @@
 # Acceso entre repositorios en CI
 
+## Ampliación preparada para Trust & Safety
+
+La lista solicitada por el workflow incorpora `rac-platform` además de los siete
+compañeros actuales. El módulo es privado, está publicado y su commit se fija en
+`ci/companion-revisions.json`. El usuario autorizó su incorporación con Contents
+read-only. La instalación ya quedó guardada y verificada en GitHub con ocho
+repositorios seleccionados, conservando los siete anteriores. La emisión del
+token temporal y el checkout se verifican aparte en Actions; guardar la selección
+no acredita por sí solo que una ejecución integrada haya pasado.
+
+El job corto `repository-access` verifica las revisiones y realiza checkout del
+módulo privado antes de habilitar integración. Su token se revoca al terminar el
+job. Integración emite otro token de lectura para su propio ciclo de vida; no se
+transportan tokens entre jobs ni se desactiva su revocación para reutilizarlos.
+
 ## Causa y decisión
 
 La ejecución [39255195701](https://github.com/cazocarma/rac-infra-docker/actions/runs/39255195701) falló al descargar `rac-match-service`, antes de ejecutar migraciones. La anotación fue `repository ... not found`: GitHub también responde así cuando el token no puede leer un repositorio privado. Los 34 segundos correspondieron a preparación y reintentos del checkout. Las advertencias de Node no fueron la causa.
@@ -58,6 +73,21 @@ La regresión completa local también detectó una carrera en la automatización
 La siguiente ejecución, `39456030382`, aprobó login/reservas y onboarding, pero detectó una carrera al buscar la reseña pública. El test debe esperar la carga del perfil y la respuesta de reseñas antes de recorrerlo; desplazar durante la transición puede saltarse el contenido. Se verifica también que el POST incluya el comentario y que la API pública lo devuelva, para distinguir escritura, lectura y presentación. El identificador del perfil de compa y el de su usuario son distintos; la observación de la respuesta usa la ruta pública real.
 
 Al ampliar el chat, `39520731959` encontró dos nodos con el mismo contador de caracteres: el contador visible y `flt-announcement-polite`, el anuncio del lector de pantalla. Las comprobaciones ahora se limitan al diálogo de reseña o al árbol `flt-semantics-host`, excluyendo anuncios globales sin deshabilitar accesibilidad. Verifican además el valor del editor y el cuerpo realmente enviado. Los recorridos web independientes continúan aunque falle otro, siempre que el runtime se haya instalado; el job mantiene el resultado de fallo. Solo al fallar se conservan durante tres días capturas y árboles accesibles de chat/reseñas de los fixtures sintéticos de CI, mediante rutas explícitas que excluyen `.env`, tokens y claves.
+
+## Incidente 39885228047 — alta de compa con rol de BD limitado
+
+El job de acceso pasó (7 s), al igual que migraciones y almacenamiento.
+Integración falló en `test_onboarding.py`: `PUT /api/user/me/compa` devolvió
+503 `profile_unavailable` en vez de 200. El reemplazo de habilidades necesita
+DELETE en `compa_perfil_skill`, permiso ausente en el rol dueño `rac_user`.
+V022 añade exclusivamente ese permiso, sin alterar V019 ni ampliar otros roles.
+
+La prueba Go de alta usaba el dueño de la base y ocultaba el defecto. Ahora sus
+fixtures usan el dueño, pero el handler utiliza una conexión con `current_user`
+igual a `rac_user`. La prueba reforzada falla sin V022 antes de llegar al
+provisionador. También se comprueba que otros servicios no puedan borrar
+asociaciones. El aviso de artefactos faltantes era secundario: los recorridos de
+navegador se omitieron porque el paso API anterior había fallado.
 
 ## Operación y rotación
 

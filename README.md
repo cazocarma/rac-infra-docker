@@ -34,3 +34,7 @@ make ENV=prd config
 Estos comandos necesitan sus archivos locales de variables. Las plantillas
 contienen campos obligatorios vacíos. QA/PRD no fueron desplegados; quedan
 bloqueos de contratos, migraciones y entrega por resolver.
+
+`make up` y `make build` construyen los servicios DEV de uno en uno para acotar
+el uso de RAM de Go/Flutter; requieren Python 3 en el host. Los overlays de
+QA/PRD siguen consumiendo imágenes publicadas por digest.

@@ -70,3 +70,17 @@ def api(method, path, token=None, data=None, expected=200):
     if not body: return None
     try: return json.loads(body)
     except json.JSONDecodeError: return body.decode()
+
+
+def wait_booking_notifications(token, booking_id, states, timeout=45):
+    """Poll observable asynchronous effects; HTTP failures still fail immediately."""
+    import time
+    deadline = time.monotonic() + timeout
+    while True:
+        inbox = api("GET", "/api/alert/notifications?limit=100", token)
+        found = [n for n in inbox['items'] if n['sesion_id'] == booking_id]
+        if set(states).issubset({n['tipo'] for n in found}):
+            return found
+        if time.monotonic() >= deadline:
+            raise AssertionError("Booking notifications did not arrive before deadline")
+        time.sleep(0.2)

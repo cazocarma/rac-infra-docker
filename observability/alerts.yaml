@@ -13,3 +13,62 @@ groups:
         labels: {severity: warning}
         annotations:
           summary: "Más de 5% de errores en {{ $labels.service }}"
+      - alert: RACBookingEventsDelayed
+        expr: rac_booking_outbox_oldest_seconds > 120
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "Eventos de reserva pendientes por más de dos minutos"
+      - alert: RACAlertConsumerDisconnected
+        expr: rac_alert_broker_connected == 0 or up{job="rac-messaging"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "Mensajería RAC requiere revisión"
+      - alert: RACAlertEventsQuarantined
+        expr: increase(rac_alert_events_quarantined_total[5m]) > 0
+        labels: {severity: warning}
+        annotations:
+          summary: "Evento de reserva rechazado; revisar cuarentena sin exponer su contenido"
+      - alert: RACBookingEventsFailed
+        expr: rabbitmq_queue_messages{queue="rac.alert.bookings.failed"} > 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Hay entregas agotadas en la cola de fallidos; requiere recuperación controlada"
+      - alert: RACPendingBookingExpiryDelayed
+        expr: rac_booking_expiry_oldest_seconds > 60
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          summary: "Solicitudes sin aceptar siguen pendientes después de su inicio"
+      - alert: RACStandingEventsDelayed
+        expr: rac_standing_outbox_oldest_seconds > 30
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Hay cambios de estado de cuenta pendientes de entrega"
+      - alert: RACStandingConsumerDisconnected
+        expr: rac_standing_broker_connected == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "El consumidor de estado de cuenta requiere revisión"
+      - alert: RACStandingEventsFailed
+        expr: rabbitmq_queue_messages{queue="rac.match.standing.failed"} > 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Hay cambios de estado de cuenta retenidos para recuperación controlada"
+      - alert: RACStandingReconciliationStalled
+        expr: time() - rac_standing_reconcile_last_success_unixtime > 30
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "La reconciliación de reservas por sanciones dejó de completar ciclos"
+      - alert: RACStandingRecoveryDelayed
+        expr: rac_standing_recovery_lag_seconds > 30
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Hay cuentas sin contrastar recientemente con la autoridad de sanciones"

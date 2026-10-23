@@ -16,6 +16,8 @@ services:
     build: ../rac-chat-service
   backend-alert:
     build: ../rac-alert-service
+  backend-admin:
+    build: ../rac-admin-service
   flutter-web:
     build:
       context: ../rac-frontend-flutter

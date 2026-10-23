@@ -10,7 +10,7 @@ La disponibilidad semanal tiene una zona IANA por compa. El servidor calcula los
 
 ## Secciones pendientes
 
-Mensajes muestra «En construcción». Sé Compa permite activación gratuita sin aprobación, edición de descripción, tarifa, habilidades y disponibilidad semanal con zona IANA; renueva la sesión OIDC para usar el rol compa. Planes explica la regla de tres reservas semanales y muestra cupos reales por semana para compas. El checkout sigue en construcción. Mi perfil muestra nombre, correo y rol reales desde `/api/user/me`; la edición de datos, biografía y foto está señalada como pendiente. Se retiró el guardado ficticio de perfil en preferencias locales y las estadísticas ficticias de postulación. Configuración permite cambiar apariencia; las demás preferencias están en construcción. No se implementaron cobros ni dashboards de administración de producto. La activación gratuita asigna únicamente compa; no existe una solicitud para obtener admin.
+Mensajes permite conversaciones privadas vinculadas a reservas, reportes y moderación auditada. Sé Compa permite activación gratuita sin aprobación, edición de descripción, tarifa, habilidades y disponibilidad semanal con zona IANA; renueva la sesión OIDC para usar el rol compa. Planes explica la regla de tres reservas semanales y muestra cupos reales por semana para compas. El checkout sigue en construcción. Mi perfil muestra nombre, correo y rol reales desde `/api/user/me`; la edición de datos, biografía y foto está implementada; véase perfiles-publicos-y-fotos.md. Se retiró el guardado ficticio de perfil en preferencias locales y las estadísticas ficticias de postulación. Configuración permite cambiar apariencia; las demás preferencias están en construcción. No se implementaron cobros ni dashboards de administración de producto. La activación gratuita asigna únicamente compa; no existe una solicitud para obtener admin.
 
 ## Validación
 
@@ -55,3 +55,5 @@ Validación de esta entrega: migración V005 aplicada en DEV tras respaldo local
 Chromium verificó login, reserva, aceptación, cancelación, contador en Planes y notificaciones con lectura real. Capturas `plans-allowance.png` y `mobile-notifications.png` (320×568) en `.local/ui-review`.
 
 Sé Compa: ver [activación y permisos](activacion-compa.md). Prueba real Chromium de creación de perfil y renovación de sesión, edición persistente y agenda con tres cupos; identidad temporal eliminada al finalizar. No se promocionaron las cuentas cliente1/cliente2 utilizadas por las otras pruebas.
+
+Administración reúne conteos reales y acceso a moderación. Mis reservas incluye días libres; las solicitudes sin aceptar vencen al comenzar. Véase [dashboard y agenda](dashboard-administrativo.md).

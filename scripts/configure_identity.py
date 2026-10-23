@@ -6,6 +6,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import psycopg
+from pathlib import Path
+from identity_permissions import configure_provisioner, configure_staff
+from identity_standing import configure_standing
 
 BASE = os.environ.get("KEYCLOAK_INTERNAL_URL", "http://keycloak:8080")
 REALM = "rentacompa"
@@ -75,10 +78,23 @@ if existing: admin("PUT", "/clients/" + existing[0]["id"], provisioner)
 else: admin("POST", "/clients", provisioner)
 client = admin("GET", "/clients?clientId=rac-compa-provisioner")[0]
 account = admin("GET", "/clients/" + client["id"] + "/service-account-user")
-management = admin("GET", "/clients?clientId=realm-management")[0]
-permissions = [admin("GET", "/clients/" + management["id"] + "/roles/" + name) for name in ("manage-users", "view-realm")]
-admin("POST", "/users/" + account["id"] + "/role-mappings/clients/" + management["id"], permissions)
-admin("POST", "/clients/" + client["id"] + "/scope-mappings/clients/" + management["id"], permissions)
+configure_provisioner(admin, client, account)
+# Read-only role metadata for backend-user: no view-realm privilege is needed
+# for a runtime lookup. Name remains fixed to compa in the API adapter.
+role_directory = Path(os.environ.get('COMPA_ROLE_DIRECTORY', '/credentials/compa'))
+role_directory.mkdir(parents=True, exist_ok=True)
+role_file = role_directory / 'role-id.tmp'
+role_file.write_text(admin('GET', '/roles/compa')['id'] + '\n', encoding='ascii')
+os.chmod(role_file, 0o644)
+os.replace(role_file, role_directory / 'role-id')
+configure_staff(admin, origin)
+if os.environ.get('STANDING_ENFORCEMENT_ENABLED', 'false') == 'true':
+    configure_standing(admin, '/credentials/standing')
+admin("PUT", "", {"revokeRefreshToken": True, "refreshTokenMaxReuse": 0,
+    "bruteForceProtected": True, "failureFactor": 5, "waitIncrementSeconds": 60,
+    "maxFailureWaitSeconds": 900, "accessTokenLifespan": 300,
+    "passwordPolicy": "length(6)" if ENV == "dev" else "length(12) and digits(1) and lowerCase(1) and upperCase(1)",
+    "verifyEmail": ENV != "dev"})
 
 if ENV == "dev":
     # The DEV overlay mounts this theme. Existing realms are updated too;

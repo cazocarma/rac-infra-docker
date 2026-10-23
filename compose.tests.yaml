@@ -24,7 +24,10 @@ services:
       dockerfile: tools/Dockerfile
     environment:
       RAC_ENV: ${RAC_ENV}
-      DATABASE_URL: ${DATABASE_URL}
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${MIGRATION_DB_USER}
+      PGPASSWORD: ${MIGRATION_DB_PASSWORD}
       KEYCLOAK_INTERNAL_URL: http://keycloak:8080
       OIDC_ISSUER: ${OIDC_ISSUER}
       OIDC_WEB_REDIRECT_URI: ${OIDC_WEB_REDIRECT_URI}

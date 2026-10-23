@@ -1,4 +1,8 @@
 .DEFAULT_GOAL := help
+
+.PHONY: test-audit-foundation
+test-audit-foundation:
+	python scripts/test_audit_foundation.py
 ENV ?= dev
 ifneq ($(words $(ENV)),1)
 $(error ENV debe ser dev, qa o prd)
@@ -9,13 +13,24 @@ endif
 ENV_FILE ?= envs/.env.$(ENV)
 COMPOSE_FILES := -f compose.yaml
 UP_FLAGS := --no-build
-ifeq ($(ENV),dev)
-UP_FLAGS := --build
-else
+ifneq ($(ENV),dev)
 COMPOSE_FILES += -f compose.release.yaml
 endif
 COMPOSE_FILES += -f docker-compose.$(ENV).yaml
 COMPOSE_FILES += -f compose.observability.yaml -f compose.tests.yaml
+STANDING_PREVIEW ?= 0
+ifneq ($(words $(STANDING_PREVIEW)),1)
+$(error STANDING_PREVIEW debe ser 0 o 1)
+endif
+ifeq ($(filter $(STANDING_PREVIEW),0 1),)
+$(error STANDING_PREVIEW debe ser 0 o 1)
+endif
+ifeq ($(STANDING_PREVIEW),1)
+ifneq ($(ENV),dev)
+$(error STANDING_PREVIEW solo admite DEV; QA/PRD requieren transporte TLS y rollout completo)
+endif
+COMPOSE_FILES += -f compose.standing.yaml
+endif
 ifeq ($(ENV),dev)
 ifneq ($(wildcard envs/.env.photos-s3),)
 COMPOSE_FILES += -f compose.photos-s3.yaml
@@ -44,12 +59,26 @@ help:
 	@echo make test / test-go / test-flutter / test-integration
 	@echo make storage-up / storage-activate / storage-test / storage-test-persistence / storage-stop
 	@echo make backup-enable / backup-now / backup-status / backup-restore-test
+	@echo make database-init / test-database-permissions / test-identity-permissions
+	@echo STANDING_PREVIEW=1 habilita solo el preview DEV de standing. Ver docs/trust-safety/P03-standing.md
 config:
 	$(COMPOSE) config --quiet
+ifeq ($(ENV),dev)
+up: database-init config
+else
 up: config
+endif
+ifeq ($(ENV),dev)
+	$(PYTHON) scripts/build_dev.py $(COMPOSE)
+endif
+ifeq ($(STANDING_PREVIEW),1)
+	$(COMPOSE) run --rm --build identity-config
+endif
 	$(COMPOSE) up -d $(UP_FLAGS)
 ifeq ($(ENV),dev)
+ifeq ($(STANDING_PREVIEW),0)
 	$(COMPOSE) run --rm --build identity-config
+endif
 endif
 migrate: config
 	$(COMPOSE) run --rm migrate
@@ -78,7 +107,7 @@ down:
 	$(COMPOSE) --profile observability down
 build:
 ifeq ($(ENV),dev)
-	$(COMPOSE) build
+	$(PYTHON) scripts/build_dev.py $(COMPOSE)
 else
 	$(error build solo esta disponible para dev; promover imagenes a QA y PRD)
 endif
@@ -97,7 +126,13 @@ check:
 	$(CURL) $(CHECK_URL)/api/match/health
 	$(CURL) $(CHECK_URL)/api/chat/health
 	$(CURL) $(CHECK_URL)/api/alert/health
+	$(COMPOSE) exec -T booking-maintenance wget -q -T 5 -O /dev/null http://localhost:8080/ready
+	$(COMPOSE) exec -T backend-admin wget -q -T 5 -O /dev/null http://localhost:8080/ready
 	$(CURL) $(CHECK_URL)/api/user/skills
+	$(COMPOSE) exec -T booking-events-relay wget -q -T 5 -O /dev/null http://localhost:8080/ready
+	$(COMPOSE) exec -T alert-events-consumer wget -q -T 5 -O /dev/null http://localhost:8080/ready
+	$(COMPOSE) exec -T standing-events-relay wget -q -T 5 -O /dev/null http://localhost:8080/ready
+	$(COMPOSE) exec -T standing-match-consumer wget -q -T 5 -O /dev/null http://localhost:8080/ready
 
 # Laboratorio independiente: nunca usa secretos ni volúmenes de QA/PRD.
 STORAGE_COMPOSE := docker compose --env-file envs/.env.storage -p rac-dev-storage -f compose.storage.yaml
@@ -162,3 +197,19 @@ ifeq ($(ENV),dev)
 else
 	$(error Prueba de restauracion solo disponible para DEV)
 endif
+
+.PHONY: database-init test-database-permissions test-identity-permissions
+database-init:
+ifeq ($(ENV),dev)
+	$(PYTHON) scripts/init_database_credentials.py --env-file $(ENV_FILE)
+else
+	$(error Generacion automatica de credenciales solo disponible en DEV)
+endif
+test-database-permissions:
+	$(PYTHON) scripts/test_database_permissions.py
+test-identity-permissions:
+	$(PYTHON) scripts/test_identity_permissions.py
+
+.PHONY: test-standing-authority
+test-standing-authority:
+	$(PYTHON) scripts/test_standing_authority.py

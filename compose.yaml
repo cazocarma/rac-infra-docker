@@ -14,6 +14,34 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
+  database-config:
+    build:
+      context: .
+      dockerfile: tools/Dockerfile
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB}
+      MIGRATION_DB_USER: ${MIGRATION_DB_USER}
+      MIGRATION_DB_PASSWORD: ${MIGRATION_DB_PASSWORD}
+      USER_DB_URL: ${USER_DB_URL:?Inicializar credenciales separadas}
+      MATCH_DB_URL: ${MATCH_DB_URL:?Inicializar credenciales separadas}
+      CHAT_DB_URL: ${CHAT_DB_URL:?Inicializar credenciales separadas}
+      ALERT_DB_URL: ${ALERT_DB_URL:?Inicializar credenciales separadas}
+      MAINTENANCE_DB_URL: ${MAINTENANCE_DB_URL:?Inicializar credenciales separadas}
+      RELAY_DB_URL: ${RELAY_DB_URL:?Inicializar credenciales separadas}
+      STANDING_RELAY_DB_URL: ${STANDING_RELAY_DB_URL:?Inicializar credenciales separadas}
+      STANDING_MATCH_DB_URL: ${STANDING_MATCH_DB_URL:?Inicializar credenciales separadas}
+      ALERT_CONSUMER_DB_URL: ${ALERT_CONSUMER_DB_URL:?Inicializar credenciales separadas}
+      IDENTITY_DB_URL: ${IDENTITY_DB_URL:?Inicializar credenciales separadas}
+      BACKUP_DB_URL: ${BACKUP_DB_URL:?Inicializar credenciales separadas}
+    command: [python, configure_database.py]
+    depends_on:
+      postgres:
+        condition: service_healthy
   migrate:
     image: flyway/flyway:11.15.0-alpine
     environment:
@@ -32,22 +60,26 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      database-config:
+        condition: service_completed_successfully
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0
+    image: quay.io/keycloak/keycloak:26.8.1@sha256:79c623a22abacf3fe6c00a5fb30f5b7843d717b234033b80995891c06116d244
     command: [start, --http-enabled=true, --proxy-headers=xforwarded]
     environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:?Configurar KEYCLOAK_ADMIN}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Configurar KEYCLOAK_ADMIN_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:?Configurar KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Configurar KEYCLOAK_ADMIN_PASSWORD}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Configurar KEYCLOAK_DB_PASSWORD}
       KC_DB_SCHEMA: kc
-      KC_HOSTNAME_URL: ${KEYCLOAK_PUBLIC_URL:?Configurar KEYCLOAK_PUBLIC_URL}
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:?Configurar KEYCLOAK_PUBLIC_URL}
       KC_HEALTH_ENABLED: "true"
     depends_on:
       postgres:
         condition: service_healthy
+      database-config:
+        condition: service_completed_successfully
     ports: ["127.0.0.1:${KEYCLOAK_PORT:?Configurar KEYCLOAK_PORT}:8080"]
   identity-config:
     profiles: [tools]
@@ -60,7 +92,8 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       COMPA_PROVISIONER_SECRET: ${COMPA_PROVISIONER_SECRET:?Configurar COMPA_PROVISIONER_SECRET}
       OIDC_WEB_REDIRECT_URI: ${OIDC_WEB_REDIRECT_URI}
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${IDENTITY_DB_URL:?Inicializar credenciales separadas}
+    volumes: ["identity-compa-role:/credentials/compa"]
     command: [python, configure_identity.py]
     depends_on:
       keycloak:
@@ -84,16 +117,17 @@ services:
       retries: 12
   backend-user:
     image: rac-${RAC_ENV}-user:local
-    volumes: ["profile-photos:/var/lib/rac/photos"]
+    volumes: ["profile-photos:/var/lib/rac/photos", "identity-compa-role:/run/compa-role:ro"]
     environment:
       PROFILE_PHOTO_DIR: /var/lib/rac/photos
       PORT: "8080"
-      DATABASE_URL: ${DATABASE_URL:?Configurar DATABASE_URL}
+      DATABASE_URL: ${USER_DB_URL:?Inicializar credenciales separadas}
       OIDC_ISSUER: ${OIDC_ISSUER}
       OIDC_JWKS_URL: http://keycloak:8080/realms/rentacompa/protocol/openid-connect/certs
       OIDC_AUDIENCE: rac-api
       KEYCLOAK_INTERNAL_URL: http://keycloak:8080
       COMPA_PROVISIONER_SECRET: ${COMPA_PROVISIONER_SECRET:?Configurar COMPA_PROVISIONER_SECRET}
+      COMPA_ROLE_ID_FILE: /run/compa-role/role-id
       RAC_ENV: ${RAC_ENV}
       GIN_MODE: release
     depends_on:
@@ -111,9 +145,8 @@ services:
     environment:
       SERVICE_NAME: rac-match-service
       PORT: "8080"
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${MATCH_DB_URL:?Inicializar credenciales separadas}
       BACKEND_USER_URL: http://backend-user:8080
-      RABBITMQ_URL: ${RABBITMQ_URL:?Configurar RABBITMQ_URL}
       AUTH_MOCK: "false"
       OIDC_ISSUER: ${OIDC_ISSUER}
       OIDC_JWKS_URL: http://keycloak:8080/realms/rentacompa/protocol/openid-connect/certs
@@ -122,8 +155,6 @@ services:
       GIN_MODE: release
     depends_on:
       postgres:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -136,7 +167,7 @@ services:
     image: rac-${RAC_ENV}-chat:local
     environment:
       PORT: "8080"
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${CHAT_DB_URL:?Inicializar credenciales separadas}
       OIDC_ISSUER: ${OIDC_ISSUER}
       OIDC_JWKS_URL: http://keycloak:8080/realms/rentacompa/protocol/openid-connect/certs
       OIDC_AUDIENCE: rac-api
@@ -156,7 +187,7 @@ services:
     image: rac-${RAC_ENV}-alert:local
     environment:
       PORT: "8080"
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${ALERT_DB_URL:?Inicializar credenciales separadas}
       OIDC_ISSUER: ${OIDC_ISSUER}
       OIDC_JWKS_URL: http://keycloak:8080/realms/rentacompa/protocol/openid-connect/certs
       OIDC_AUDIENCE: rac-api
@@ -167,6 +198,30 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  backend-admin:
+    image: rac-${RAC_ENV}-admin:local
+    environment:
+      PORT: "8080"
+      OIDC_ISSUER: ${OIDC_ISSUER}
+      OIDC_JWKS_URL: http://keycloak:8080/realms/rentacompa/protocol/openid-connect/certs
+      OIDC_AUDIENCE: rac-api
+      USER_URL: http://backend-user:8080
+      MATCH_URL: http://backend-match:8080
+      CHAT_URL: http://backend-chat:8080
+      RAC_ENV: ${RAC_ENV}
+      GIN_MODE: release
+    depends_on:
+      backend-user:
+        condition: service_healthy
+      backend-match:
+        condition: service_healthy
+      backend-chat:
+        condition: service_healthy
     healthcheck:
       test: [CMD-SHELL, "wget -q -O /dev/null http://localhost:8080/ready || exit 1"]
       interval: 10s
@@ -199,20 +254,136 @@ services:
         condition: service_healthy
       backend-alert:
         condition: service_healthy
+      backend-admin:
+        condition: service_healthy
       flutter-web:
         condition: service_healthy
   rabbitmq:
-    image: rabbitmq:3-management
+    hostname: rabbitmq
+    image: rabbitmq:4.3.6-management@sha256:54cb013d76cd1fd6c0a0708f34062ad61c452bb6f016b434c6c33f1a765d2b58
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Configurar RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Configurar RABBITMQ_PASSWORD}
-    volumes: ["rabbitmq-data:/var/lib/rabbitmq"]
+    volumes:
+      - rabbitmq-events-data:/var/lib/rabbitmq
+      - ./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     healthcheck:
-      test: [CMD, rabbitmq-diagnostics, -q, ping]
+      test: [CMD-SHELL, "gosu rabbitmq rabbitmq-diagnostics -q check_port_listener 5672 && gosu rabbitmq rabbitmq-diagnostics -q check_port_listener 15672"]
       interval: 10s
       timeout: 10s
       retries: 12
+  messaging-config:
+    build:
+      context: .
+      dockerfile: tools/Dockerfile
+    environment:
+      RAC_ENV: ${RAC_ENV}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+    volumes:
+      - messaging-publisher:/credentials/publisher
+      - messaging-consumer:/credentials/consumer
+      - messaging-standing-publisher:/credentials/standing-publisher
+      - messaging-standing-match:/credentials/standing-match
+    command: [python, configure_messaging.py]
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+  booking-maintenance:
+    image: rac-${RAC_ENV}-match:local
+    entrypoint: [/app/booking-maintenance]
+    environment:
+      DATABASE_URL: ${MAINTENANCE_DB_URL:?Inicializar credenciales separadas}
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  booking-events-relay:
+    image: rac-${RAC_ENV}-match:local
+    entrypoint: [/app/events-relay]
+    environment:
+      DATABASE_URL: ${RELAY_DB_URL:?Inicializar credenciales separadas}
+      RABBITMQ_URL_FILE: /run/messaging/url
+    volumes: ["messaging-publisher:/run/messaging:ro"]
+    restart: unless-stopped
+    depends_on:
+      messaging-config:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  standing-events-relay:
+    image: rac-${RAC_ENV}-match:local
+    entrypoint: [/app/events-relay]
+    environment:
+      DATABASE_URL: ${STANDING_RELAY_DB_URL:?Inicializar credenciales separadas}
+      EVENT_STREAM: standing
+      RABBITMQ_URL_FILE: /run/messaging/url
+    volumes: ["messaging-standing-publisher:/run/messaging:ro"]
+    restart: unless-stopped
+    depends_on:
+      messaging-config:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  standing-match-consumer:
+    image: rac-${RAC_ENV}-match:local
+    entrypoint: [/app/standing-consumer]
+    environment:
+      DATABASE_URL: ${STANDING_MATCH_DB_URL:?Inicializar credenciales separadas}
+      RABBITMQ_URL_FILE: /run/messaging/url
+    volumes: ["messaging-standing-match:/run/messaging:ro"]
+    restart: unless-stopped
+    depends_on:
+      messaging-config:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  alert-events-consumer:
+    image: rac-${RAC_ENV}-alert:local
+    entrypoint: [/app/consumer]
+    environment:
+      DATABASE_URL: ${ALERT_CONSUMER_DB_URL:?Inicializar credenciales separadas}
+      RABBITMQ_URL_FILE: /run/messaging/url
+    volumes: ["messaging-consumer:/run/messaging:ro"]
+    restart: unless-stopped
+    depends_on:
+      messaging-config:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 volumes:
+  identity-compa-role:
   profile-photos:
   pgdata:
   rabbitmq-data:
+  rabbitmq-events-data:
+  messaging-publisher:
+  messaging-consumer:
+  messaging-standing-publisher:
+  messaging-standing-match:

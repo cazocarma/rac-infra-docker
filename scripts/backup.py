@@ -1,5 +1,6 @@
 """Encrypted, consistent DEV DB + referenced photos backups, and isolated restore verification."""
 from pathlib import Path
+from urllib.parse import urlsplit, unquote
 import fcntl
 import hashlib
 import json
@@ -13,6 +14,16 @@ import time
 import boto3
 import psycopg
 from botocore.config import Config
+
+def configure_backup_identity():
+    # No fallback to a shared/operator login. Restore-test deliberately uses
+    # its own isolated target credentials, not this source connection.
+    parsed=urlsplit(os.environ.get("BACKUP_DB_URL",""))
+    if (parsed.scheme not in ("postgres","postgresql") or parsed.username!="rac_backup"
+        or parsed.hostname!="postgres" or parsed.port not in (None,5432)
+        or parsed.path!="/"+os.environ.get("PGDATABASE","") or not parsed.password):
+        raise RuntimeError("Dedicated backup database identity required")
+    os.environ.update(PGUSER="rac_backup",PGPASSWORD=unquote(parsed.password),PGHOST="postgres",PGPORT="5432")
 
 ROOT=Path("/backups")
 STATUS=ROOT/"status.json"
@@ -42,6 +53,7 @@ def status(**values):
     temp=STATUS.with_suffix(".tmp");temp.write_text(json.dumps(previous));os.replace(temp,STATUS)
 
 def backup():
+    configure_backup_identity()
     ROOT.mkdir(parents=True,exist_ok=True)
     with (ROOT/"job.lock").open("a") as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -74,7 +86,7 @@ def backup():
                 db.execute("SELECT pg_advisory_unlock(726224,1)")
         # Keycloak is an independent database: its own internally consistent dump.
         command(["pg_dump","--dbname=keycloak","--format=custom","--file",str(WORK/"keycloak.dump")])
-        (WORK/"globals.sql").write_bytes(command(["pg_dumpall","--globals-only"]))
+        (WORK/"globals.sql").write_bytes(command(["pg_dumpall","--globals-only","--no-role-passwords"]))
         files={str(path.relative_to(WORK)):digest(path) for path in WORK.rglob("*") if path.is_file()}
         manifest={"version":1,"snapshot_at":started,"bucket":bucket,"database":os.environ["PGDATABASE"],"counts":counts,"files":files,"photos":refs}
         (WORK/"manifest.json").write_text(json.dumps(manifest))
