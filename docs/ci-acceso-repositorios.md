@@ -5,9 +5,10 @@
 La lista solicitada por el workflow incorpora `rac-platform` además de los siete
 compañeros actuales. El módulo es privado, está publicado y su commit se fija en
 `ci/companion-revisions.json`. El usuario autorizó su incorporación con Contents
-read-only; GitHub aún exige completar Confirm access antes de editar la instalación.
-Esta preparación del workflow no prueba que el acceso ya esté concedido. No
-publicar este cambio de infra hasta guardar la selección y verificar el acceso.
+read-only. La instalación ya quedó guardada y verificada en GitHub con ocho
+repositorios seleccionados, conservando los siete anteriores. La emisión del
+token temporal y el checkout se verifican aparte en Actions; guardar la selección
+no acredita por sí solo que una ejecución integrada haya pasado.
 
 ## Causa y decisión
 

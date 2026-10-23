@@ -109,8 +109,8 @@ este expediente no acredita que GitHub pueda descargarlas todavía.
 
 ## Pendiente para completar P03
 
-1. Completar Confirm access e instalar el acceso de lectura autorizado de CI al
-   módulo privado publicado v0.2.0. El manifiesto fija su commit y el workflow
+1. Verificar mediante checkout en Actions el acceso de lectura de CI al
+   módulo privado publicado v0.2.0, ya guardado en la instalación. El manifiesto fija su commit y el workflow
    prepara checkout y pruebas `-race` sin persistir credenciales de Git. Falta
    conectar los builds de servicios sin secretos en capas Docker ni `replace`
    local permanente.
@@ -147,6 +147,6 @@ de JWT real ni de endpoints de negocio. Falta provisionar clientes con audience
 y rol mínimos, conectar su verificador OIDC y enlazar las APIs.
 
 El usuario autorizó añadir únicamente rac-platform a la App RAC CI Read con
-Contents de lectura. GitHub aún muestra Confirm access; la selección de repos
-de la instalación no se ha modificado. No se ha ejecutado el CI integrado remoto
+Contents de lectura. La instalación se guardó y verificó con ocho repositorios seleccionados,
+conservando los siete existentes y acceso de lectura a código/metadatos. No se ha ejecutado el CI integrado remoto
 con el nuevo acceso.
