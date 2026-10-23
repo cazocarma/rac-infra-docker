@@ -60,3 +60,9 @@ groups:
         labels: {severity: critical}
         annotations:
           summary: "Hay cambios de estado de cuenta retenidos para recuperación controlada"
+      - alert: RACStandingReconciliationStalled
+        expr: time() - rac_standing_reconcile_last_success_unixtime > 30
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "La reconciliación de reservas por sanciones dejó de completar ciclos"

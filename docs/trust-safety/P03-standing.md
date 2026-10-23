@@ -5,7 +5,7 @@ La matriz y el alcance del cupo están en [ADR-001](ADR-001-standing.md).
 
 ## Autoridad interna y reservas (implementadas, preview desactivado)
 
-User consume `rac-platform v0.3.0` y ofrece el handler compartido con fuente
+User consume `rac-platform v0.4.0` y ofrece el handler compartido con fuente
 PostgreSQL bajo su propio rol. Escucha en un servidor separado en el puerto 8082,
 sin publicación de puerto al host ni ruta en el router público o nginx.
 `/internal/standing` exige identidad de servicio; no acepta JWT del frontend.
@@ -41,9 +41,66 @@ La extensión solo actualiza una reserva que siga activa al escribir.
 
 **Límite de concurrencia:** esto no es un bloqueo distribuido ni garantiza que
 una sanción confirmada justo después de la última lectura preceda al commit en
-otra BD. Conserva la ventana acotada del lease; los efectos por eventos y la
-reconciliación pendiente deben cubrir esa carrera. No se declara aún el objetivo
+otra BD. Conserva la ventana acotada del lease; la reconciliación V024 descrita
+abajo recupera reservas que confirman después del primer pase del evento.
+No se declara aún el objetivo
 p99 de revocación ni el objetivo de latencia del hot path.
+
+## Reconciliación de reservas V024
+
+`match_booking_standing` guarda las versiones de cliente y compa usadas para
+crear, aceptar o extender una reserva. Se escribe en la misma transacción de
+negocio, se revierte si falla la autorización final y no permite degradar una
+versión ya guardada. `Permit.Version` expone esa procedencia; leerla no autoriza
+nada ni renueva el permiso. Solo rac_match escribe esos registros; el worker y
+el respaldo leen. Sin enforcement habilitado no se inventa una prueba de
+autorización para datos antiguos.
+
+El consumidor conserva en su proyección el evento auténtico de inbox que
+estableció la versión. La migración enlaza proyecciones V023 existentes a su
+evento y aplica una FK compuesta de evento/subject/versión; un historial
+inconsistente impide migrar en vez de generar un evento ficticio.
+
+La activación debe coordinar V024 con la nueva imagen del consumidor: detener
+el consumidor anterior antes de migrar y luego arrancar el nuevo. El código
+anterior no escribe source_event_id y sus actualizaciones fallarían las nuevas
+constraints; la entrega queda sin ACK para reintento, pero no es un despliegue
+rolling compatible. No retroceder el esquema ni borrar inbox para resolverlo.
+Este paso se añade al ensayo de actualización/restauración antes del rollout.
+
+El primer pase y el reconciliador comparten la implementación de efectos.
+Procesan hasta 100 reservas por subject y transacción, tomando locks de compa
+ordenados antes de los locks de reservas. La reconciliación procesa hasta 20
+subjects por ciclo, con timeout de cinco segundos y cadencia de un segundo.
+Los subjects se ordenan por el último pase para repartir el trabajo; varios
+workers usan `FOR UPDATE SKIP LOCKED` y comparten la misma idempotencia.
+
+Un evento v2 no afecta una reserva cuya autorización para ese participante ya
+es v3, aunque la reversión v3 aún no haya llegado al broker. La procedencia se
+vuelve a consultar en una sentencia posterior al lock de reserva: una lectura
+hecha antes de esperar el lock podría haber quedado obsoleta. Los registros
+legados sin procedencia se tratan conservadoramente como anteriores al evento;
+por eso este preview no habilita sanciones operativas con escritores sin cubrir.
+
+Una reserva confirmada tarde con autorización v1, después de procesar una sanción
+v2, se recoge en el siguiente pase. Se conserva el event ID original; cancelación,
+devolución a contraparte y registro del efecto confirman juntos. Los efectos de
+revisión de actividades iniciadas no se duplican y una reversión no reabre nada.
+Una falla SQL revierte todo ese pase y permite reintentarlo.
+
+El loop corre en standing-match-consumer incluso si se pierde la conexión al
+broker, usando exclusivamente eventos ya recibidos. Readiness exige un ciclo
+exitoso en los últimos 15 s; hay contadores de subjects/fallas, timestamp del
+último éxito y una alerta por más de 30 s sin éxito sostenido durante un minuto.
+Esto no es una resincronización desde la autoridad: pérdida de historial del
+broker/inbox, reconstrucción de proyecciones y otros dueños siguen pendientes.
+
+Pruebas desechables con roles reales: commit posterior al primer efecto,
+autorización nueva ante sanción atrasada, cambio de procedencia mientras el
+worker espera un lock, consumidores concurrentes, devolución única, fallo de
+inserción con rollback/reintento, reversión y más de dos páginas de reservas.
+La actualización desde V023 preserva event ID y estado. No se aplica esta
+migración a la base DEV existente durante el desarrollo.
 
 ## Autenticación de lectores internos
 
@@ -234,7 +291,13 @@ No se han activado estos workers ni V023 en la base DEV del usuario.
 - `test_messaging.py`: broker y PostgreSQL reales desechables, bootstrap repetido
   con ACL y políticas quorum, publicación/consumo con logins restringidos,
   duplicados, cuarentena y redelivery tras commit sin ACK. Sin secretos de DEV.
-- Configuración dev/qa/prd, Prometheus/promtool y diez reglas de alertas válidas.
+- Configuración dev/qa/prd, Prometheus/promtool y once reglas de alertas válidas.
+
+La revisión anterior `72b489e` terminó con cuatro checks remotos correctos,
+verificados en el [PR #8](https://github.com/cazocarma/rac-infra-docker/pull/8).
+Eso confirma el preview anterior de autoridad/reservas; V024 y la reconciliación
+de esta entrega cuentan con las pruebas locales descritas y requieren el nuevo
+CI de sus SHAs fijados.
 
 La ejecución remota [39956656284](https://github.com/cazocarma/rac-infra-docker/actions/runs/39956656284)
 pasó los cuatro jobs (incluida integración) con el commit anterior eceed7a. Esa
@@ -247,9 +310,9 @@ publicar esta revisión.
 1. Verificar Actions con estas revisiones y completar el rollout del enforcement,
    que sigue desactivado en el DEV existente.
 2. Conectar la autoridad al ingreso autenticado de staff y a políticas aprobadas;
-   consumidores de otros dueños y reconciliación.
+   consumidores de otros dueños y resincronización desde la autoridad.
 3. Integración de todos los escritores y contrapartes, catálogo y medios,
-   invalidación/reconciliación, controles al commit restantes y aviso en Flutter.
+   invalidación, reconciliación de otras superficies, controles al commit restantes y aviso en Flutter.
 4. Conectar los efectos pendientes de revisión al módulo de casos y probar
    integración de los workers con los controles autoritativos concurrentes.
 5. Completar E2E de todos los escritores, particiones broker/autoridad y carrera

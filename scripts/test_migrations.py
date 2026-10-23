@@ -57,7 +57,9 @@ try:
         if (quota_source / 'internal/http/standing_test.go').exists():
             assert '--- PASS: TestOldJWTBookingStandingPostgres' in quota_tests.stdout
             assert '--- PASS: TestBookingStandingPostgresHTTP' in quota_tests.stdout
+            assert '--- PASS: TestStandingReconciliationPostgres' in quota_tests.stdout
             print('PASS: old signed JWT denied on two API instances, participant restrictions, pre-commit rollback, quota rollback, expired lock wait and protective cancellation during outage')
+            print('PASS: post-event commit reconciliation, newer authorization survives delayed sanction, concurrent repairs, rollback/retry and bounded batches')
         if (quota_source / "internal/repo/standing_test.go").exists():
             print("PASS: standing booking effects, counterpart refund, rollback, duplicate concurrency and stale events")
     chat_source = ROOT.parent / "rac-chat-service"
@@ -95,6 +97,22 @@ try:
     assert sql("legacy", "SELECT zona_horaria FROM compa_availability;") == "UTC"
     assert sql("legacy", "SELECT disponibilidad_json->'lunes'->>0 FROM compa_availability;") == "18:00-20:00"
     assert sql("legacy", "SELECT count(*) FROM meta.schema_history WHERE success AND version IS NOT NULL;") == str(len(list(migration_dir.glob("V*.sql"))))
+    # Upgrade actual V023 consumer data: preserve its event provenance instead
+    # of manufacturing a reconciliation identity or losing the standing version.
+    sql('fresh', 'CREATE DATABASE standing_upgrade;')
+    with tempfile.TemporaryDirectory(prefix=NAME) as previous:
+        for source in migration_dir.glob('V*.sql'):
+            if int(source.name.split('__')[0][1:]) <= 23:
+                shutil.copy2(source, Path(previous) / source.name)
+        flyway('standing_upgrade', Path(previous))
+    subject, event = str(uuid.uuid4()), str(uuid.uuid4())
+    sql('standing_upgrade', f"INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('{subject}','Fixture','upgrade-standing@example.test','cliente','upgrade-standing');"
+        f"INSERT INTO match_standing_inbox(event_id,subject_id,version,payload_hash) VALUES('{event}','{subject}',2,decode(repeat('00',32),'hex'));"
+        f"INSERT INTO match_standing_projection(subject_id,version,status) VALUES('{subject}',2,'suspended');")
+    flyway('standing_upgrade', migration_dir)
+    assert sql('standing_upgrade', f"SELECT source_event_id::text||':'||version||':'||status FROM match_standing_projection WHERE subject_id='{subject}';") == event + ':2:suspended'
+    assert sql('standing_upgrade', "SELECT reconciled_at='-infinity'::timestamptz FROM match_standing_projection;") == 't'
+    print('PASS: V023 projection upgrade retains authenticated event provenance and schedules repair')
     with tempfile.TemporaryDirectory(prefix=NAME) as temp:
         for src in migration_dir.glob("*.sql"): shutil.copy2(src, Path(temp)/src.name)
         with (Path(temp)/"V003__identity_indexes.sql").open("a") as f: f.write("\n-- drift must be rejected\n")
