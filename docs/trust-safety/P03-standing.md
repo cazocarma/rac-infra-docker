@@ -371,3 +371,41 @@ El usuario autorizÃ³ aÃ±adir Ãºnicamente rac-platform a la App RAC CI Read con
 Contents de lectura. La instalaciÃ³n se guardÃ³ y verificÃ³ con ocho repositorios seleccionados,
 conservando los siete existentes y acceso de lectura a cÃ³digo/metadatos. El CI
 integrado remoto 39956656284 pasÃ³ con el nuevo acceso.
+
+
+## Escritores user y coherencia del chat (avance 2026-10-23)
+
+El preview de standing ahora comprueba publicación/edición de compa, alta de
+skills y reseñas verificadas. Las rutas antiguas de publicación usan la misma
+autoridad. La autorización tiene un plazo acotado y vuelve a comprobar versiones
+antes del commit; una sanción durante el provisionamiento revierte las escrituras
+locales. La asignación remota del rol gratuito es idempotente y no concede una
+excepción a standing, aunque puede haber ocurrido antes del rollback local.
+
+Las reseñas requieren standing tanto del autor como de la contraparte. Seguridad,
+lecturas propias e historial autenticado conservan sus comprobaciones de acceso
+sin el bloqueo comercial. GET /api/user/me/standing devuelve estado, versión y
+capacidades únicamente del sujeto autenticado; no expone caso ni detalles de
+restricciones. Con el preview desactivado informa enforcement_enabled=false,
+sin fingir una decisión autoritativa.
+
+El catálogo aplica el filtro de standing en SQL antes de LIMIT/OFFSET, con orden
+estable para empates; detalle, reseñas públicas y foto usan la misma condición
+de visibilidad. Restricciones de publicación vencidas dejan de ocultar el perfil
+sin requerir un evento nuevo. Las lecturas propias siguen disponibles.
+
+Historial, eventos y seguridad del chat consultan standing para can_send. Una
+sanción o fallo de autoridad devuelve can_send=false sin impedir la lectura; el
+envío posterior siempre adquiere su propia autorización y no confía en ese hint.
+
+Verificación: go vet y go test -race en user/chat; PostgreSQL desechable con
+roles rac_user/rac_chat para bloqueo de participantes, rollback concurrente,
+aliases antiguos y lecturas protegidas. La suite completa de migraciones pasó
+antes del último filtro de catálogo; su actualización pasó además con
+`python scripts/test_migrations.py --services user`. La opción limita las suites
+Go seleccionadas, pero conserva instalación fresca, adopción y validaciones de
+integridad/checksum de todas las migraciones. No activa el preview en DEV.
+
+Pendientes: integrar el aviso en Flutter, escritores de disponibilidad/medios,
+resincronización desde autoridad y mediciones de revocación/latencia. Este avance
+no completa P03 ni acredita cumplimiento jurídico o del objetivo p99.

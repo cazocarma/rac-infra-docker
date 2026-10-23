@@ -3,11 +3,16 @@
 Only creates/removes uniquely named disposable Docker resources; never uses .env.
 """
 from pathlib import Path
+import argparse
 import shutil
 import subprocess
 import tempfile
 import time
 import uuid
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--services', nargs='+', choices=('user', 'match', 'chat'), default=('user', 'match', 'chat'), help='Go service suites to run; migration integrity always runs')
+args = parser.parse_args()
 
 ROOT = Path(__file__).resolve().parent.parent
 NAME = "rac-migration-test-" + uuid.uuid4().hex[:12]
@@ -47,7 +52,7 @@ try:
     assert sql("fresh", "SELECT count(*) FROM information_schema.columns WHERE table_name='sesion' AND column_name IN ('creado_en','actualizado_en');") == "2"
     # Exercise the weekly quota against this disposable DB, including concurrent acceptance.
     quota_source = ROOT.parent / "rac-match-service"
-    if quota_source.exists():
+    if quota_source.exists() and "match" in args.services:
         quota_tests = run("docker", "run", "--rm", "--network", NAME,
             "--mount", f"type=bind,source={quota_source},target=/sources,readonly",
             "-v", "rac-quota-go-cache:/go/pkg/mod",
@@ -63,7 +68,7 @@ try:
         if (quota_source / "internal/repo/standing_test.go").exists():
             print("PASS: standing booking effects, counterpart refund, rollback, duplicate concurrency and stale events")
     chat_source = ROOT.parent / "rac-chat-service"
-    if (chat_source / "internal/http/router_test.go").exists():
+    if (chat_source / "internal/http/router_test.go").exists() and "chat" in args.services:
         run("docker", "run", "--rm", "--network", NAME,
             "--mount", f"type=bind,source={chat_source},target=/sources,readonly",
             "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-chat-go-build:/root/.cache/go-build",
@@ -73,13 +78,15 @@ try:
         print("PASS: private booking chat, idempotent concurrent messages, cursor pages and DB cancellation guard")
     sql("fresh", "CREATE DATABASE legacy;")
     onboarding_source = ROOT.parent / "rac-user-service"
-    if onboarding_source.exists():
-        run("docker", "run", "--rm", "--network", NAME,
+    if onboarding_source.exists() and "user" in args.services:
+        user_tests = run("docker", "run", "--rm", "--network", NAME,
             "--mount", f"type=bind,source={onboarding_source},target=/sources,readonly",
             "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-user-go-build:/root/.cache/go-build",
             "-e", f"RAC_ONBOARDING_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
             "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http")
-        print("PASS: free compa activation transaction, failure rollback, retry and input validation")
+        assert '--- PASS: TestCompaOnboardingTransaction' in user_tests.stdout
+        assert '--- PASS: TestVerifiedReviews' in user_tests.stdout
+        print("PASS: scoped user writes, standing guards, concurrent rollback, public visibility, reviews and protected reads")
     sql("legacy", (ROOT / "db/migrations/V001__initial_schema.sql").read_text())
     sql("legacy", "INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('00000000-0000-0000-0000-000000000001','Preservar','legacy@example.test','cliente','kc-legacy');")
     sql("legacy", "INSERT INTO compa_availability(compa_id,disponibilidad_json) VALUES('00000000-0000-0000-0000-000000000001','{\"lunes\":[\"18:00-20:00\"]}');")
