@@ -96,6 +96,12 @@ def main():
             # previously required granting UPDATE on another owner's table.
             client, compa, booking = [str(uuid.uuid4()) for _ in range(3)]
             sql(database, f"INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('{client}','Fixture','client@example.test','cliente','kc-c'),('{compa}','Fixture','compa@example.test','compa','kc-p');", 'rac_user')
+            # Replacing skills requires DELETE even when the profile is new and
+            # the association table has no matching rows. Other owners retain
+            # no delete permission on user-owned associations.
+            sql(database, 'DELETE FROM compa_perfil_skill WHERE false;', 'rac_user')
+            for other in ('rac_match', 'rac_chat', 'rac_alert'):
+                assert sql(database, 'DELETE FROM compa_perfil_skill WHERE false;', other, ok=False).returncode != 0
             for _ in range(2):
                 sql(database, f"INSERT INTO compa_availability(compa_id,disponibilidad_json,zona_horaria) VALUES('{compa}','{{}}','UTC') ON CONFLICT(compa_id) DO UPDATE SET disponibilidad_json=EXCLUDED.disponibilidad_json,zona_horaria=EXCLUDED.zona_horaria,actualizado_en=now();", 'rac_user')
             sql(database, f"INSERT INTO sesion(id,cliente_id,compa_id,fecha_inicio,fecha_fin,estado) VALUES('{booking}','{client}','{compa}',now()+interval '1 day',now()+interval '25 hours','activa');", 'rac_match')

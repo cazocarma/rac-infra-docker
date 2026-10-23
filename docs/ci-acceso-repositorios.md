@@ -74,6 +74,21 @@ La siguiente ejecución, `39456030382`, aprobó login/reservas y onboarding, per
 
 Al ampliar el chat, `39520731959` encontró dos nodos con el mismo contador de caracteres: el contador visible y `flt-announcement-polite`, el anuncio del lector de pantalla. Las comprobaciones ahora se limitan al diálogo de reseña o al árbol `flt-semantics-host`, excluyendo anuncios globales sin deshabilitar accesibilidad. Verifican además el valor del editor y el cuerpo realmente enviado. Los recorridos web independientes continúan aunque falle otro, siempre que el runtime se haya instalado; el job mantiene el resultado de fallo. Solo al fallar se conservan durante tres días capturas y árboles accesibles de chat/reseñas de los fixtures sintéticos de CI, mediante rutas explícitas que excluyen `.env`, tokens y claves.
 
+## Incidente 39885228047 — alta de compa con rol de BD limitado
+
+El job de acceso pasó (7 s), al igual que migraciones y almacenamiento.
+Integración falló en `test_onboarding.py`: `PUT /api/user/me/compa` devolvió
+503 `profile_unavailable` en vez de 200. El reemplazo de habilidades necesita
+DELETE en `compa_perfil_skill`, permiso ausente en el rol dueño `rac_user`.
+V022 añade exclusivamente ese permiso, sin alterar V019 ni ampliar otros roles.
+
+La prueba Go de alta usaba el dueño de la base y ocultaba el defecto. Ahora sus
+fixtures usan el dueño, pero el handler utiliza una conexión con `current_user`
+igual a `rac_user`. La prueba reforzada falla sin V022 antes de llegar al
+provisionador. También se comprueba que otros servicios no puedan borrar
+asociaciones. El aviso de artefactos faltantes era secundario: los recorridos de
+navegador se omitieron porque el paso API anterior había fallado.
+
 ## Operación y rotación
 
 La clave privada es persistente y **no expira automáticamente**. Rotarla periódicamente (política inicial RAC: cada 90 días) y al sospechar exposición: generar una segunda clave, actualizar el secret, validar una ejecución y eliminar la anterior en GitHub. GitHub admite varias claves durante la transición. Ante exposición confirmada, revocar inmediatamente la clave afectada y los tokens activos.
