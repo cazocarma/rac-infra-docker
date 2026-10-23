@@ -48,12 +48,16 @@ try:
     # Exercise the weekly quota against this disposable DB, including concurrent acceptance.
     quota_source = ROOT.parent / "rac-match-service"
     if quota_source.exists():
-        run("docker", "run", "--rm", "--network", NAME,
+        quota_tests = run("docker", "run", "--rm", "--network", NAME,
             "--mount", f"type=bind,source={quota_source},target=/sources,readonly",
             "-v", "rac-quota-go-cache:/go/pkg/mod",
             "-e", f"RAC_QUOTA_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
-            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/repo")
+            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/repo ./internal/http")
         print("PASS: concurrent weekly allowance, refund, week boundary and subscription entitlement")
+        if (quota_source / 'internal/http/standing_test.go').exists():
+            assert '--- PASS: TestOldJWTBookingStandingPostgres' in quota_tests.stdout
+            assert '--- PASS: TestBookingStandingPostgresHTTP' in quota_tests.stdout
+            print('PASS: old signed JWT denied on two API instances, participant restrictions, pre-commit rollback, quota rollback, expired lock wait and protective cancellation during outage')
         if (quota_source / "internal/repo/standing_test.go").exists():
             print("PASS: standing booking effects, counterpart refund, rollback, duplicate concurrency and stale events")
     chat_source = ROOT.parent / "rac-chat-service"

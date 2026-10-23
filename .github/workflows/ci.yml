@@ -89,9 +89,6 @@ jobs:
       - name: Standing authority atomicity, concurrency and permissions
         run: python scripts/test_standing_authority.py
         working-directory: rac-infra-docker
-      - name: Keycloak least privilege and prepared staff MFA
-        run: python scripts/test_identity_permissions.py
-        working-directory: rac-infra-docker
       - name: Persisted Keycloak upgrade and RAC theme
         run: python scripts/test_keycloak_upgrade.py
         working-directory: rac-infra-docker
@@ -224,6 +221,14 @@ jobs:
           token: ${{ steps.repository-token.outputs.token }}
       - name: Shared platform race tests at pinned revision
         run: docker run --rm --mount type=bind,source="$PWD/rac-platform",target=/src,readonly -w /src golang:1.27.2 go test -race -count=1 ./...
+      - name: Verify generated private dependency against pinned platform sources
+        working-directory: rac-infra-docker
+        run: |
+          python scripts/test_go_vendor.py
+          python scripts/check_go_vendor.py
+      - name: Keycloak least privilege, staff MFA and signed standing reader tokens
+        working-directory: rac-infra-docker
+        run: python scripts/test_identity_permissions.py
       - name: Database policies against companion services
         working-directory: rac-infra-docker
         run: python scripts/test_migrations.py

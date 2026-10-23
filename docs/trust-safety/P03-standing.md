@@ -3,7 +3,49 @@
 D02 y D03 fueron confirmadas por el usuario el 22 de octubre de 2026.
 La matriz y el alcance del cupo están en [ADR-001](ADR-001-standing.md).
 
-## Autenticación de lectores internos (preparada, sin activar)
+## Autoridad interna y reservas (implementadas, preview desactivado)
+
+User consume `rac-platform v0.3.0` y ofrece el handler compartido con fuente
+PostgreSQL bajo su propio rol. Escucha en un servidor separado en el puerto 8082,
+sin publicación de puerto al host ni ruta en el router público o nginx.
+`/internal/standing` exige identidad de servicio; no acepta JWT del frontend.
+La configuración inválida impide iniciar el listener cuando se habilita el flag.
+
+`identity_standing.py` provisiona `rac-standing` como recurso bearer-only y
+`rac-match-standing` como cliente confidencial sin flujos de usuario, sin
+full scope, con cuenta de servicio, audience y rol de cliente `standing.read`.
+Retira asignaciones directas previas de roles/scopes y no concede privilegios de
+administración. Guarda primero el secreto para poder reintentar un bootstrap
+interrumpido; las ejecuciones siguientes lo conservan. Si existe el cliente pero
+se perdió su volumen, exige restauración o rotación explícita. Solo match monta
+ese secreto; user recibe únicamente el mapa client ID -> subject técnico.
+
+Match protege creación, aceptación y extensión de reservas en el repositorio,
+no solo en middleware. Resuelve los subjects desde identidades persistidas;
+requiere `request_booking` del cliente y `accept_booking` del compa. No permite
+que un rol admin omita esos requisitos sobre los participantes. Las operaciones de
+aceptación y extensión exigen además que actúe el compa o cliente titular,
+respectivamente: un admin comercial no representa consentimiento de terceros.
+Las consultas de
+ambos participantes se ejecutan en paralelo y generan leases con un plazo común
+de dos segundos desde antes de consultar. La transacción SQL usa ese contexto:
+consultas, esperas por locks y escritura consumen el mismo presupuesto.
+
+Inmediatamente antes del commit consulta otra vez las versiones de ambos y
+reevalúa las restricciones temporales sin renovar el lease. Una versión nueva,
+autoridad indisponible o permiso vencido revierte escritura, cupo y eventos de
+esa transacción. La denegación devuelve 403 con código público estable; una
+autoridad indisponible devuelve 503. Cancelación propia conserva autenticación,
+propiedad y reglas de negocio, sin depender de disponibilidad de la autoridad.
+La extensión solo actualiza una reserva que siga activa al escribir.
+
+**Límite de concurrencia:** esto no es un bloqueo distribuido ni garantiza que
+una sanción confirmada justo después de la última lectura preceda al commit en
+otra BD. Conserva la ventana acotada del lease; los efectos por eventos y la
+reconciliación pendiente deben cubrir esa carrera. No se declara aún el objetivo
+p99 de revocación ni el objetivo de latencia del hot path.
+
+## Autenticación de lectores internos
 
 User incorpora `platform.NewStandingReader`, un autenticador separado de la
 herencia de roles de la API pública. Verifica firma RS256 con JWKS, issuer,
@@ -19,10 +61,41 @@ Las pruebas usan JWT RS256 realmente firmados y un servidor JWKS desechable;
 cubren firma incorrecta, issuer/audience, usuarios humanos, vinculación
 cliente/subject, permisos, caducidad, fechas futuras, duración excesiva y
 cabeceras duplicadas. Pasan `go vet ./...` y `go test -race ./...` de user.
-Esto prepara el adaptador para el handler compartido; **todavía no expone el
-endpoint ni provisiona clientes Keycloak**, y no demuestra revocación de
-operaciones de negocio. Continúan pendientes el consumo versionado del módulo
-privado en builds/CI, el endpoint interno y los controles de escritura/commit.
+La suite desechable de Keycloak comprueba el cliente provisionado, estabilidad
+de secreto, ausencia de refresh token y rechazo de password grant/admin APIs.
+Go verifica el JWT real contra JWKS real. La suite de PostgreSQL/HTTP comprueba
+el mismo JWT de usuario anterior a una sanción contra dos instancias de match,
+denegación por cualquiera de las partes y conservación de cancelación propia
+durante caída de autoridad. Las carreras antes del commit comprueban rollback
+de creación, aceptación, extensión y cupo; una espera por lock vence el lease.
+Las pruebas de permisos de máquina y negocio son escenarios separados, no una
+medición de carga del stack completo.
+
+## Build y ensayo explícito
+
+User y match usan vendoring generado según [ADR-008](ADR-008-private-go-dependencies.md).
+Los builds Docker y pruebas independientes no reciben credenciales de platform.
+El CI integrado compara las reglas generadas con el checkout fijado de platform.
+
+`STANDING_PREVIEW=1` añade `compose.standing.yaml` únicamente para DEV. Make
+provisiona identidad antes de iniciar APIs; los volúmenes de lectura y secreto
+están separados y montados read-only. QA/PRD rechazan este preview: requieren
+transporte TLS verificado y rollout completo. El flag no está habilitado en el
+stack existente y no se aplicaron migraciones a los datos del usuario.
+
+Antes de ensayar sobre ese DEV hay que cumplir el respaldo consistente y la
+restauración aislada de P02. En un entorno desechable preparado, desde infra:
+
+```sh
+make ENV=dev STANDING_PREVIEW=1 config
+make ENV=dev STANDING_PREVIEW=1 up
+```
+
+Es un preview de **reservas**, no un control completo de la plataforma. Publicar
+perfil, disponibilidad, mensajes, reseñas, catálogo/medios y otras superficies
+siguen pendientes. No habilitar sanciones operativas como si todo P03 estuviera
+completo. Deshabilitar el flag retira este enforcement y requiere un rollback
+operativo deliberado, no un fallback automático por fallas de autoridad.
 
 ## Entrega local: motor compartido
 
@@ -40,7 +113,7 @@ reloj monotónico local y no reconstruir leases desde timestamps del broker.
 `AuthorityAuthorizer` ofrece el camino síncrono sin caché: consulta una fuente
 autenticada y su versión más reciente. Niega operaciones comerciales ante error,
 versión ausente o respuesta tardía, sin filtrar diagnósticos privados. La fuente
-concreta todavía no está conectada. El resultado no sustituye el control de
+concreta está conectada al preview descrito arriba. El resultado no sustituye el control de
 versión y autorización al commit de la operación de negocio.
 
 El contrato todavía no publicado de `user.standing.changed.v1` incluye las cinco
@@ -74,7 +147,7 @@ persona staff verificada.
 Solo rac_user lee la autoridad; otros servicios no reciben acceso a esas tablas.
 `rac-platform/standing/postgres` proporciona el adaptador de lectura del dueño:
 liga el subject OIDC a usuario, obtiene estado/restricciones en un snapshot SQL y
-devuelve errores opacos. El publicador y los consumidores aún no están conectados.
+devuelve errores opacos. El publicador y el consumidor de match se describen abajo.
 El respaldo tiene lectura y el bootstrap incluye el nuevo esquema al reconciliar
 propiedad, sin ampliar permisos de otros servicios.
 
@@ -171,19 +244,19 @@ publicar esta revisión.
 
 ## Pendiente para completar P03
 
-1. El checkout de rac-platform y la base integrada ya pasaron en Actions. Falta
-   conectar el módulo a los builds de servicios sin secretos en capas Docker ni `replace`
-   local permanente.
+1. Verificar Actions con estas revisiones y completar el rollout del enforcement,
+   que sigue desactivado en el DEV existente.
 2. Conectar la autoridad al ingreso autenticado de staff y a políticas aprobadas;
-   transporte autenticado de consultas, consumidores de otros dueños y reconciliación.
+   consumidores de otros dueños y reconciliación.
 3. Integración de todos los escritores y contrapartes, catálogo y medios,
-   invalidación/reconciliación, controles al commit y aviso en Flutter.
+   invalidación/reconciliación, controles al commit restantes y aviso en Flutter.
 4. Conectar los efectos pendientes de revisión al módulo de casos y probar
    integración de los workers con los controles autoritativos concurrentes.
-5. Pruebas E2E con JWT anterior, particiones, dos instancias y carreras, además
-   de medición de latencia bajo carga definida.
+5. Completar E2E de todos los escritores, particiones broker/autoridad y carrera
+   posterior al último check; medir latencia bajo carga definida. Los escenarios
+   locales de reservas con JWT anterior, dos instancias y pre-commit ya pasaron.
 
-No hay enforcement nuevo activo en las APIs ni migraciones P03 aplicadas a DEV.
+No hay enforcement nuevo activado ni migraciones P03 aplicadas al DEV existente.
 Las pruebas unitarias no prueban el objetivo de revocación p99 de cinco segundos.
 
 ## Transporte de autoridad preparado (v0.2.0)
@@ -202,9 +275,9 @@ No hay refresh tokens ni un autenticador permisivo por defecto en el handler.
 Pruebas locales Go con `-race`: autoridad suspendida/no disponible, autenticador
 ausente, redirecciones sin transmisión a destino, respuestas de otro subject,
 cuerpos inválidos/excesivos, fallos de credenciales y renovación concurrente.
-Estas son pruebas de transporte con identidad técnica de fixture, no una prueba
-de JWT real ni de endpoints de negocio. Falta provisionar clientes con audience
-y rol mínimos, conectar su verificador OIDC y enlazar las APIs.
+Estas pruebas iniciales de transporte usan identidad técnica de fixture.
+Las pruebas posteriores de JWT real, cliente provisionado y reservas se
+describen al inicio de este documento; no equivalen a completar todo P03.
 
 El usuario autorizó añadir únicamente rac-platform a la App RAC CI Read con
 Contents de lectura. La instalación se guardó y verificó con ocho repositorios seleccionados,

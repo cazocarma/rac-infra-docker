@@ -8,6 +8,7 @@ import urllib.request
 import psycopg
 from pathlib import Path
 from identity_permissions import configure_provisioner, configure_staff
+from identity_standing import configure_standing
 
 BASE = os.environ.get("KEYCLOAK_INTERNAL_URL", "http://keycloak:8080")
 REALM = "rentacompa"
@@ -87,6 +88,8 @@ role_file.write_text(admin('GET', '/roles/compa')['id'] + '\n', encoding='ascii'
 os.chmod(role_file, 0o644)
 os.replace(role_file, role_directory / 'role-id')
 configure_staff(admin, origin)
+if os.environ.get('STANDING_ENFORCEMENT_ENABLED', 'false') == 'true':
+    configure_standing(admin, '/credentials/standing')
 admin("PUT", "", {"revokeRefreshToken": True, "refreshTokenMaxReuse": 0,
     "bruteForceProtected": True, "failureFactor": 5, "waitIncrementSeconds": 60,
     "maxFailureWaitSeconds": 900, "accessTokenLifespan": 300,

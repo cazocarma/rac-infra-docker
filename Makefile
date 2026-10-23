@@ -18,6 +18,19 @@ COMPOSE_FILES += -f compose.release.yaml
 endif
 COMPOSE_FILES += -f docker-compose.$(ENV).yaml
 COMPOSE_FILES += -f compose.observability.yaml -f compose.tests.yaml
+STANDING_PREVIEW ?= 0
+ifneq ($(words $(STANDING_PREVIEW)),1)
+$(error STANDING_PREVIEW debe ser 0 o 1)
+endif
+ifeq ($(filter $(STANDING_PREVIEW),0 1),)
+$(error STANDING_PREVIEW debe ser 0 o 1)
+endif
+ifeq ($(STANDING_PREVIEW),1)
+ifneq ($(ENV),dev)
+$(error STANDING_PREVIEW solo admite DEV; QA/PRD requieren transporte TLS y rollout completo)
+endif
+COMPOSE_FILES += -f compose.standing.yaml
+endif
 ifeq ($(ENV),dev)
 ifneq ($(wildcard envs/.env.photos-s3),)
 COMPOSE_FILES += -f compose.photos-s3.yaml
@@ -47,6 +60,7 @@ help:
 	@echo make storage-up / storage-activate / storage-test / storage-test-persistence / storage-stop
 	@echo make backup-enable / backup-now / backup-status / backup-restore-test
 	@echo make database-init / test-database-permissions / test-identity-permissions
+	@echo STANDING_PREVIEW=1 habilita solo el ensayo DEV de reservas. Ver docs/trust-safety/P03-standing.md
 config:
 	$(COMPOSE) config --quiet
 ifeq ($(ENV),dev)
@@ -57,9 +71,14 @@ endif
 ifeq ($(ENV),dev)
 	$(PYTHON) scripts/build_dev.py $(COMPOSE)
 endif
+ifeq ($(STANDING_PREVIEW),1)
+	$(COMPOSE) run --rm --build identity-config
+endif
 	$(COMPOSE) up -d $(UP_FLAGS)
 ifeq ($(ENV),dev)
+ifeq ($(STANDING_PREVIEW),0)
 	$(COMPOSE) run --rm --build identity-config
+endif
 endif
 migrate: config
 	$(COMPOSE) run --rm migrate

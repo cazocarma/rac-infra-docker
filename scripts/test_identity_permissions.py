@@ -21,6 +21,7 @@ import ssl
 import tempfile
 from pathlib import Path
 from identity_permissions import configure_provisioner, configure_staff
+from identity_standing import configure_standing
 
 IMAGE = 'quay.io/keycloak/keycloak:26.8.1@sha256:79c623a22abacf3fe6c00a5fb30f5b7843d717b234033b80995891c06116d244'
 
@@ -28,7 +29,9 @@ IMAGE = 'quay.io/keycloak/keycloak:26.8.1@sha256:79c623a22abacf3fe6c00a5fb30f5b7
 def command(*args, ok=True):
     result = subprocess.run(args, capture_output=True, text=True, timeout=180)
     if ok and result.returncode:
-        raise RuntimeError('Disposable identity command failed: ' + args[0])
+        # Fixed Go test diagnostics only; never dump arguments or token fixtures.
+        details = '\n'.join(line for line in result.stdout.splitlines() if '.go:' in line or line.startswith('FAIL'))
+        raise RuntimeError('Disposable identity command failed: ' + args[0] + ('\n' + details if details else ''))
     return result.stdout.strip()
 
 
@@ -43,11 +46,12 @@ def main():
             raise RuntimeError('OpenSSL required for disposable TLS fixture')
         command(openssl, 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
             '-keyout', str(directory/'key.pem'), '-out', str(directory/'cert.pem'),
-            '-subj', '/CN=localhost', '-addext', 'subjectAltName=IP:127.0.0.1,DNS:localhost')
+            '-subj', '/CN=localhost', '-addext', 'subjectAltName=IP:127.0.0.1,DNS:localhost,DNS:identity-fixture')
         # Disposable localhost-only test key, not a deployment certificate.
         os.chmod(directory,0o755);os.chmod(directory/'key.pem',0o644)
         context = ssl.create_default_context(cafile=str(directory/'cert.pem'))
-        command('docker', 'run', '-d', '--name', name, '-p', '127.0.0.1::8443',
+        command('docker', 'network', 'create', name)
+        command('docker', 'run', '-d', '--name', name, '--network', name, '--network-alias', 'identity-fixture', '-p', '127.0.0.1::8443',
             '--mount', f'type=bind,source={directory},target=/test-certs,readonly',
             '-e', 'KC_BOOTSTRAP_ADMIN_USERNAME=operator', '-e', 'KC_BOOTSTRAP_ADMIN_PASSWORD=' + password,
             IMAGE, 'start-dev', '--https-certificate-file=/test-certs/cert.pem', '--https-certificate-key-file=/test-certs/key.pem')
@@ -102,6 +106,45 @@ def main():
         for _ in range(2):
             configure_provisioner(admin, client, account)
             configure_staff(admin, 'http://localhost')
+        standing_directory = directory / 'standing'
+        bindings = configure_standing(admin, standing_directory)
+        standing_secret = (standing_directory / 'match/secret').read_text().strip()
+        assert configure_standing(admin, standing_directory) == bindings
+        assert (standing_directory / 'match/secret').read_text().strip() == standing_secret
+        reader = admin('GET', '/clients?clientId=rac-match-standing')[0]
+        assert not reader['fullScopeAllowed'] and not reader['standardFlowEnabled'] and not reader['directAccessGrantsEnabled']
+        reader_token = request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
+            'client_id': 'rac-match-standing', 'client_secret': standing_secret, 'grant_type': 'client_credentials'}, form=True)
+        assert 'refresh_token' not in reader_token and reader_token['expires_in'] <= 300
+        # Decoding inspects emitted protocol shape only; the Go integration
+        # below verifies the real signature/issuer/audience with the real JWKS.
+        reader_claims = json.loads(base64.urlsafe_b64decode(reader_token['access_token'].split('.')[1] + '=='))
+        assert reader_claims['sub'] == bindings['rac-match-standing']
+        assert 'rac-standing' in reader_claims['aud']
+        assert reader_claims['resource_access']['rac-standing']['roles'] == ['standing.read']
+        assert 'realm-management' not in reader_claims.get('resource_access', {})
+        request('GET', '/admin/realms/rentacompa/users', token=reader_token['access_token'], expected=403)
+        request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
+            'client_id': 'rac-match-standing', 'client_secret': standing_secret, 'grant_type': 'password',
+            'username': 'not-a-user', 'password': 'not-a-password'}, form=True, expected=400)
+        source = Path(__file__).resolve().parents[2] / 'rac-user-service'
+        if source.exists():
+            fixture = directory / 'reader-fixture.json'
+            fixture.write_text(json.dumps({'issuer': base + '/realms/rentacompa',
+                'jwks': 'https://identity-fixture:8443/realms/rentacompa/protocol/openid-connect/certs',
+                'runtimeIssuer': 'https://identity-fixture:8443/realms/rentacompa',
+                'subjects': bindings, 'token': reader_token['access_token']}), encoding='utf-8')
+            os.chmod(fixture, 0o644)
+            command('docker', 'run', '--rm', '--network', name,
+                '--mount', f'type=bind,source={directory},target=/fixture,readonly',
+                '--mount', f'type=bind,source={source},target=/source,readonly',
+                '-v', 'rac-user-go-build:/root/.cache/go-build',
+                '-e', 'SSL_CERT_FILE=/fixture/cert.pem', '-e', 'RAC_STANDING_IDENTITY_FIXTURE=/fixture/reader-fixture.json',
+                '-e', 'GOPROXY=off', '-e', 'GOSUMDB=off', '-w', '/source',
+                'golang:1.27.2', 'go', 'test', '-race', '-count=1', './internal/platform', '-run', 'TestProvisionedStandingReaderKeycloak')
+        else:
+            raise RuntimeError('User checkout required for real standing JWT verification')
+        print('PASS: idempotent standing credentials, scoped real client token, no refresh/password/admin access, Go signature verification and real OAuth credentials to authenticated authority HTTP')
         assert admin('GET', '/users/' + account['id'] + '/role-mappings/clients/' + management['id']) == []
         assert admin('GET', '/clients/' + client['id'] + '/scope-mappings/clients/' + management['id']) == []
         admin('POST', '/users', {'username': 'subject', 'enabled': True})
@@ -191,6 +234,7 @@ def main():
         print('PASS: real FGAP v2, compa-only grant, privilege denials, password-only cannot enter staff, OTP/PKCE succeeds with actual AMR proof; staff client disabled')
     finally:
         command('docker', 'rm', '-f', name, ok=False)
+        command('docker', 'network', 'rm', name, ok=False)
         certificates.cleanup()
 
 

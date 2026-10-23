@@ -1,0 +1,26 @@
+# Opt-in DEV preview only. Not a declaration that all P03 writers are covered.
+# Provision identity-config before starting these APIs. Never publish port 8082.
+services:
+  identity-config:
+    environment:
+      STANDING_ENFORCEMENT_ENABLED: "true"
+    volumes:
+      - identity-standing-readers:/credentials/standing/readers
+      - identity-standing-match:/credentials/standing/match
+  backend-user:
+    environment:
+      STANDING_ENFORCEMENT_ENABLED: "true"
+      STANDING_SUBJECTS_FILE: /run/standing-readers/subjects.json
+    volumes:
+      - identity-standing-readers:/run/standing-readers:ro
+  backend-match:
+    environment:
+      STANDING_ENFORCEMENT_ENABLED: "true"
+      STANDING_AUTHORITY_URL: http://backend-user:8082/internal/standing
+      STANDING_TOKEN_URL: http://keycloak:8080/realms/rentacompa/protocol/openid-connect/token
+      STANDING_CLIENT_SECRET_FILE: /run/standing-client/secret
+    volumes:
+      - identity-standing-match:/run/standing-client:ro
+volumes:
+  identity-standing-readers:
+  identity-standing-match:
