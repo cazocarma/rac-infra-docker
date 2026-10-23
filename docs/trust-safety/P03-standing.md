@@ -375,66 +375,100 @@ integrado remoto 39956656284 pas√≥ con el nuevo acceso.
 
 ## Escritores user y coherencia del chat (avance 2026-10-23)
 
-El preview de standing ahora comprueba publicaciÛn/ediciÛn de compa, alta de
-skills y reseÒas verificadas. Las rutas antiguas de publicaciÛn usan la misma
-autoridad. La autorizaciÛn tiene un plazo acotado y vuelve a comprobar versiones
-antes del commit; una sanciÛn durante el provisionamiento revierte las escrituras
-locales. La asignaciÛn remota del rol gratuito es idempotente y no concede una
-excepciÛn a standing, aunque puede haber ocurrido antes del rollback local.
+El preview de standing ahora comprueba publicaci√≥n/edici√≥n de compa, alta de
+skills y rese√±as verificadas. Las rutas antiguas de publicaci√≥n usan la misma
+autoridad. La autorizaci√≥n tiene un plazo acotado y vuelve a comprobar versiones
+antes del commit; una sanci√≥n durante el provisionamiento revierte las escrituras
+locales. La asignaci√≥n remota del rol gratuito es idempotente y no concede una
+excepci√≥n a standing, aunque puede haber ocurrido antes del rollback local.
 
-Las reseÒas requieren standing tanto del autor como de la contraparte. Seguridad,
+Las rese√±as requieren standing tanto del autor como de la contraparte. Seguridad,
 lecturas propias e historial autenticado conservan sus comprobaciones de acceso
-sin el bloqueo comercial. GET /api/user/me/standing devuelve estado, versiÛn y
-capacidades ˙nicamente del sujeto autenticado; no expone caso ni detalles de
+sin el bloqueo comercial. GET /api/user/me/standing devuelve estado, versi√≥n y
+capacidades √∫nicamente del sujeto autenticado; no expone caso ni detalles de
 restricciones. Con el preview desactivado informa enforcement_enabled=false,
-sin fingir una decisiÛn autoritativa.
+sin fingir una decisi√≥n autoritativa.
 
-El cat·logo aplica el filtro de standing en SQL antes de LIMIT/OFFSET, con orden
-estable para empates; detalle, reseÒas p˙blicas y foto usan la misma condiciÛn
-de visibilidad. Restricciones de publicaciÛn vencidas dejan de ocultar el perfil
+El cat√°logo aplica el filtro de standing en SQL antes de LIMIT/OFFSET, con orden
+estable para empates; detalle, rese√±as p√∫blicas y foto usan la misma condici√≥n
+de visibilidad. Restricciones de publicaci√≥n vencidas dejan de ocultar el perfil
 sin requerir un evento nuevo. Las lecturas propias siguen disponibles.
 
 Historial, eventos y seguridad del chat consultan standing para can_send. Una
-sanciÛn o fallo de autoridad devuelve can_send=false sin impedir la lectura; el
-envÌo posterior siempre adquiere su propia autorizaciÛn y no confÌa en ese hint.
+sanci√≥n o fallo de autoridad devuelve can_send=false sin impedir la lectura; el
+env√≠o posterior siempre adquiere su propia autorizaci√≥n y no conf√≠a en ese hint.
 
-VerificaciÛn: go vet y go test -race en user/chat; PostgreSQL desechable con
+Verificaci√≥n: go vet y go test -race en user/chat; PostgreSQL desechable con
 roles rac_user/rac_chat para bloqueo de participantes, rollback concurrente,
-aliases antiguos y lecturas protegidas. La suite completa de migraciones pasÛ
-antes del ˙ltimo filtro de cat·logo; su actualizaciÛn pasÛ adem·s con
-`python scripts/test_migrations.py --services user`. La opciÛn limita las suites
-Go seleccionadas, pero conserva instalaciÛn fresca, adopciÛn y validaciones de
+aliases antiguos y lecturas protegidas. La suite completa de migraciones pas√≥
+antes del √∫ltimo filtro de cat√°logo; su actualizaci√≥n pas√≥ adem√°s con
+`python scripts/test_migrations.py --services user`. La opci√≥n limita las suites
+Go seleccionadas, pero conserva instalaci√≥n fresca, adopci√≥n y validaciones de
 integridad/checksum de todas las migraciones. No activa el preview en DEV.
 
 Pendientes: integrar el aviso en Flutter, escritores de disponibilidad/medios,
-resincronizaciÛn desde autoridad y mediciones de revocaciÛn/latencia. Este avance
-no completa P03 ni acredita cumplimiento jurÌdico o del objetivo p99.
+resincronizaci√≥n desde autoridad y mediciones de revocaci√≥n/latencia. Este avance
+no completa P03 ni acredita cumplimiento jur√≠dico o del objetivo p99.
 
 
 ## Agenda y reemplazo de fotos (avance 2026-10-23)
 
 Match aplica publish_listing a la disponibilidad semanal y al alta/borrado de
-bloqueos de agenda. Comprueba tanto al dueÒo como al actor que la modifica, sin
-excepciÛn por rol admin. El repositorio de time-off recibe la misma fuente que
+bloqueos de agenda. Comprueba tanto al due√±o como al actor que la modifica, sin
+excepci√≥n por rol admin. El repositorio de time-off recibe la misma fuente que
 el servidor; ya no crea una ruta sin autoridad. Las transacciones vuelven a
 comprobar el permiso antes del commit, incluso al reintentar un bloqueo existente.
 Las lecturas propias de agenda permanecen disponibles durante un fallo de autoridad.
 
-User comprueba publish_listing para reemplazar la foto despuÈs de normalizarla
-y antes de abrir la transacciÛn. Al finalizar la escritura del objeto vuelve a
-comprobar la versiÛn; si hay una sanciÛn concurrente, conserva la referencia
+User comprueba publish_listing para reemplazar la foto despu√©s de normalizarla
+y antes de abrir la transacci√≥n. Al finalizar la escritura del objeto vuelve a
+comprobar la versi√≥n; si hay una sanci√≥n concurrente, conserva la referencia
 anterior y elimina el objeto nuevo. Consultar y borrar la foto propia no requiere
 permiso comercial. Los errores de commit con resultado incierto siguen conservando
 el objeto para no romper una referencia que pudiera haberse confirmado.
 
 Evidencia local: go vet y go test -race en ambos servicios. PostgreSQL migrado
-desechable con roles rac_match/rac_user: dueÒo o actor suspendido, autoridad caÌda,
+desechable con roles rac_match/rac_user: due√±o o actor suspendido, autoridad ca√≠da,
 lectura protegida y rollback de borrado de time-off revocado durante el commit;
-foto suspendida, sanciÛn durante Put, referencia preservada y ausencia de objeto
+foto suspendida, sanci√≥n durante Put, referencia preservada y ausencia de objeto
 local sobrante. La ruta local del almacenamiento fue ejercitada; el subtest S3
 requiere su fixture y no se presenta como ejecutado en esta ronda.
-`test_migrations.py --services match` pasÛ, incluyendo adopciÛn, integridad y
-checksums. El runner incorpora cachÈ de compilaciÛn de match y exige evidencia
-del subtest schedule-writers para evitar que una omisiÛn silenciosa se anuncie
-como cobertura. Contin˙an pendientes Flutter, otros escritores de perfil,
-resincronizaciÛn, pruebas amplias de fallo y mediciones de latencia.
+`test_migrations.py --services match` pas√≥, incluyendo adopci√≥n, integridad y
+checksums. El runner incorpora cach√© de compilaci√≥n de match y exige evidencia
+del subtest schedule-writers para evitar que una omisi√≥n silenciosa se anuncie
+como cobertura. Contin√∫an pendientes Flutter, otros escritores de perfil,
+resincronizaci√≥n, pruebas amplias de fallo y mediciones de latencia.
+
+
+## Perfil inicial y aviso Flutter (avance 2026-10-23)
+
+Las ediciones del perfil personal tambi√©n comprueban publish_listing: nombre,
+biograf√≠a e intereses forman parte de la tarjeta p√∫blica. La ruta antigua
+POST /api/user/profile se ejecuta en transacci√≥n y comprueba standing antes del
+commit. Para una cuenta nueva, el trigger crea su standing en esa misma
+transacci√≥n y el adaptador PostgreSQL lo consulta usando el rol rac_user. As√≠
+el alta no depende de una lectura externa de datos todav√≠a no confirmados.
+Una sanci√≥n ya existente impide ambos caminos de edici√≥n; GET /me se conserva.
+
+Flutter consulta √∫nicamente GET /me/standing, valida la respuesta y muestra un
+aviso global dentro de las rutas autenticadas. Actualiza cada cinco segundos
+cuando la ruta est√° visible, y al volver la app al primer plano. No solapa
+consultas. Un fallo muestra reintento sin cerrar sesi√≥n, ni sustituir la
+navegaci√≥n por una pantalla bloqueante. Al desmontar cancela el timer. Las
+capacidades mostradas son informativas y no reemplazan la autorizaci√≥n de cada
+escritura en el backend. El aviso no publica motivos privados de casos ni
+promete un canal de apelaci√≥n que todav√≠a pertenece a P11.
+
+Evidencia: TestProfileStandingProvisioning pas√≥ en PostgreSQL desechable con
+rac_user, cubriendo alta inicial, edici√≥n permitida, sanci√≥n, rollback de ambas
+rutas y lectura propia. go vet/go test -race de user correctos. Flutter 3.44.0:
+analyze sin observaciones, 39 tests correctos y flutter build web --release
+correcto. Los tests nuevos incluyen el contrato autenticado, respuestas
+incompletas, fail-closed informativo, reintento, limpieza del timer y tama√±os
+360/1200 px. No equivalen a una prueba manual en navegador ni a builds nativos
+Android/iOS. Los textos siguen el espa√±ol actual de la app; ARB/i18n transversal
+es la entrega P04 del plan.
+
+P03 contin√∫a abierto por resincronizaci√≥n autoritativa, efectos/notificaciones,
+cobertura E2E completa de fallos y las mediciones de latencia y revocaci√≥n. La
+activaci√≥n del preview existente no se ha realizado en el DEV persistente.

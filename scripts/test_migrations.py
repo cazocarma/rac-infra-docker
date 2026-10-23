@@ -87,6 +87,7 @@ try:
             "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http")
         assert '--- PASS: TestCompaOnboardingTransaction' in user_tests.stdout
         assert '--- PASS: TestVerifiedReviews' in user_tests.stdout
+        assert '--- PASS: TestProfileStandingProvisioning' in user_tests.stdout
         print("PASS: scoped user writes, standing guards, concurrent rollback, public visibility, reviews and protected reads")
     sql("legacy", (ROOT / "db/migrations/V001__initial_schema.sql").read_text())
     sql("legacy", "INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('00000000-0000-0000-0000-000000000001','Preservar','legacy@example.test','cliente','kc-legacy');")
