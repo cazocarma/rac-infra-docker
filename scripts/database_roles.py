@@ -6,6 +6,7 @@ ROLES = {
     'CHAT_DB_URL': 'rac_chat', 'ALERT_DB_URL': 'rac_alert',
     'MAINTENANCE_DB_URL': 'rac_maintenance', 'RELAY_DB_URL': 'rac_relay',
     'ALERT_CONSUMER_DB_URL': 'rac_alert_consumer',
+    'STANDING_RELAY_DB_URL': 'rac_standing_relay', 'STANDING_MATCH_DB_URL': 'rac_standing_match',
     'IDENTITY_DB_URL': 'rac_seed', 'BACKUP_DB_URL': 'rac_backup',
 }
 

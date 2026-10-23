@@ -42,3 +42,21 @@ groups:
         labels: {severity: warning}
         annotations:
           summary: "Solicitudes sin aceptar siguen pendientes después de su inicio"
+      - alert: RACStandingEventsDelayed
+        expr: rac_standing_outbox_oldest_seconds > 30
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Hay cambios de estado de cuenta pendientes de entrega"
+      - alert: RACStandingConsumerDisconnected
+        expr: rac_standing_broker_connected == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "El consumidor de estado de cuenta requiere revisión"
+      - alert: RACStandingEventsFailed
+        expr: rabbitmq_queue_messages{queue="rac.match.standing.failed"} > 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Hay cambios de estado de cuenta retenidos para recuperación controlada"

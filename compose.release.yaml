@@ -36,3 +36,7 @@ services:
 
   booking-maintenance:
     image: ${MATCH_IMAGE:?Configurar MATCH_IMAGE}
+  standing-events-relay:
+    image: ${MATCH_IMAGE:?Configurar MATCH_IMAGE}
+  standing-match-consumer:
+    image: ${MATCH_IMAGE:?Configurar MATCH_IMAGE}

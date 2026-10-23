@@ -37,7 +37,7 @@ for environment in ("dev", "qa", "prd"):
         assert any(v["target"] == "/var/lib/rac/photos" and v["source"] == "profile-photos" for v in config["services"]["backend-user"]["volumes"])
         assert config["services"]["migrate"]["environment"]["FLYWAY_DEFAULT_SCHEMA"] == "meta"
         services = config['services']
-        mapped={'backend-user':'USER_DB_URL','backend-match':'MATCH_DB_URL','backend-chat':'CHAT_DB_URL','backend-alert':'ALERT_DB_URL','booking-maintenance':'MAINTENANCE_DB_URL','booking-events-relay':'RELAY_DB_URL','alert-events-consumer':'ALERT_CONSUMER_DB_URL'}
+        mapped={'backend-user':'USER_DB_URL','backend-match':'MATCH_DB_URL','backend-chat':'CHAT_DB_URL','backend-alert':'ALERT_DB_URL','booking-maintenance':'MAINTENANCE_DB_URL','booking-events-relay':'RELAY_DB_URL','alert-events-consumer':'ALERT_CONSUMER_DB_URL','standing-events-relay':'STANDING_RELAY_DB_URL','standing-match-consumer':'STANDING_MATCH_DB_URL'}
         for service,key in mapped.items():
             assert services[service]['environment']['DATABASE_URL']==values[key]
             assert 'POSTGRES_PASSWORD' not in services[service]['environment']
@@ -50,7 +50,7 @@ for environment in ("dev", "qa", "prd"):
         assert services['rabbitmq']['hostname'] == 'rabbitmq'
         assert any(v['source'] == 'rabbitmq-events-data' for v in services['rabbitmq']['volumes'])
         assert 'rabbitmq' not in services['backend-match']['depends_on']
-        for worker, role in [('booking-events-relay','publisher'),('alert-events-consumer','consumer')]:
+        for worker, role in [('booking-events-relay','publisher'),('alert-events-consumer','consumer'),('standing-events-relay','standing-publisher'),('standing-match-consumer','standing-match')]:
             assert 'RABBITMQ_PASSWORD' not in services[worker]['environment']
             assert services[worker]['environment']['RABBITMQ_URL_FILE'] == '/run/messaging/url'
             assert len(services[worker]['volumes']) == 1

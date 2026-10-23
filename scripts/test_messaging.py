@@ -35,11 +35,19 @@ try:
     run('docker', 'run', '-d', '--name', NAME + '-pg', '--network', NAME,
         '--tmpfs', '/var/lib/postgresql/data', '-e', 'POSTGRES_PASSWORD=test-only',
         '-e', 'POSTGRES_DB=rac_events_test', 'postgis/postgis:16-3.4')
-    run('docker', 'run', '-d', '--name', NAME + '-mq', '--network', NAME,
+    run('docker', 'run', '-d', '--name', NAME + '-mq', '--network', NAME, '--network-alias', 'rabbitmq',
         '--hostname', 'events-test', '-e', 'RABBITMQ_DEFAULT_USER=test',
         '-e', 'RABBITMQ_DEFAULT_PASS=test-only', BROKER)
     ready(['docker', 'exec', '--user', 'rabbitmq', NAME + '-mq', 'rabbitmq-diagnostics', '-q', 'ping'])
+    for port in ('5672', '15672'):
+        ready(['docker', 'exec', '--user', 'rabbitmq', NAME + '-mq', 'rabbitmq-diagnostics', '-q', 'check_port_listener', port])
     ready(['docker', 'exec', NAME + '-pg', 'pg_isready', '-U', 'postgres'])
+    run('docker', 'run', '--rm', '--network', NAME, '--tmpfs', '/credentials',
+        '--mount', f'type=bind,source={ROOT / "scripts"},target=/tools,readonly',
+        '-e', 'RAC_DISPOSABLE_MESSAGING=1', '-e', 'RAC_ENV=dev',
+        '-e', 'RABBITMQ_USER=test', '-e', 'RABBITMQ_PASSWORD=test-only',
+        'python:3.13-slim', 'python', '/tools/test_messaging_topology.py')
+    print('PASS: idempotent real broker topology, scoped role permissions and quorum dead-letter policies', flush=True)
     def migrate(directory):
         run('docker', 'run', '--rm', '--network', NAME,
             '--mount', f'type=bind,source={directory},target=/flyway/sql,readonly',

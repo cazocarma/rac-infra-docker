@@ -27,3 +27,7 @@ scrape_configs:
         labels: {service: booking-events-relay}
       - targets: [alert-events-consumer:8080]
         labels: {service: alert-events-consumer}
+      - targets: [standing-events-relay:8080]
+        labels: {service: standing-events-relay}
+      - targets: [standing-match-consumer:8080]
+        labels: {service: standing-match-consumer}

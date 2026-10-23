@@ -33,6 +33,8 @@ services:
       ALERT_DB_URL: ${ALERT_DB_URL:?Inicializar credenciales separadas}
       MAINTENANCE_DB_URL: ${MAINTENANCE_DB_URL:?Inicializar credenciales separadas}
       RELAY_DB_URL: ${RELAY_DB_URL:?Inicializar credenciales separadas}
+      STANDING_RELAY_DB_URL: ${STANDING_RELAY_DB_URL:?Inicializar credenciales separadas}
+      STANDING_MATCH_DB_URL: ${STANDING_MATCH_DB_URL:?Inicializar credenciales separadas}
       ALERT_CONSUMER_DB_URL: ${ALERT_CONSUMER_DB_URL:?Inicializar credenciales separadas}
       IDENTITY_DB_URL: ${IDENTITY_DB_URL:?Inicializar credenciales separadas}
       BACKUP_DB_URL: ${BACKUP_DB_URL:?Inicializar credenciales separadas}
@@ -267,7 +269,7 @@ services:
       - ./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
       - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     healthcheck:
-      test: [CMD, gosu, rabbitmq, rabbitmq-diagnostics, -q, ping]
+      test: [CMD-SHELL, "gosu rabbitmq rabbitmq-diagnostics -q check_port_listener 5672 && gosu rabbitmq rabbitmq-diagnostics -q check_port_listener 15672"]
       interval: 10s
       timeout: 10s
       retries: 12
@@ -282,6 +284,8 @@ services:
     volumes:
       - messaging-publisher:/credentials/publisher
       - messaging-consumer:/credentials/consumer
+      - messaging-standing-publisher:/credentials/standing-publisher
+      - messaging-standing-match:/credentials/standing-match
     command: [python, configure_messaging.py]
     depends_on:
       rabbitmq:
@@ -307,6 +311,43 @@ services:
       DATABASE_URL: ${RELAY_DB_URL:?Inicializar credenciales separadas}
       RABBITMQ_URL_FILE: /run/messaging/url
     volumes: ["messaging-publisher:/run/messaging:ro"]
+    restart: unless-stopped
+    depends_on:
+      messaging-config:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  standing-events-relay:
+    image: rac-${RAC_ENV}-match:local
+    entrypoint: [/app/events-relay]
+    environment:
+      DATABASE_URL: ${STANDING_RELAY_DB_URL:?Inicializar credenciales separadas}
+      EVENT_STREAM: standing
+      RABBITMQ_URL_FILE: /run/messaging/url
+    volumes: ["messaging-standing-publisher:/run/messaging:ro"]
+    restart: unless-stopped
+    depends_on:
+      messaging-config:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  standing-match-consumer:
+    image: rac-${RAC_ENV}-match:local
+    entrypoint: [/app/standing-consumer]
+    environment:
+      DATABASE_URL: ${STANDING_MATCH_DB_URL:?Inicializar credenciales separadas}
+      RABBITMQ_URL_FILE: /run/messaging/url
+    volumes: ["messaging-standing-match:/run/messaging:ro"]
     restart: unless-stopped
     depends_on:
       messaging-config:
@@ -344,3 +385,5 @@ volumes:
   rabbitmq-events-data:
   messaging-publisher:
   messaging-consumer:
+  messaging-standing-publisher:
+  messaging-standing-match:

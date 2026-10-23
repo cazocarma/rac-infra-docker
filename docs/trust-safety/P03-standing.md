@@ -80,13 +80,44 @@ la cancelación genera el evento de reservas mediante el trigger existente.
 Se toma el mismo lock de proveedor que usa la aceptación de cupos. Una reversión
 solo actualiza la proyección; no reactiva ninguna reserva.
 
-Esta entrega no activa un worker RabbitMQ ni protege por sí sola las nuevas
-reservas creadas durante entrega tardía. Falta el control autoritativo en las
-escrituras, su comprobación al commit y reconciliación. La proyección no es un
-lease fresco y no debe usarse para autorizar operaciones por sí sola.
-El manifiesto integrado fija el commit local de match con estas pruebas. Antes
-de publicar infra se deben publicar también las revisiones de servicios fijadas;
-este expediente no acredita que GitHub pueda descargarlas todavía.
+Los efectos de V021 se conectan ahora a los workers descritos abajo. Falta el
+control autoritativo en nuevas escrituras, su comprobación al commit y
+reconciliación. La proyección no es un lease fresco y no debe usarse para
+autorizar operaciones por sí sola.
+
+## Entrega local: RabbitMQ y workers V023
+
+`standing-events-relay` publica únicamente filas confirmadas de standing.outbox.
+Reutiliza el relay de transporte de la imagen match, seleccionando un stream
+cerrado (booking o standing), sin aceptar identificadores SQL arbitrarios. La
+autoridad sigue siendo user: compartir el binario no concede a rac_match acceso
+a sus tablas. El worker tiene login `rac_standing_relay`, lectura del outbox y
+UPDATE únicamente de confirmación/reintentos; no puede cambiar sanciones.
+
+`standing-match-consumer` tiene identidad propia `rac_standing_match`: columnas
+mínimas de reservas/cupos, inbox/proyección/efectos y cuarentena. No puede leer
+correo ni modificar la autoridad. Los volúmenes de credenciales AMQP son separados
+y de solo lectura para cada worker. Solo el bootstrap recibe el administrador.
+
+El exchange durable rac.standing dirige user.standing.changed.v1 a una cola quorum
+propia de match. El publicador usa mandatory y publisher confirms; ante fallo
+conserva el evento y programa reintento sin límite de intentos. El consumidor usa
+prefetch 1, ACK manual después del commit y reconexión con pausa. Un mensaje
+inválido/conflictivo se confirma solo tras guardar su SHA-256 y motivo técnico;
+no se guarda el cuerpo privado en SQL ni en logs. Reintentos de infraestructura
+agotados quedan en cola quorum de fallidos mediante dead lettering at-least-once.
+
+El bootstrap se verifica dos veces contra el broker real: conserva credenciales,
+topología y ACL. La salud del broker comprueba listeners AMQP y management antes
+de configurar; un simple ping no acredita que la API de administración esté lista.
+Hay readiness, métricas sin etiquetas de usuario y alertas de atraso, desconexión
+y cola de fallidos. La cuarentena mínima todavía requiere el futuro flujo de
+revisión/retención; no se borra automáticamente ni se reenvía sin inspección.
+
+En laboratorio desechable se probó autoridad -> outbox -> broker -> consumidor
+con credenciales restringidas: cancelación y devolución única, entrega duplicada,
+caída de publicación, pérdida de ACK tras commit y reversión sin reapertura.
+No se han activado estos workers ni V023 en la base DEV del usuario.
 
 ## Evidencia local
 
@@ -106,20 +137,28 @@ este expediente no acredita que GitHub pueda descargarlas todavía.
   sanción de cliente versus compa, futuras versus iniciadas/finalizadas,
   devolución a contraparte, fallo a mitad de transacción, entrega duplicada en
   paralelo, ID/versión contradictorios y reversión seguida de evento antiguo.
+- `test_messaging.py`: broker y PostgreSQL reales desechables, bootstrap repetido
+  con ACL y políticas quorum, publicación/consumo con logins restringidos,
+  duplicados, cuarentena y redelivery tras commit sin ACK. Sin secretos de DEV.
+- Configuración dev/qa/prd, Prometheus/promtool y diez reglas de alertas válidas.
+
+La ejecución remota [39956656284](https://github.com/cazocarma/rac-infra-docker/actions/runs/39956656284)
+pasó los cuatro jobs (incluida integración) con el commit anterior eceed7a. Esa
+evidencia confirma la corrección V022 y la base previa, no los workers V023
+añadidos después; estos tienen las pruebas locales anteriores y un nuevo CI al
+publicar esta revisión.
 
 ## Pendiente para completar P03
 
-1. Verificar mediante checkout en Actions el acceso de lectura de CI al
-   módulo privado publicado v0.2.0, ya guardado en la instalación. El manifiesto fija su commit y el workflow
-   prepara checkout y pruebas `-race` sin persistir credenciales de Git. Falta
-   conectar los builds de servicios sin secretos en capas Docker ni `replace`
+1. El checkout de rac-platform y la base integrada ya pasaron en Actions. Falta
+   conectar el módulo a los builds de servicios sin secretos en capas Docker ni `replace`
    local permanente.
 2. Conectar la autoridad al ingreso autenticado de staff y a políticas aprobadas;
-   transporte autenticado, publicación del outbox e inbox por consumidor.
+   transporte autenticado de consultas, consumidores de otros dueños y reconciliación.
 3. Integración de todos los escritores y contrapartes, catálogo y medios,
    invalidación/reconciliación, controles al commit y aviso en Flutter.
-4. Conectar los efectos de reservas al consumidor autenticado y al módulo de casos;
-   probar integración con los controles autoritativos concurrentes.
+4. Conectar los efectos pendientes de revisión al módulo de casos y probar
+   integración de los workers con los controles autoritativos concurrentes.
 5. Pruebas E2E con JWT anterior, particiones, dos instancias y carreras, además
    de medición de latencia bajo carga definida.
 
@@ -148,5 +187,5 @@ y rol mínimos, conectar su verificador OIDC y enlazar las APIs.
 
 El usuario autorizó añadir únicamente rac-platform a la App RAC CI Read con
 Contents de lectura. La instalación se guardó y verificó con ocho repositorios seleccionados,
-conservando los siete existentes y acceso de lectura a código/metadatos. No se ha ejecutado el CI integrado remoto
-con el nuevo acceso.
+conservando los siete existentes y acceso de lectura a código/metadatos. El CI
+integrado remoto 39956656284 pasó con el nuevo acceso.

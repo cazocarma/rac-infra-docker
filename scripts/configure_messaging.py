@@ -51,8 +51,22 @@ def configure():
     if not any(b['routing_key'] == 'booking.state_changed.v1' for b in bindings):
         request('POST', f'bindings/{encoded}/e/rac.bookings/q/rac.alert.bookings',
             {'routing_key': 'booking.state_changed.v1', 'arguments': {}})
-    for role, write, read in [('publisher', '^rac[.]bookings$', '^$'), ('consumer', '^$', '^rac[.]alert[.]bookings$')]:
+    request('PUT', f'exchanges/{encoded}/rac.standing', {'type': 'topic', 'durable': True, 'auto_delete': False, 'arguments': {}})
+    request('PUT', f'exchanges/{encoded}/rac.standing.failed', {'type': 'direct', 'durable': True, 'auto_delete': False, 'arguments': {}})
+    for queue in ('rac.match.standing', 'rac.match.standing.failed'):
+        request('PUT', f'queues/{encoded}/{queue}', {'durable': True, 'auto_delete': False, 'arguments': {'x-queue-type': 'quorum'}})
+    for exchange, queue, key in [('rac.standing', 'rac.match.standing', 'user.standing.changed.v1'), ('rac.standing.failed', 'rac.match.standing.failed', 'failed')]:
+        bindings = request('GET', f'bindings/{encoded}/e/{exchange}/q/{queue}')
+        if not any(b['routing_key'] == key for b in bindings):
+            request('POST', f'bindings/{encoded}/e/{exchange}/q/{queue}', {'routing_key': key, 'arguments': {}})
+    request('PUT', f'policies/{encoded}/standing-delivery', {'pattern': '^rac[.]match[.]standing$',
+        'definition': {'delivery-limit': 20, 'dead-letter-exchange': 'rac.standing.failed',
+            'dead-letter-routing-key': 'failed', 'dead-letter-strategy': 'at-least-once',
+            'overflow': 'reject-publish'}, 'priority': 10, 'apply-to': 'quorum_queues'})
+    for role, write, read in [('publisher', '^rac[.]bookings$', '^$'), ('consumer', '^$', '^rac[.]alert[.]bookings$'),
+                             ('standing-publisher', '^rac[.]standing$', '^$'), ('standing-match', '^$', '^rac[.]match[.]standing$')]:
         file = Path('/credentials/' + role + '/url')
+        file.parent.mkdir(parents=True, exist_ok=True)
         user = vhost + '-' + role
         if file.exists():
             existing = urllib.parse.urlsplit(file.read_text(encoding='utf-8').strip())

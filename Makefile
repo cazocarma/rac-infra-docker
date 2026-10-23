@@ -112,6 +112,8 @@ check:
 	$(CURL) $(CHECK_URL)/api/user/skills
 	$(COMPOSE) exec -T booking-events-relay wget -q -T 5 -O /dev/null http://localhost:8080/ready
 	$(COMPOSE) exec -T alert-events-consumer wget -q -T 5 -O /dev/null http://localhost:8080/ready
+	$(COMPOSE) exec -T standing-events-relay wget -q -T 5 -O /dev/null http://localhost:8080/ready
+	$(COMPOSE) exec -T standing-match-consumer wget -q -T 5 -O /dev/null http://localhost:8080/ready
 
 # Laboratorio independiente: nunca usa secretos ni volúmenes de QA/PRD.
 STORAGE_COMPOSE := docker compose --env-file envs/.env.storage -p rac-dev-storage -f compose.storage.yaml
