@@ -1,0 +1,56 @@
+# Used only by scripts/test_standing_e2e.py with a generated environment/project.
+# No host ports, imported DEV realm, or existing DEV volume names.
+services:
+  keycloak:
+    command: [start-dev]
+    ports: !reset []
+    volumes:
+      - ./keycloak/themes/rac:/opt/keycloak/themes/rac:ro
+  nginx:
+    ports: !reset []
+  database-config:
+    image: ${STANDING_TEST_IMAGE_PREFIX:?Disposable test runner required}-tools
+  identity-config:
+    image: ${STANDING_TEST_IMAGE_PREFIX}-tools
+  messaging-config:
+    image: ${STANDING_TEST_IMAGE_PREFIX}-tools
+  backend-user:
+    image: ${STANDING_TEST_IMAGE_PREFIX}-user
+    build: ../rac-user-service
+  backend-match:
+    image: ${STANDING_TEST_IMAGE_PREFIX}-match
+    build: ../rac-match-service
+  backend-chat:
+    image: ${STANDING_TEST_IMAGE_PREFIX}-chat
+    build: ../rac-chat-service
+  backend-alert:
+    image: ${STANDING_TEST_IMAGE_PREFIX}-alert
+    build: ../rac-alert-service
+  booking-events-relay:
+    image: ${STANDING_TEST_IMAGE_PREFIX}-match
+  standing-events-relay:
+    image: ${STANDING_TEST_IMAGE_PREFIX}-match
+  standing-match-consumer:
+    image: ${STANDING_TEST_IMAGE_PREFIX}-match
+  alert-events-consumer:
+    image: ${STANDING_TEST_IMAGE_PREFIX}-alert
+  standing-alert-consumer:
+    image: ${STANDING_TEST_IMAGE_PREFIX}-alert
+  test-standing:
+    profiles: [tests]
+    image: ${STANDING_TEST_IMAGE_PREFIX}-tools
+    environment:
+      RAC_ENV: dev
+      RAC_DISPOSABLE_PROJECT: ${STANDING_TEST_IMAGE_PREFIX}
+      PGHOST: postgres
+      PGDATABASE: rac_standing_e2e
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      OIDC_ISSUER: ${OIDC_ISSUER}
+      OIDC_WEB_REDIRECT_URI: ${OIDC_WEB_REDIRECT_URI}
+    volumes:
+      - standing-test-state:/fixture
+    command: [python, standing_e2e_fixture.py]
+volumes:
+  standing-test-state:

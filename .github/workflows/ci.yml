@@ -235,6 +235,12 @@ jobs:
       - name: Transactional messaging against disposable PostgreSQL and RabbitMQ
         working-directory: rac-infra-docker
         run: python scripts/test_messaging.py
+      - name: Reject persistent resources in the standing fault lab
+        working-directory: rac-infra-docker
+        run: python -m unittest discover -s scripts -p "test_standing_lab.py"
+      - name: Standing old-JWT and commit races across isolated Compose instances
+        working-directory: rac-infra-docker
+        run: python -u scripts/test_standing_e2e.py
       - name: Prepare ephemeral DEV
         working-directory: rac-infra-docker
         run: |

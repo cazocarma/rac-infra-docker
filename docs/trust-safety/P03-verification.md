@@ -58,9 +58,10 @@ en los checks del PR para la revisión fijada en el manifiesto.
 
 ## Gates todavía abiertos
 
-1. Ensayo E2E en Compose aislado con JWT anterior a sanción en todos los escritores,
-   particiones/reinicio y carrera de commit. Las pruebas HTTP/PG actuales cubren
-   partes de ese recorrido, no equivalen al ensayo completo de topología.
+1. El [ensayo Compose](P03-compose.md) pasó localmente: JWT real previo, dos
+   instancias de user/match/chat, escritores, seis carreras de commit, caída de
+   broker/autoridad, reinicio, recuperación y derechos protectores. Falta confirmar
+   su ejecución en CI para la revisión final.
 2. Medición reproducible desde commit de sanción hasta última escritura admitida:
    p99 ≤5 s, con muestra, concurrencia, hardware y fallos documentados. No hay
    todavía un resultado que permita afirmar ese SLO.
@@ -71,6 +72,17 @@ en los checks del PR para la revisión fijada en el manifiesto.
    en draft hasta resolver los gates de P03; no activarlo solo por compilar.
 5. Backup y restore aislado del estado persistente antes del rollout autorizado.
    Las pruebas desechables de migración no son el respaldo del DEV real.
+6. Terminar sesiones de Keycloak al sancionar, con un mecanismo realmente acotado
+   y pruebas de privilegios negativos; sigue pendiente. No otorgar administración
+   general a los lectores de standing o al provisionador de `compa` para resolverlo.
+
+La revisión del código oficial de [Keycloak 26.8.1, UserResource](https://github.com/keycloak/keycloak/blob/26.8.1/services/src/main/java/org/keycloak/services/resources/admin/UserResource.java)
+confirma que `logout()`, modificar y borrar usuarios exigen el mismo control
+`requireManage(user)`. Por eso un grant de gestión no equivale a una identidad
+limitada a cerrar sesiones. Ese efecto debe diseñarse y probarse con un límite
+real de privilegios; no se declara resuelto por los tokens cortos ni por standing.
+La recuperación de un evento antiguo tampoco debe cerrar sesiones nuevas después
+de una reversión. El principal técnico actual conserva su alcance previo.
 
 Los avisos jurídicos completos, casos, apelaciones y atribución de decisiones
 humanas pertenecen a P11; documentos a P04, identidad baneada a P05 y privacidad
