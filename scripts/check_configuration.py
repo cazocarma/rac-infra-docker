@@ -37,6 +37,9 @@ for environment in ("dev", "qa", "prd"):
         assert any(v["target"] == "/var/lib/rac/photos" and v["source"] == "profile-photos" for v in config["services"]["backend-user"]["volumes"])
         assert config["services"]["migrate"]["environment"]["FLYWAY_DEFAULT_SCHEMA"] == "meta"
         services = config['services']
+        # Validate the operator's actual container input, not only the env-file:
+        # adding a scoped role is incomplete if Compose omits its credential.
+        validate_credentials(services['database-config']['environment'])
         mapped={'backend-user':'USER_DB_URL','backend-match':'MATCH_DB_URL','backend-chat':'CHAT_DB_URL','backend-alert':'ALERT_DB_URL','booking-maintenance':'MAINTENANCE_DB_URL','booking-events-relay':'RELAY_DB_URL','alert-events-consumer':'ALERT_CONSUMER_DB_URL','standing-events-relay':'STANDING_RELAY_DB_URL','standing-match-consumer':'STANDING_MATCH_DB_URL','standing-alert-consumer':'STANDING_ALERT_DB_URL'}
         for service,key in mapped.items():
             assert services[service]['environment']['DATABASE_URL']==values[key]

@@ -35,6 +35,7 @@ services:
       RELAY_DB_URL: ${RELAY_DB_URL:?Inicializar credenciales separadas}
       STANDING_RELAY_DB_URL: ${STANDING_RELAY_DB_URL:?Inicializar credenciales separadas}
       STANDING_MATCH_DB_URL: ${STANDING_MATCH_DB_URL:?Inicializar credenciales separadas}
+      STANDING_ALERT_DB_URL: ${STANDING_ALERT_DB_URL:?Inicializar credenciales separadas}
       ALERT_CONSUMER_DB_URL: ${ALERT_CONSUMER_DB_URL:?Inicializar credenciales separadas}
       IDENTITY_DB_URL: ${IDENTITY_DB_URL:?Inicializar credenciales separadas}
       BACKUP_DB_URL: ${BACKUP_DB_URL:?Inicializar credenciales separadas}
