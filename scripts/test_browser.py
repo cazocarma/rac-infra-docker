@@ -133,7 +133,9 @@ with sync_playwright() as p:
         expect(card.get_by_role('checkbox', name='Cancelada', exact=True)).to_be_visible(timeout=30000)
         page.get_by_role('button', name='Back', exact=True).click()
         page.get_by_text('Notificaciones', exact=True).click()
-        expect(page.get_by_text(re.compile('Novedades de tus reservas'))).to_be_visible(timeout=30000)
+        # Identify the destination by its accessible page title; the inbox also
+        # contains account notices, so explanatory booking-only copy is obsolete.
+        expect(page.get_by_role('heading', name='Notificaciones', exact=True)).to_be_visible(timeout=30000)
         expect(page.get_by_role('group', name=re.compile('Reserva '+booking_id[:8])).first).to_be_visible(timeout=30000)
         before_read = page.get_by_role('button', name='Marcar como leída', exact=True).count()
         with page.expect_response(lambda r: '/api/alert/notifications/' in r.url and r.url.endswith('/read') and r.request.method == 'PUT') as marked:
