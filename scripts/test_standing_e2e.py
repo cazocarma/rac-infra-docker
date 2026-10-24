@@ -1,4 +1,6 @@
 """Full standing Compose lab. Never reads .env or targets an existing project."""
+import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -38,6 +40,12 @@ def validate_model(model, project):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--measure', action='store_true', help='include 100 real concurrent revocation trials')
+    parser.add_argument('--report', type=Path, help='sanitized JSON measurement report, requires --measure')
+    args = parser.parse_args()
+    if args.report and not args.measure:
+        parser.error('--report requires --measure')
     project = 'rac-standing-e2e-' + uuid.uuid4().hex[:12]
     with tempfile.TemporaryDirectory(prefix=project) as directory:
         env_file = Path(directory) / 'fixture.env'
@@ -75,7 +83,25 @@ def main():
         def fixture(phase):
             result = run('run', '--rm', '--no-deps', 'test-standing',
                          'python', 'standing_e2e_fixture.py', phase)
-            print(result.stdout, end='', flush=True)
+            for line in result.stdout.splitlines():
+                if line.startswith('MEASUREMENT_JSON:'):
+                    if args.report:
+                        report = json.loads(line.removeprefix('MEASUREMENT_JSON:'))
+                        hardware = subprocess.run(['docker', 'info', '--format',
+                            '{"cpus":{{.NCPU}},"memory_bytes":{{.MemTotal}},"server_version":"{{.ServerVersion}}","architecture":"{{.Architecture}}"}'],
+                            capture_output=True, text=True, check=True, timeout=15)
+                        report['docker'] = json.loads(hardware.stdout)
+                        report['companion_revisions'] = json.loads((ROOT / 'ci/companion-revisions.json').read_text(encoding='utf-8'))
+                        harness = hashlib.sha256()
+                        for name in ('scripts/test_standing_e2e.py', 'scripts/standing_e2e_fixture.py',
+                                     'scripts/standing_measurements.py', 'compose.yaml',
+                                     'compose.standing.yaml', 'compose.standing-tests.yaml'):
+                            harness.update(name.encode('utf-8') + b'\0' + (ROOT / name).read_bytes())
+                        report['harness_sha256'] = harness.hexdigest()
+                        args.report.parent.mkdir(parents=True, exist_ok=True)
+                        args.report.write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+                    continue
+                print(line, flush=True)
 
         # Validate the effective model before ANY mutation, including cleanup.
         model = json.loads(run('--profile', 'tests', 'config', '--format', 'json').stdout)
@@ -99,6 +125,8 @@ def main():
             run('stop', 'standing-match-consumer')
             fixture('writers')
             fixture('races')
+            if args.measure:
+                fixture('measure')
             run('up', '-d', '--no-deps', '--wait', 'standing-match-consumer')
             fixture('prepare-outages')
             run('stop', 'rabbitmq')

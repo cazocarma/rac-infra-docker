@@ -17,6 +17,7 @@ import zlib
 import psycopg
 from psycopg import sql as sql_builder
 from oidc_test_support import login
+from standing_measurements import measure_revocation
 
 if (os.environ.get('RAC_ENV') != 'dev' or os.environ.get('PGHOST') != 'postgres'
         or os.environ.get('PGDATABASE') != 'rac_standing_e2e'
@@ -37,7 +38,9 @@ LEGACY = {'nombre': 'Compa sintético', 'correo': 'compa1@demo.com',
 INSTANCE = 1
 
 
-def api(method, path, token=None, data=None, expected=200, content_type='application/json'):
+def api(method, path, token=None, data=None, expected=200, content_type='application/json',
+        instance=None, result_meta=False):
+    started_ns = time.monotonic_ns()
     service = path.split('/')[2]
     headers = {'Content-Type': content_type}
     if token:
@@ -45,7 +48,7 @@ def api(method, path, token=None, data=None, expected=200, content_type='applica
     body = data if isinstance(data, bytes) else None if data is None else json.dumps(data).encode()
     host = 'backend-' + service
     if service in ('user', 'match', 'chat'):
-        host = os.environ['RAC_DISPOSABLE_PROJECT'] + '-backend-' + service + '-' + str(INSTANCE)
+        host = os.environ['RAC_DISPOSABLE_PROJECT'] + '-backend-' + service + '-' + str(instance or INSTANCE)
     request = urllib.request.Request('http://' + host + ':8080' + path,
                                      method=method, headers=headers, data=body)
     try:
@@ -53,7 +56,9 @@ def api(method, path, token=None, data=None, expected=200, content_type='applica
     except urllib.error.HTTPError as error:
         response = error
     raw = response.read()
-    if response.code != expected:
+    finished_ns = time.monotonic_ns()
+    allowed_statuses = (expected,) if isinstance(expected, int) else expected
+    if response.code not in allowed_statuses:
         # Do not echo tokens, payloads, profile fields or private case metadata.
         code = ''
         try:
@@ -61,6 +66,8 @@ def api(method, path, token=None, data=None, expected=200, content_type='applica
         except (ValueError, AttributeError):
             pass
         raise AssertionError(f'{method} {path}: status {response.code}, expected {expected}; code={code}')
+    if result_meta:
+        return {'status': response.code, 'started_ns': started_ns, 'finished_ns': finished_ns}
     try:
         return json.loads(raw)
     except ValueError:
@@ -82,14 +89,16 @@ def sql(statement, params=(), fetch=False):
         return cursor.fetchall() if fetch else None
 
 
-def change(subject, status):
+def change(subject, status, timed=False):
     # Only this disposable owner has the audit principal. Runtime API roles
     # keep their existing denial of the standing mutation entry point.
     with psycopg.connect() as db:
         version = db.execute('SELECT version FROM standing.account WHERE subject_id=%s', (subject,)).fetchone()[0]
         event = db.execute('SELECT standing.change_account(%s,%s,%s,%s,%s::jsonb,%s)',
                            (uuid.uuid4(), subject, version, status, '[]', state['policy'])).fetchone()[0]
-    return event
+        commit_started_ns = time.monotonic_ns()
+    commit_finished_ns = time.monotonic_ns()
+    return (commit_started_ns, commit_finished_ns) if timed else event
 
 
 def stamp(days):
@@ -261,6 +270,19 @@ elif phase == 'writers':
     print('PASS: old real JWT denied on profile/listing/skills/photo/review/agenda/time-off/create/accept/extend/send; protective reads retained')
 elif phase == 'races':
     commit_races()
+elif phase == 'measure':
+    def measured_call(operation, instance):
+        method, path, data = {
+            'user.profile': ('PUT', '/api/user/me', PROFILE),
+            'match.availability': ('POST', f"/api/match/availability/{state['compa']}", {'availability': AVAILABILITY}),
+            'chat.send': ('POST', f"/api/chat/bookings/{state['active']}/messages",
+                          {'envio_id': str(uuid.uuid4()), 'contenido': 'Carga sintética de revocación.'}),
+        }[operation]
+        return api(method, path, state['compa_token'], data, expected=(200, 201, 403),
+                   instance=instance, result_meta=True)
+    result = measure_revocation(measured_call, lambda status: change(state['compa'], status, timed=True))
+    print('MEASUREMENT_JSON:' + json.dumps(result), flush=True)
+    print('PASS: 100 audited revocation trials across six concurrent old-JWT writer probes', flush=True)
 elif phase == 'prepare-outages':
     # Historical sanctions must repair the old bookings before creating new ones.
     wait(lambda: sql("SELECT count(*),count(*) FILTER(WHERE estado='cancelada') FROM sesion WHERE id IN(%s,%s)",
