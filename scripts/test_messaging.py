@@ -83,6 +83,9 @@ try:
             '-e', f'RAC_EVENTS_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}-pg:5432/rac_events_test?sslmode=disable',
             '-e', f'RAC_EVENTS_TEST_AMQP_URL=amqp://test:test-only@{NAME}-mq:5672/',
             'golang:1.27.2', 'sh', '-c', 'cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/events')
+        if service == 'alert':
+            for name in ('TestStandingNoticesPostgres', 'TestStandingNoticeRecoveryPostgresHTTP', 'TestStandingDiscoveryPagesPostgres', 'TestStandingNoticeBrokerRedelivery'):
+                assert '--- PASS: ' + name in result.stdout, 'Required standing notification test did not run: ' + name
         print(result.stdout)
     print('PASS: transactional rollback, ordered concurrent relay, mandatory confirms, durable deduplication and ACK boundary')
 finally:

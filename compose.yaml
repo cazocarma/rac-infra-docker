@@ -286,6 +286,7 @@ services:
       - messaging-consumer:/credentials/consumer
       - messaging-standing-publisher:/credentials/standing-publisher
       - messaging-standing-match:/credentials/standing-match
+      - messaging-standing-alert:/credentials/standing-alert
     command: [python, configure_messaging.py]
     depends_on:
       rabbitmq:
@@ -377,6 +378,24 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+  standing-alert-consumer:
+    image: rac-${RAC_ENV}-alert:local
+    entrypoint: [/app/standing-consumer]
+    environment:
+      DATABASE_URL: ${STANDING_ALERT_DB_URL:?Inicializar credenciales separadas}
+      RABBITMQ_URL_FILE: /run/messaging/url
+    volumes: ["messaging-standing-alert:/run/messaging:ro"]
+    restart: unless-stopped
+    depends_on:
+      messaging-config:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 volumes:
   identity-compa-role:
   profile-photos:
@@ -387,3 +406,4 @@ volumes:
   messaging-consumer:
   messaging-standing-publisher:
   messaging-standing-match:
+  messaging-standing-alert:

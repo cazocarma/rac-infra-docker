@@ -31,3 +31,5 @@ scrape_configs:
         labels: {service: standing-events-relay}
       - targets: [standing-match-consumer:8080]
         labels: {service: standing-match-consumer}
+      - targets: [standing-alert-consumer:8080]
+        labels: {service: standing-alert-consumer}

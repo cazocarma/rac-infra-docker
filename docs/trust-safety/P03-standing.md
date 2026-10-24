@@ -1,11 +1,17 @@
 # P03 — Estado de cuenta (en desarrollo)
 
-La recuperación vigente está descrita en [P03-recovery](P03-recovery.md), con
-rac-platform v0.6.0 y V025. Sustituye la reconciliación basada únicamente en la
+La recuperación de reservas está descrita en [P03-recovery](P03-recovery.md).
+Los avisos y su recuperación independiente se describen en
+[P03-notifications](P03-notifications.md), con rac-platform v0.7.0 y V026.
+La evaluación temporal vigente usa rac-platform v0.8.0 y se describe en
+[P03-time](P03-time.md).
+La recuperación sustituye la reconciliación basada únicamente en la
 proyección actual de las entregas intermedias documentadas más abajo: conserva
 trabajo de sanciones históricas y recupera eventos originales por cursor.
 Este documento conserva también evidencia de etapas anteriores; no declara
 P03 completo ni activado en el DEV persistente.
+La [matriz vigente de verificación](P03-verification.md) enumera rutas, evidencia
+y gates pendientes; las listas «pendientes» de los avances históricos no la sustituyen.
 
 D02 y D03 fueron confirmadas por el usuario el 22 de octubre de 2026.
 La matriz y el alcance del cupo están en [ADR-001](ADR-001-standing.md).
@@ -476,6 +482,7 @@ incompletas, fail-closed informativo, reintento, limpieza del timer y tamaños
 Android/iOS. Los textos siguen el español actual de la app; ARB/i18n transversal
 es la entrega P04 del plan.
 
-P03 continúa abierto por resincronización autoritativa, efectos/notificaciones,
-cobertura E2E completa de fallos y las mediciones de latencia y revocación. La
+La resincronización y los avisos se implementaron en las entregas enlazadas al
+inicio. P03 continúa abierto por cobertura E2E completa de fallos y las
+mediciones de latencia y revocación. La
 activación del preview existente no se ha realizado en el DEV persistente.

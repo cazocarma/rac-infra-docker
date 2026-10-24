@@ -16,7 +16,7 @@ def check(workspace):
     if not (platform / 'go.mod').is_file():
         raise ValueError('Pinned platform checkout required')
     versions = set()
-    for name in ('rac-user-service', 'rac-match-service', 'rac-chat-service'):
+    for name in ('rac-user-service', 'rac-match-service', 'rac-chat-service', 'rac-alert-service'):
         service = workspace / name
         match = re.search(r'^\s*' + re.escape(MODULE) + r'\s+(v[0-9]+\.[0-9]+\.[0-9]+)\s*$', (service / 'go.mod').read_text(), re.M)
         if not match:

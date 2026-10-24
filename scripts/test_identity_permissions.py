@@ -118,6 +118,17 @@ def main():
         assert chat_claims['resource_access']['rac-standing']['roles'] == ['standing.read']
         assert 'realm-management' not in chat_claims.get('resource_access', {})
         request('GET', '/admin/realms/rentacompa/users', token=chat_token['access_token'], expected=403)
+
+        alert_secret = (standing_directory / 'alert/secret').read_text().strip()
+        assert len({alert_secret, chat_secret, standing_secret}) == 3
+        alert_token = request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
+            'client_id': 'rac-alert-standing', 'client_secret': alert_secret, 'grant_type': 'client_credentials'}, form=True)
+        alert_claims = json.loads(base64.urlsafe_b64decode(alert_token['access_token'].split('.')[1] + '=='))
+        assert alert_claims['sub'] == bindings['rac-alert-standing']
+        assert alert_claims['resource_access']['rac-standing']['roles'] == ['standing.read']
+        assert 'realm-management' not in alert_claims.get('resource_access', {})
+        assert 'refresh_token' not in alert_token and alert_token['expires_in'] <= 300
+        request('GET', '/admin/realms/rentacompa/users', token=alert_token['access_token'], expected=403)
         assert configure_standing(admin, standing_directory) == bindings
         assert (standing_directory / 'match/secret').read_text().strip() == standing_secret
         reader = admin('GET', '/clients?clientId=rac-match-standing')[0]

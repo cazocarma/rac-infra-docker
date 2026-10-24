@@ -9,7 +9,7 @@ import secrets
 import urllib.error
 
 AUDIENCE = 'rac-standing'
-READERS = {'match': 'rac-match-standing', 'chat': 'rac-chat-standing'}
+READERS = {'match': 'rac-match-standing', 'chat': 'rac-chat-standing', 'alert': 'rac-alert-standing'}
 
 
 def write_atomic(file, value, mode):

@@ -12,7 +12,7 @@ class VendorIntegrityTests(unittest.TestCase):
             (platform / 'standing').mkdir(parents=True)
             (platform / 'go.mod').write_text('module ' + MODULE + '\n')
             (platform / 'standing/rules.go').write_text('package standing\nconst Deny = true\n')
-            for name in ('rac-user-service', 'rac-match-service', 'rac-chat-service'):
+            for name in ('rac-user-service', 'rac-match-service', 'rac-chat-service', 'rac-alert-service'):
                 service = root / name
                 generated = service / 'vendor' / MODULE / 'standing'
                 generated.mkdir(parents=True)

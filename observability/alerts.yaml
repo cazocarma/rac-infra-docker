@@ -72,3 +72,27 @@ groups:
         labels: {severity: critical}
         annotations:
           summary: "Hay cuentas sin contrastar recientemente con la autoridad de sanciones"
+      - alert: RACStandingAlertConsumerDisconnected
+        expr: rac_alert_standing_broker_connected == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "El consumidor de avisos de cuenta perdió su conexión al broker"
+      - alert: RACStandingAlertsFailed
+        expr: rabbitmq_queue_messages{queue="rac.alert.standing.failed"} > 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Hay avisos de cuenta retenidos para recuperación controlada"
+      - alert: RACStandingNoticeQuarantined
+        expr: rac_alert_standing_quarantine_present > 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Hay eventos de cuenta inválidos o contradictorios en cuarentena"
+      - alert: RACStandingNoticeRecoveryDelayed
+        expr: rac_alert_standing_recovery_lag_seconds > 30
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "La recuperación de avisos de cuenta no está al día con la autoridad"

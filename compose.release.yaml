@@ -40,3 +40,6 @@ services:
     image: ${MATCH_IMAGE:?Configurar MATCH_IMAGE}
   standing-match-consumer:
     image: ${MATCH_IMAGE:?Configurar MATCH_IMAGE}
+
+  standing-alert-consumer:
+    image: ${ALERT_IMAGE:?Configurar ALERT_IMAGE}
