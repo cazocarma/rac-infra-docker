@@ -483,6 +483,7 @@ Android/iOS. Los textos siguen el español actual de la app; ARB/i18n transversa
 es la entrega P04 del plan.
 
 La resincronización y los avisos se implementaron en las entregas enlazadas al
-inicio. P03 continúa abierto por cobertura E2E completa de fallos y las
-mediciones de latencia y revocación. La
-activación del preview existente no se ha realizado en el DEV persistente.
+inicio. La [matriz Compose](P03-compose.md) y la [medición local](P03-performance.md)
+ya pasaron con varias instancias y fallos reales. P03 continúa abierto por los
+gates de [verificación final](P03-verification.md), incluido el cierre acotado de
+sesiones Keycloak. La activación del preview no se ha realizado en el DEV persistente.

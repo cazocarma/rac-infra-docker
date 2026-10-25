@@ -69,7 +69,8 @@ integrado de CI, después de mensajería y antes del DEV efímero de sus otros t
 Los mensajes PASS identifican cada fase y no contienen tokens, contraseñas ni
 contenido de casos.
 
-Es una prueba funcional con fallos y varias instancias. Todavía no es la medición
-estadística bajo carga de revocación p99 ≤5 s ni del camino caliente p99 ≤2 ms.
+La modalidad `--measure --report` añade los gates estadísticos de revocación y
+Acquire caliente. La [medición y sus límites](P03-performance.md) están documentados
+por separado; la matriz funcional cubre más rutas que las tres sondas estadísticas.
 No prepara el respaldo del DEV persistente y no lo activa. Tampoco cierra el
 efecto pendiente de terminar sesiones en Keycloak con un mecanismo acotado.

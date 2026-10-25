@@ -96,3 +96,16 @@ groups:
         labels: {severity: critical}
         annotations:
           summary: "La recuperación de avisos de cuenta no está al día con la autoridad"
+      - alert: RACStandingHotAcquireBudgetExceeded
+        expr: |
+          (
+            sum by (service, instance) (increase(rac_standing_acquire_duration_seconds_bucket{cache="hit",le="0.002"}[10m]))
+            / sum by (service, instance) (increase(rac_standing_acquire_duration_seconds_count{cache="hit"}[10m]))
+            < 0.99
+          )
+          and on (service, instance)
+          (sum by (service, instance) (increase(rac_standing_acquire_duration_seconds_count{cache="hit"}[10m])) >= 100)
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Acquire con caché supera el presupuesto de 2 ms en más del 1% de la muestra"

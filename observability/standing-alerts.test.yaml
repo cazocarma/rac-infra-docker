@@ -1,0 +1,63 @@
+rule_files: [alerts.yaml]
+evaluation_interval: 1m
+tests:
+  - name: Budget breach is isolated per instance and sustained before firing
+    interval: 1m
+    input_series:
+      - series: 'rac_standing_acquire_duration_seconds_count{service="chat",instance="slow",cache="hit"}'
+        values: '0+100x20'
+      - series: 'rac_standing_acquire_duration_seconds_bucket{service="chat",instance="slow",cache="hit",le="0.002"}'
+        values: '0+98x20'
+      - series: 'rac_standing_acquire_duration_seconds_count{service="chat",instance="fast",cache="hit"}'
+        values: '0+10000x20'
+      - series: 'rac_standing_acquire_duration_seconds_bucket{service="chat",instance="fast",cache="hit",le="0.002"}'
+        values: '0+10000x20'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: RACStandingHotAcquireBudgetExceeded
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: RACStandingHotAcquireBudgetExceeded
+        exp_alerts:
+          - exp_labels: {service: chat, instance: slow, severity: warning}
+            exp_annotations:
+              summary: "Acquire con caché supera el presupuesto de 2 ms en más del 1% de la muestra"
+  - name: Exact 99 percent meets the budget
+    interval: 1m
+    input_series:
+      - series: 'rac_standing_acquire_duration_seconds_count{service="user",instance="one",cache="hit"}'
+        values: '0+100x20'
+      - series: 'rac_standing_acquire_duration_seconds_bucket{service="user",instance="one",cache="hit",le="0.002"}'
+        values: '0+99x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: RACStandingHotAcquireBudgetExceeded
+        exp_alerts: []
+  - name: Low traffic and cold requests cannot trigger the hot gate
+    interval: 1m
+    input_series:
+      - series: 'rac_standing_acquire_duration_seconds_count{service="match",instance="one",cache="hit"}'
+        values: '0+1x20'
+      - series: 'rac_standing_acquire_duration_seconds_bucket{service="match",instance="one",cache="hit",le="0.002"}'
+        values: '0+0x20'
+      - series: 'rac_standing_acquire_duration_seconds_count{service="match",instance="one",cache="miss"}'
+        values: '0+1000x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: RACStandingHotAcquireBudgetExceeded
+        exp_alerts: []
+  - name: No traffic and a healthy counter reset do not trigger
+    interval: 1m
+    input_series:
+      - series: 'rac_standing_acquire_duration_seconds_count{service="chat",instance="idle",cache="hit"}'
+        values: '0+0x20'
+      - series: 'rac_standing_acquire_duration_seconds_bucket{service="chat",instance="idle",cache="hit",le="0.002"}'
+        values: '0+0x20'
+      - series: 'rac_standing_acquire_duration_seconds_count{service="chat",instance="reset",cache="hit"}'
+        values: '1000+100x5 0+100x14'
+      - series: 'rac_standing_acquire_duration_seconds_bucket{service="chat",instance="reset",cache="hit",le="0.002"}'
+        values: '1000+100x5 0+100x14'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: RACStandingHotAcquireBudgetExceeded
+        exp_alerts: []

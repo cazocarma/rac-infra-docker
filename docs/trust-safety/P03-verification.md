@@ -2,7 +2,7 @@
 
 Esta matriz distingue controles implementados de aceptación completa. No sustituye
 [acceptance](acceptance.md), que abarca todo el programa Trust & Safety. El preview
-sigue desactivado en el DEV persistente. V026 y platform v0.8.0 requieren despliegue
+sigue desactivado en el DEV persistente. V026 y platform v0.9.1 requieren despliegue
 coordinado y las revisiones inmutables del manifiesto integrado.
 
 ## Rutas existentes
@@ -43,7 +43,7 @@ autenticada; una proyección o un JWT viejo no otorgan por sí solos autorizaci�
 | Separación de BD y restore | `scripts/test_database_permissions.py`: fresh/adopción, migrador sin superusuario, permisos negativos y backup/restore |
 | Integridad de dependencia compartida | `scripts/check_go_vendor.py`, `scripts/test_go_vendor.py`: misma versión inmutable en cuatro consumidores y detección de edición manual |
 | UX y contrato | Flutter analyze, 41 tests y build web; avisos a 360/1200 px, null sin reserva inventada, leído y navegación; OpenAPI y tests JSON |
-| Configuración y observación | `scripts/check_configuration.py`: DEV/QA/PRD y overlay aislado; promtool: 16 reglas; `make check` incluye el nuevo worker |
+| Configuración y observación | `scripts/check_configuration.py`: DEV/QA/PRD y overlay aislado; promtool: 17 reglas y escenarios de presupuesto caliente; `make check` incluye el nuevo worker |
 
 Una suite Go sin variables de fixture puede saltar pruebas PostgreSQL: su éxito
 no reemplaza los runners integrados. El CI debe evaluar los SHAs exactos fijados,
@@ -56,18 +56,28 @@ de V026 pasó antes del ajuste de reloj, que no modifica migraciones ni grants.
 El build Docker actualizado de alert también pasó. El estado remoto debe leerse
 en los checks del PR para la revisión fijada en el manifiesto.
 
+Verificación local del 25-10-2026: platform v0.9.1 y los cuatro consumidores
+pasaron vet/race; el runner completo de migraciones pasó nuevamente con las
+revisiones fijadas, incluidos perfiles y reseñas, rollback, fresh/adopción,
+repetibilidad y rechazo de drift. La matriz Compose completa y los dos gates
+estadísticos pasaron. Promtool valida 17 reglas y los escenarios de la nueva
+alerta. Los resultados anteriores de identidad y Flutter corresponden a su
+revisión indicada; no se modificaron esas integraciones en esta entrega.
+
 ## Gates todavía abiertos
 
 1. El [ensayo Compose](P03-compose.md) pasó localmente: JWT real previo, dos
    instancias de user/match/chat, escritores, seis carreras de commit, caída de
    broker/autoridad, reinicio, recuperación y derechos protectores. Falta confirmar
    su ejecución en CI para la revisión final.
-2. Medición reproducible desde commit de sanción hasta última escritura admitida:
-   p99 ≤5 s, con muestra, concurrencia, hardware y fallos documentados. No hay
-   todavía un resultado que permita afirmar ese SLO.
-3. Presupuesto de autorización caliente p99 ≤2 ms y latencia total separados.
-   Los caminos actuales privilegian consulta fresca; no existe una caché caliente
-   cuya eficacia pueda deducirse de un benchmark del evaluador puro.
+2. La [medición local reproducible](P03-performance.md) pasó 100 revocaciones
+   reales en seis sondas concurrentes. El mayor p99 de primer rechazo fue
+   101.652 ms y el de la cota del último éxito posterior al commit, 2.933 ms.
+   Cubre tres rutas representativas; falta confirmarla en el CI final.
+3. Acquire con caché original pasó el gate de >=99% dentro de 2 ms en las seis
+   instancias; 1187 hits observados estuvieron dentro del bucket. La latencia
+   HTTP caliente p99 máxima fue 37.686 ms. Consulta final fresca y HTTP no se
+   confunden con ese presupuesto. Ver metodología y límites en la evidencia.
 4. Cierre de revisión por requisito y CI remoto de la revisión final. Mantener PR
    en draft hasta resolver los gates de P03; no activarlo solo por compilar.
 5. Backup y restore aislado del estado persistente antes del rollout autorizado.

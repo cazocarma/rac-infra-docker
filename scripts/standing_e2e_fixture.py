@@ -17,7 +17,7 @@ import zlib
 import psycopg
 from psycopg import sql as sql_builder
 from oidc_test_support import login
-from standing_measurements import measure_revocation
+from standing_measurements import measure_revocation, measure_hot_acquisition
 
 if (os.environ.get('RAC_ENV') != 'dev' or os.environ.get('PGHOST') != 'postgres'
         or os.environ.get('PGDATABASE') != 'rac_standing_e2e'
@@ -281,7 +281,18 @@ elif phase == 'measure':
         return api(method, path, state['compa_token'], data, expected=(200, 201, 403),
                    instance=instance, result_meta=True)
     result = measure_revocation(measured_call, lambda status: change(state['compa'], status, timed=True))
+    def scrape(operation, instance):
+        service = operation.split('.')[0]
+        host = os.environ['RAC_DISPOSABLE_PROJECT'] + '-backend-' + service + '-' + str(instance)
+        request = urllib.request.Request('http://' + host + ':8080/metrics', headers={'Accept-Encoding': 'gzip'})
+        with urllib.request.urlopen(request, timeout=5) as response:
+            if response.headers.get('Content-Encoding'):
+                raise AssertionError('Appended SDK metrics require a coherent uncompressed response')
+            return response.read().decode('utf-8')
+    result['hot_acquisition'] = measure_hot_acquisition(measured_call, scrape)
     print('MEASUREMENT_JSON:' + json.dumps(result), flush=True)
+    if not result['hot_acquisition']['gate_passed']:
+        raise AssertionError('Hot acquisition p99 exceeds 2ms; report must be retained')
     print('PASS: 100 audited revocation trials across six concurrent old-JWT writer probes', flush=True)
 elif phase == 'prepare-outages':
     # Historical sanctions must repair the old bookings before creating new ones.

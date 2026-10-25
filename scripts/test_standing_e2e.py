@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import datetime as dt
 import os
 from pathlib import Path
 import re
@@ -13,11 +14,31 @@ import time
 import uuid
 
 from init_database_credentials import initialize
+from check_go_vendor import check as validate_vendor
 
 ROOT = Path(__file__).resolve().parents[1]
 APIS = ('backend-user', 'backend-match', 'backend-chat', 'backend-alert')
 WORKERS = ('standing-events-relay', 'standing-match-consumer',
            'standing-alert-consumer', 'booking-events-relay', 'alert-events-consumer')
+HARNESS_FILES = ('scripts/test_standing_e2e.py', 'scripts/standing_e2e_fixture.py',
+                 'scripts/standing_measurements.py', 'compose.yaml',
+                 'compose.standing.yaml', 'compose.standing-tests.yaml')
+
+
+def harness_digest():
+    digest = hashlib.sha256()
+    for name in HARNESS_FILES:
+        digest.update(name.encode('utf-8') + b'\0' + (ROOT / name).read_bytes())
+    return digest.hexdigest()
+
+
+def write_report(path, report):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=path.parent, delete=False) as output:
+        json.dump(report, output, indent=2)
+        output.write('\n')
+        temporary = output.name
+    os.replace(temporary, path)
 
 
 def validate_model(model, project):
@@ -46,6 +67,24 @@ def main():
     args = parser.parse_args()
     if args.report and not args.measure:
         parser.error('--report requires --measure')
+    if args.measure and not args.report:
+        parser.error('--measure requires --report to retain the evidence')
+    report = {'schema_version': 1, 'state': 'running', 'lab_completed': False,
+              'started_at_utc': dt.datetime.now(dt.timezone.utc).isoformat(),
+              'harness_sha256': harness_digest()}
+    source_revisions = {}
+    if args.report:
+        report['infra_base_revision'] = subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True).strip()
+        write_report(args.report, report)
+        validate_vendor(ROOT.parent)
+        pins = json.loads((ROOT / 'ci/companion-revisions.json').read_text(encoding='utf-8'))
+        for name in ('rac-user-service', 'rac-match-service', 'rac-chat-service', 'rac-alert-service', 'rac-platform'):
+            checkout = ROOT.parent / name
+            revision = subprocess.check_output(['git', '-C', str(checkout), 'rev-parse', 'HEAD'], text=True).strip()
+            dirty = subprocess.check_output(['git', '-C', str(checkout), 'status', '--porcelain'], text=True).strip()
+            if dirty or revision != pins[name]:
+                raise RuntimeError('Measurement requires clean pinned companion sources: ' + name)
+            source_revisions[name] = revision
     project = 'rac-standing-e2e-' + uuid.uuid4().hex[:12]
     with tempfile.TemporaryDirectory(prefix=project) as directory:
         env_file = Path(directory) / 'fixture.env'
@@ -81,31 +120,31 @@ def main():
             return result
 
         def fixture(phase):
+            nonlocal report
             result = run('run', '--rm', '--no-deps', 'test-standing',
-                         'python', 'standing_e2e_fixture.py', phase)
+                         'python', 'standing_e2e_fixture.py', phase, check=False)
             for line in result.stdout.splitlines():
                 if line.startswith('MEASUREMENT_JSON:'):
                     if args.report:
-                        report = json.loads(line.removeprefix('MEASUREMENT_JSON:'))
+                        measured = json.loads(line.removeprefix('MEASUREMENT_JSON:'))
+                        report.update(measured)
                         hardware = subprocess.run(['docker', 'info', '--format',
                             '{"cpus":{{.NCPU}},"memory_bytes":{{.MemTotal}},"server_version":"{{.ServerVersion}}","architecture":"{{.Architecture}}"}'],
                             capture_output=True, text=True, check=True, timeout=15)
                         report['docker'] = json.loads(hardware.stdout)
-                        report['companion_revisions'] = json.loads((ROOT / 'ci/companion-revisions.json').read_text(encoding='utf-8'))
-                        harness = hashlib.sha256()
-                        for name in ('scripts/test_standing_e2e.py', 'scripts/standing_e2e_fixture.py',
-                                     'scripts/standing_measurements.py', 'compose.yaml',
-                                     'compose.standing.yaml', 'compose.standing-tests.yaml'):
-                            harness.update(name.encode('utf-8') + b'\0' + (ROOT / name).read_bytes())
-                        report['harness_sha256'] = harness.hexdigest()
-                        args.report.parent.mkdir(parents=True, exist_ok=True)
-                        args.report.write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+                        report['built_companion_revisions'] = source_revisions
+                        if report['harness_sha256'] != harness_digest():
+                            raise RuntimeError('Measurement harness changed during the run')
+                        write_report(args.report, report)
                     continue
                 print(line, flush=True)
+            if result.returncode:
+                raise RuntimeError('Standing fixture failed: ' + phase + '\n' + result.stderr[-1800:])
 
         # Validate the effective model before ANY mutation, including cleanup.
         model = json.loads(run('--profile', 'tests', 'config', '--format', 'json').stdout)
         validate_model(model, project)
+        finished = False
         try:
             for service in ('database-config',) + APIS:
                 print('BUILD: ' + service, flush=True)
@@ -154,8 +193,19 @@ def main():
             fixture('authority-offline')
             run('up', '-d', '--no-deps', '--wait', '--scale', 'backend-user=2', 'backend-user')
             fixture('finished')
+            if args.report and (report.get('kind') != 'compose_revocation' or
+                                report.get('transitions', 0) < 100 or
+                                report.get('hot_acquisition', {}).get('gate_passed') is not True):
+                raise RuntimeError('Measurement evidence is incomplete or failed its gate')
+            if args.report and report['harness_sha256'] != harness_digest():
+                raise RuntimeError('Measurement harness changed during the run')
+            finished = True
             print('PASS: isolated Compose standing writer/JWT, broker and authority fault matrix', flush=True)
         finally:
+            if args.report:
+                report['lab_completed'] = finished
+                report['state'] = 'complete' if finished else 'failed'
+                write_report(args.report, report)
             # Only the randomly named model validated above. Never docker prune.
             run('down', '--volumes', '--remove-orphans', check=False)
 

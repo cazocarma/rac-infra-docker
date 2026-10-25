@@ -1,6 +1,7 @@
 """Bounded real-request measurements; no credentials or account IDs in reports."""
 from concurrent.futures import ThreadPoolExecutor
 import math
+import re
 import threading
 import time
 
@@ -23,16 +24,17 @@ def measure_revocation(call, transition, samples=100):
     No 5xx/timeout/missing worker is discarded to improve a percentile.
     """
     if not isinstance(samples, int) or not 100 <= samples <= 1000:
-        raise ValueError('Revocation gate requires 100..1000 independent transitions')
+        raise ValueError('Revocation gate requires 100..1000 distinct transitions')
     groups = ('user.profile', 'match.availability', 'chat.send')
     keys = [(group, instance) for group in groups for instance in (1, 2)]
     period = .1
     records = {key: {'first_denial_bound_ms': [], 'last_success_bound_ms': [],
+                     'restoration_bound_ms': [], 'restoration_denials': 0,
                      'http_ms': [], 'allowed': 0, 'denied': 0, 'rate_overruns': 0} for key in keys}
     commit_uncertainty_ms = []
     begun = time.monotonic_ns()
     for _ in range(samples):
-        transition('active')
+        active_started, _ = transition('active')
         barrier = threading.Barrier(len(keys) + 1)
         stop = threading.Event()
         seen = {key: threading.Event() for key in keys}
@@ -44,9 +46,19 @@ def measure_revocation(call, transition, samples=100):
             try:
                 # A positive request immediately before this trial rules out
                 # invalid input, ownership, stale login or a dead route.
-                warm = call(*key)
-                if warm['status'] not in (200, 201):
-                    raise AssertionError('Positive revocation control failed: ' + key[0])
+                restore_deadline = time.monotonic() + 5
+                while True:
+                    warm = call(*key)
+                    if warm['status'] in (200, 201):
+                        record['restoration_bound_ms'].append(max(0, (warm['finished_ns'] - active_started) / 1e6))
+                        break
+                    if warm['status'] != 403 or time.monotonic() >= restore_deadline:
+                        raise AssertionError('Positive revocation control failed: ' + key[0])
+                    record['restoration_denials'] += 1
+                    # An invalidated provisional lease can require a retry after
+                    # reversal. Record that separately instead of hiding it in
+                    # the revocation or HTTP percentile samples.
+                    time.sleep(.01)
                 barrier.wait(timeout=10)
                 while not stop.is_set():
                     target = time.monotonic() + period
@@ -114,3 +126,62 @@ def measure_revocation(call, transition, samples=100):
                         **{name: distribution(value) if isinstance(value, list) else value
                            for name, value in record.items()}}
                        for key, record in records.items()]}
+
+
+def parse_acquire_histogram(text):
+    """Read only fixed SDK metric series; no inferred or interpolated p99."""
+    expected = {
+        'count': r'^rac_standing_acquire_duration_seconds_count\{cache="hit"\} ([0-9]+)$',
+        'within_2ms': r'^rac_standing_acquire_duration_seconds_bucket\{cache="hit",le="0\.002"\} ([0-9]+)$',
+        'infinity': r'^rac_standing_acquire_duration_seconds_bucket\{cache="hit",le="\+Inf"\} ([0-9]+)$',
+    }
+    values = {}
+    for name, pattern in expected.items():
+        matches = re.findall(pattern, text, re.MULTILINE)
+        if len(matches) != 1:
+            raise AssertionError('Missing or duplicate acquisition metric: ' + name)
+        values[name] = int(matches[0])
+    if values['count'] != values['infinity'] or values['within_2ms'] > values['count']:
+        raise AssertionError('Inconsistent histogram snapshot')
+    return values
+
+
+def measure_hot_acquisition(call, scrape, requests_per_worker=200):
+    if not isinstance(requests_per_worker, int) or requests_per_worker < 200:
+        raise ValueError('Hot path gate requires at least 200 requests per worker')
+    keys = [(group, instance) for group in ('user.profile', 'match.availability', 'chat.send') for instance in (1, 2)]
+    before = {key: parse_acquire_histogram(scrape(*key)) for key in keys}
+    begun = time.monotonic_ns()
+
+    def worker(key):
+        # Confirm eligibility after the last reversal, before measuring traffic.
+        deadline = time.monotonic() + 5
+        while call(*key)['status'] == 403:
+            if time.monotonic() >= deadline:
+                raise AssertionError('Warm-path positive control never became allowed')
+            time.sleep(.01)
+        latencies = []
+        for _ in range(requests_per_worker):
+            result = call(*key)
+            if result['status'] not in (200, 201):
+                raise AssertionError('Hot-path traffic unexpectedly denied or failed')
+            latencies.append((result['finished_ns'] - result['started_ns']) / 1e6)
+        return key, latencies
+
+    with ThreadPoolExecutor(max_workers=len(keys)) as pool:
+        measured = list(pool.map(worker, keys))
+    groups = []
+    for key, latencies in measured:
+        after = parse_acquire_histogram(scrape(*key))
+        total = after['count'] - before[key]['count']
+        fast = after['within_2ms'] - before[key]['within_2ms']
+        if total < 100 or fast < 0 or fast > total:
+            raise AssertionError('Insufficient or reset hot acquisition samples')
+        groups.append({'operation': key[0], 'instance': key[1], 'hot_acquisitions': total,
+                       'within_2ms': fast, 'fraction_within_2ms': fast / total,
+                       'http_ms': distribution(latencies)})
+    # Retain slow results. The caller must fail its gate after preserving the
+    # report, not throw away evidence because performance was below target.
+    return {'concurrency': len(keys), 'requests_per_worker': requests_per_worker,
+            'duration_seconds': (time.monotonic_ns() - begun) / 1e9, 'groups': groups,
+            'gate_passed': all(group['within_2ms'] >= math.ceil(.99 * group['hot_acquisitions']) for group in groups)}

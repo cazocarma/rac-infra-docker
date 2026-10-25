@@ -102,7 +102,9 @@ jobs:
         working-directory: rac-infra-docker
       - name: Validate Prometheus configuration and alert expressions
         working-directory: rac-infra-docker
-        run: docker run --rm --entrypoint promtool --mount type=bind,source="$PWD/observability",target=/etc/prometheus,readonly prom/prometheus:v3.5.0 check config /etc/prometheus/prometheus.yaml
+        run: |
+          docker run --rm --entrypoint promtool --mount type=bind,source="$PWD/observability",target=/etc/prometheus,readonly prom/prometheus:v3.5.0 check config /etc/prometheus/prometheus.yaml
+          docker run --rm --entrypoint promtool --mount type=bind,source="$PWD/observability",target=/etc/prometheus,readonly -w /etc/prometheus prom/prometheus:v3.5.0 test rules standing-alerts.test.yaml
       - run: python scripts/check_backup_configuration.py
         working-directory: rac-infra-docker
       - run: python scripts/test_deployment_guards.py
@@ -237,10 +239,21 @@ jobs:
         run: python scripts/test_messaging.py
       - name: Reject persistent resources in the standing fault lab
         working-directory: rac-infra-docker
-        run: python -m unittest discover -s scripts -p "test_standing_lab.py"
+        run: |
+          python -m unittest discover -s scripts -p "test_standing_lab.py"
+          python -m unittest discover -s scripts -p "test_standing_measurements.py"
       - name: Standing old-JWT and commit races across isolated Compose instances
         working-directory: rac-infra-docker
-        run: python -u scripts/test_standing_e2e.py
+        run: python -u scripts/test_standing_e2e.py --measure --report .local/p03-performance.json
+      - name: Preserve sanitized standing performance evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: standing-performance-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 7
+          include-hidden-files: true
+          if-no-files-found: ignore
+          path: rac-infra-docker/.local/p03-performance.json
       - name: Prepare ephemeral DEV
         working-directory: rac-infra-docker
         run: |

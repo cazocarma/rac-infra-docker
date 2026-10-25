@@ -1,0 +1,344 @@
+{
+  "schema_version": 1,
+  "state": "complete",
+  "lab_completed": true,
+  "started_at_utc": "2026-10-25T23:44:09.987512+00:00",
+  "harness_sha256": "9036599461835cb5346a2b2f2990843136e7c28538ca5d2c756569fbd0f60254",
+  "infra_base_revision": "a28de96c0f2e642aac2e2bc1e17d1828ebf88b6a",
+  "kind": "compose_revocation",
+  "transitions": 100,
+  "instances_per_service": 2,
+  "concurrency": 6,
+  "target_requests_per_second_per_worker": 10.0,
+  "duration_seconds": 31.56448308,
+  "commit_bracket_ms": {
+    "samples": 100,
+    "p50": 1.025125,
+    "p95": 1.589951,
+    "p99": 1.768597,
+    "max": 1.834954
+  },
+  "groups": [
+    {
+      "operation": "user.profile",
+      "instance": 1,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 82.78094,
+        "p95": 86.063354,
+        "p99": 93.980139,
+        "max": 96.478994
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "restoration_bound_ms": {
+        "samples": 100,
+        "p50": 10.509715,
+        "p95": 20.687269,
+        "p99": 29.560427,
+        "max": 154.477412
+      },
+      "restoration_denials": 0,
+      "http_ms": {
+        "samples": 300,
+        "p50": 5.516734,
+        "p95": 10.947099,
+        "p99": 18.514914,
+        "max": 19.889245
+      },
+      "allowed": 100,
+      "denied": 200,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "user.profile",
+      "instance": 2,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 83.656087,
+        "p95": 92.046581,
+        "p99": 92.822321,
+        "max": 93.926491
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 1.422707
+      },
+      "restoration_bound_ms": {
+        "samples": 100,
+        "p50": 13.01072,
+        "p95": 21.57843,
+        "p99": 22.256744,
+        "max": 166.470522
+      },
+      "restoration_denials": 0,
+      "http_ms": {
+        "samples": 300,
+        "p50": 5.512772,
+        "p95": 14.552467,
+        "p99": 19.361969,
+        "max": 21.545688
+      },
+      "allowed": 100,
+      "denied": 200,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "match.availability",
+      "instance": 1,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 86.655517,
+        "p95": 94.871086,
+        "p99": 96.952828,
+        "max": 96.978217
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0.701449,
+        "max": 1.479435
+      },
+      "restoration_bound_ms": {
+        "samples": 100,
+        "p50": 19.848468,
+        "p95": 26.734918,
+        "p99": 35.217903,
+        "max": 172.464833
+      },
+      "restoration_denials": 0,
+      "http_ms": {
+        "samples": 300,
+        "p50": 8.628615,
+        "p95": 19.610346,
+        "p99": 22.05911,
+        "max": 24.45867
+      },
+      "allowed": 100,
+      "denied": 200,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "match.availability",
+      "instance": 2,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 86.328094,
+        "p95": 96.347192,
+        "p99": 97.520263,
+        "max": 97.658497
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "restoration_bound_ms": {
+        "samples": 100,
+        "p50": 21.326013,
+        "p95": 27.35334,
+        "p99": 36.882934,
+        "max": 157.860083
+      },
+      "restoration_denials": 0,
+      "http_ms": {
+        "samples": 300,
+        "p50": 8.315647,
+        "p95": 19.925473,
+        "p99": 22.548399,
+        "max": 24.332264
+      },
+      "allowed": 99,
+      "denied": 201,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "chat.send",
+      "instance": 1,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 88.422038,
+        "p95": 99.128383,
+        "p99": 101.651574,
+        "max": 104.276851
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 2.166848,
+        "p99": 2.933404,
+        "max": 3.710315
+      },
+      "restoration_bound_ms": {
+        "samples": 100,
+        "p50": 24.329403,
+        "p95": 31.372928,
+        "p99": 40.911244,
+        "max": 178.302725
+      },
+      "restoration_denials": 0,
+      "http_ms": {
+        "samples": 300,
+        "p50": 11.070365,
+        "p95": 23.729753,
+        "p99": 27.012567,
+        "max": 28.255975
+      },
+      "allowed": 97,
+      "denied": 203,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "chat.send",
+      "instance": 2,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 89.318864,
+        "p95": 98.326768,
+        "p99": 101.211161,
+        "max": 101.962289
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 2.162338,
+        "p99": 2.607738,
+        "max": 2.749573
+      },
+      "restoration_bound_ms": {
+        "samples": 100,
+        "p50": 22.950438,
+        "p95": 30.712038,
+        "p99": 36.2938,
+        "max": 174.507859
+      },
+      "restoration_denials": 0,
+      "http_ms": {
+        "samples": 300,
+        "p50": 11.257618,
+        "p95": 23.714816,
+        "p99": 26.003516,
+        "max": 35.072045
+      },
+      "allowed": 98,
+      "denied": 202,
+      "rate_overruns": 0
+    }
+  ],
+  "hot_acquisition": {
+    "concurrency": 6,
+    "requests_per_worker": 200,
+    "duration_seconds": 3.103500185,
+    "groups": [
+      {
+        "operation": "user.profile",
+        "instance": 1,
+        "hot_acquisitions": 198,
+        "within_2ms": 198,
+        "fraction_within_2ms": 1.0,
+        "http_ms": {
+          "samples": 200,
+          "p50": 7.467959,
+          "p95": 19.835633,
+          "p99": 26.712013,
+          "max": 30.190739
+        }
+      },
+      {
+        "operation": "user.profile",
+        "instance": 2,
+        "hot_acquisitions": 199,
+        "within_2ms": 199,
+        "fraction_within_2ms": 1.0,
+        "http_ms": {
+          "samples": 200,
+          "p50": 6.890797,
+          "p95": 18.824552,
+          "p99": 28.431975,
+          "max": 29.714113
+        }
+      },
+      {
+        "operation": "match.availability",
+        "instance": 1,
+        "hot_acquisitions": 198,
+        "within_2ms": 198,
+        "fraction_within_2ms": 1.0,
+        "http_ms": {
+          "samples": 200,
+          "p50": 8.968975,
+          "p95": 21.133542,
+          "p99": 31.471531,
+          "max": 43.637309
+        }
+      },
+      {
+        "operation": "match.availability",
+        "instance": 2,
+        "hot_acquisitions": 198,
+        "within_2ms": 198,
+        "fraction_within_2ms": 1.0,
+        "http_ms": {
+          "samples": 200,
+          "p50": 8.950385,
+          "p95": 20.254984,
+          "p99": 23.074257,
+          "max": 25.32754
+        }
+      },
+      {
+        "operation": "chat.send",
+        "instance": 1,
+        "hot_acquisitions": 197,
+        "within_2ms": 197,
+        "fraction_within_2ms": 1.0,
+        "http_ms": {
+          "samples": 200,
+          "p50": 9.703828,
+          "p95": 34.004948,
+          "p99": 37.686297,
+          "max": 43.245431
+        }
+      },
+      {
+        "operation": "chat.send",
+        "instance": 2,
+        "hot_acquisitions": 197,
+        "within_2ms": 197,
+        "fraction_within_2ms": 1.0,
+        "http_ms": {
+          "samples": 200,
+          "p50": 9.451806,
+          "p95": 33.427869,
+          "p99": 37.032088,
+          "max": 39.51633
+        }
+      }
+    ],
+    "gate_passed": true
+  },
+  "docker": {
+    "cpus": 12,
+    "memory_bytes": 8301363200,
+    "server_version": "29.8.2",
+    "architecture": "x86_64"
+  },
+  "built_companion_revisions": {
+    "rac-user-service": "031e802c729091d7a8b28668d4aa36f6a6009638",
+    "rac-match-service": "a79355f8b58af347c7e717ed6274bc147907a055",
+    "rac-chat-service": "f0b7b7c8ef5e5bfb52b53c11f2a33067a6ff90ac",
+    "rac-alert-service": "7e572bb06a2a946eea484c41a09d059004038259",
+    "rac-platform": "5fd205acf8377a096d6ec989bdd5412fade42e07"
+  }
+}
