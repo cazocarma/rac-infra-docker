@@ -75,6 +75,12 @@ def main():
                 check_document_registry(lambda statement: sql(database, statement).stdout.strip(),
                                         lambda statement: sql(database, statement, ok=False).returncode != 0,
                                         role='registry_fixture_' + database)
+                if (ROOT / 'db/migrations/V030__document_commit_fence.sql').exists():
+                    assert sql(database, "BEGIN; SET ROLE rac_user; SELECT documents.lock_head('es'); ROLLBACK;").returncode == 0
+                    for denied_role in ('rac_match', 'rac_chat', 'rac_alert', 'rac_backup'):
+                        assert sql(database, "SELECT documents.lock_head('es');", denied_role, ok=False).returncode != 0
+                    assert sql(database, "SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE oid='documents.lock_head(text)'::regprocedure;").stdout.strip() == 'rac_migrator'
+
 
             assert sql(database, "SELECT count(*) FROM standing.account;", 'rac_user').returncode == 0
             assert sql(database, "UPDATE standing.account SET status='active';", 'rac_user', ok=False).returncode != 0

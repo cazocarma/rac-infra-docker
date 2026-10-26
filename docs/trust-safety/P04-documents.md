@@ -233,3 +233,47 @@ quitar un mapper. El listener debe apagarse junto con ese rollout.
 Pasan también las regresiones FGAP, denegación de privilegios, OTP/PKCE y MFA de
 staff. El siguiente pendiente funcional sigue siendo aplicar el control en
 escritores y conectar la experiencia 428; esta prueba no los sustituye.
+
+
+## Noveno incremento: controles HTTP y confirmación transaccional en user
+
+Platform `v0.11.0` (`9b3262f4a733`) agrega la respuesta compartida 428
+`DOCUMENT_ACCEPTANCE_REQUIRED` (IDs inmutables, tipos, hashes y linaje pendientes)
+y `documents/postgres.CheckLocked`. V030 concede a user una función mínima
+`documents.lock_head`: mantiene un bloqueo compartido de la cabecera hasta
+commit/rollback sin conceder UPDATE sobre el registro. Una activación toma el
+bloqueo exclusivo y se serializa con esas escrituras. No se usa un bloqueo
+autocommit ni se promete esa garantía para escritores remotos todavía.
+
+Con la opción documental activa, user comprueba la aceptación antes de guardar
+el perfil compa, publicar por el endpoint legado, editar habilidades o escribir
+una reseña. La persona documental depende de la operación; admin no salta el
+control. La comprobación final se realiza dentro de la transacción, antes de
+asignar el rol compa externo y antes de confirmar; habilidades comprueba también
+al propietario si un admin edita un perfil ajeno. El repo recibe explícitamente
+la transacción en su callback. Lectura del perfil propio y aceptación siguen
+accesibles; el idioma del control es es, fijado por el producto actual, no por
+un parámetro público que pudiera escoger una política más permisiva.
+
+Validación local:
+
+- Vet y race pasan en platform y los cuatro consumidores con vendor generado.
+- `test_migrations.py --services user` pasa: la base separada document_writes
+  prueba 428, consentimiento por HTTP, publicación real con rac_user y cambio
+  material entre preflight y escritura. La comprobación final revierte el perfil
+  antes de asignar un rol externo. También pasan migraciones, standing, sesiones,
+  permisos de escrituras existentes, adopción legacy y detección de checksum.
+- `test_document_source.py` observa una conexión real con la transacción abierta
+  y el bloqueo adquirido; la mantiene hasta la liberación explícita, sin depender
+  de una duración de sleep para competir. La activación vence sin auditoría ni
+  revisión parcial, y el mismo evento puede reintentarse tras liberar el lector.
+- `test_database_permissions.py` pasa fresh y actualización V018: migrador sin
+  superusuario, propietario de la función reconciliado, acceso exclusivo de user,
+  negativas para otros servicios/backup y respaldo/restauración.
+- OpenAPI valida y sus cuatro pruebas pasan; los cuatro escritores user declaran
+  el 428. Estas validaciones locales no acreditan aún el CI remoto del nuevo head.
+
+No está activo en el DEV persistente. P04 permanece abierto: faltan escritores
+match/chat y su coordinación, otros caminos que puedan cambiar contenido público,
+alinear la lista servida al registro activo, intersticial/ARB, declaraciones y
+cuestionario compa, historial y el ingreso humano aprobado de publicación.

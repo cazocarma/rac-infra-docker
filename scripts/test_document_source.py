@@ -77,7 +77,39 @@ try:
     execute(f"INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES(gen_random_uuid(),'Synthetic other','other-source@example.test','cliente','{other}');")
     assert json.loads(read(other).split('|',6)[6]) == []
     assert len(json.loads(read(subject,'en').split('|',6)[5])) == 4
-    print('PASS: exact owner SQL, active registry only, scoped role, subject isolation, hashes and material lineage')
+    # The real scoped reader holds a shared head fence through its transaction.
+    # Observe its actual PostgreSQL wait state before attempting activation.
+    event, policy, approval = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    ids = ','.join("'" + d['id'] + "'::uuid" for d in docs)
+    activation = f"SET SESSION AUTHORIZATION registry_fixture; SELECT documents.activate('{event}',3,'es',ARRAY[{ids}],'{policy}','{approval}');"
+    reader = subprocess.Popen(['docker','exec','-i',name,'psql','-X','-v','ON_ERROR_STOP=1',
+                               '-U','postgres','-d','fixture','-Atq'], stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        reader.stdin.write("SET application_name='rac-document-fence';\nSET ROLE rac_user;\nBEGIN;\nSELECT documents.lock_head('es');\n")
+        reader.stdin.flush()
+        for _ in range(100):
+            if reader.poll() is not None:
+                raise RuntimeError('Document reader ended before fence observation')
+            if execute("SELECT EXISTS(SELECT FROM pg_stat_activity WHERE pid<>pg_backend_pid() AND application_name='rac-document-fence' AND state='idle in transaction' AND query LIKE '%documents.lock_head%');").stdout.strip() == 't':
+                break
+            time.sleep(0.02)
+        else:
+            raise RuntimeError('Reader did not acquire the document commit fence')
+        blocked = execute("SET statement_timeout='100ms'; " + activation, ok=False)
+        assert blocked.returncode != 0 and 'statement timeout' in blocked.stderr
+        assert execute("SELECT version FROM documents.head WHERE locale='es';").stdout.strip() == '3'
+        assert execute(f"SELECT count(*) FROM audit.log WHERE event_id='{event}';").stdout.strip() == '0'
+        reader.communicate("COMMIT;\n", timeout=30)
+        assert reader.returncode == 0
+    finally:
+        if reader.poll() is None:
+            reader.communicate("ROLLBACK;\n", timeout=30)
+    assert execute(activation).stdout.strip() == '4'
+    assert execute(f"SELECT count(*) FROM audit.log WHERE event_id='{event}';").stdout.strip() == '1'
+    for role in ('rac_match','rac_chat','rac_alert'):
+        assert execute(f"SELECT has_function_privilege('{role}','documents.lock_head(text)','EXECUTE');").stdout.strip() == 'f'
+    print('PASS: exact owner SQL, active registry, scoped subject isolation and material lineage; real commit fence blocks activation atomically, timeout rollback and retry')
 finally:
     run('docker','rm','-f',name,ok=False)
     run('docker','network','rm',name,ok=False)

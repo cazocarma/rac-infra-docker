@@ -92,15 +92,20 @@ try:
     if onboarding_source.exists() and "user" in args.services:
         sql("fresh", "CREATE DATABASE session_effects;")
         flyway("session_effects", migration_dir)
+        sql("fresh", "CREATE DATABASE document_writes;")
+        flyway("document_writes", migration_dir)
         user_tests = run("docker", "run", "--rm", "--network", NAME,
             "--mount", f"type=bind,source={onboarding_source},target=/sources,readonly",
             "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-user-go-build:/root/.cache/go-build",
             "-e", f"RAC_ONBOARDING_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
             "-e", f"RAC_SESSION_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/session_effects?sslmode=disable",
             "-e", "RAC_SESSION_TEST_ISOLATED=1",
+            "-e", f"RAC_DOCUMENT_WRITES_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/document_writes?sslmode=disable",
             "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol")
         assert '--- PASS: TestStandingSessionsPostgres' in user_tests.stdout
         print('PASS: durable session captures, ACK loss, reversal races, claim fencing and least-privilege journal')
+        assert '--- PASS: TestDocumentGuardPostgres' in user_tests.stdout
+        print('PASS: document 428, exact consent, real scoped onboarding and material-change race rolls back before external role grant')
         assert '--- PASS: TestCompaOnboardingTransaction' in user_tests.stdout
         if (onboarding_source / 'internal/http/documents_test.go').exists():
             assert '--- PASS: TestVersionedDocumentsPostgres' in user_tests.stdout
