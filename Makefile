@@ -134,6 +134,9 @@ check:
 	$(COMPOSE) exec -T standing-events-relay wget -q -T 5 -O /dev/null http://localhost:8080/ready
 	$(COMPOSE) exec -T standing-match-consumer wget -q -T 5 -O /dev/null http://localhost:8080/ready
 	$(COMPOSE) exec -T standing-alert-consumer wget -q -T 5 -O /dev/null http://localhost:8080/ready
+ifeq ($(STANDING_PREVIEW),1)
+	$(COMPOSE) exec -T standing-session-worker wget -q -T 5 -O /dev/null http://localhost:8080/ready
+endif
 
 # Laboratorio independiente: nunca usa secretos ni volúmenes de QA/PRD.
 STORAGE_COMPOSE := docker compose --env-file envs/.env.storage -p rac-dev-storage -f compose.storage.yaml
@@ -214,3 +217,7 @@ test-identity-permissions:
 .PHONY: test-standing-authority
 test-standing-authority:
 	$(PYTHON) scripts/test_standing_authority.py
+
+.PHONY: test-session-control
+test-session-control:
+	$(PYTHON) scripts/test_session_control.py

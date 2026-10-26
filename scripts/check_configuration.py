@@ -55,6 +55,20 @@ for environment in ("dev", "qa", "prd"):
                 assert preview[name]['environment']['STANDING_ENFORCEMENT_ENABLED'] == 'true'
                 assert not preview[name].get('ports')
                 assert 'KEYCLOAK_ADMIN_PASSWORD' not in preview[name]['environment']
+            worker = preview['standing-session-worker']
+            assert worker['environment']['DATABASE_URL'] == values['STANDING_SESSION_DB_URL']
+            assert worker['user'] == '10001:10001' and worker['read_only']
+            assert worker['cap_drop'] == ['ALL']
+            assert not worker.get('ports')
+            assert worker['entrypoint'] == ['/app/standing-sessions']
+            assert worker['environment']['SESSION_CLIENT_SECRET_FILE'] == '/run/session-client/secret'
+            assert len(worker['volumes']) == 1
+            assert worker['volumes'][0]['source'] == 'identity-standing-sessions' and worker['volumes'][0]['read_only']
+            assert 'KEYCLOAK_ADMIN_PASSWORD' not in worker['environment']
+            assert '--spi-realm-restapi-extension--rac-sessions--active=true' in preview['keycloak']['command']
+            assert preview['keycloak']['build']['dockerfile'] == 'keycloak/session-control/Dockerfile'
+            for name in ('backend-user', 'backend-match', 'backend-chat', 'standing-match-consumer', 'standing-alert-consumer'):
+                assert not any(v['source'] == 'identity-standing-sessions' for v in preview[name]['volumes'])
             assert preview['backend-match']['environment']['STANDING_CLIENT_SECRET_FILE'] == '/run/standing-client/secret'
             assert any(v['source']=='identity-standing-match' and v['read_only'] for v in preview['backend-match']['volumes'])
             assert not any(v['source']=='identity-standing-match' for v in preview['backend-user']['volumes'])

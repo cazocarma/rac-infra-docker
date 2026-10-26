@@ -79,6 +79,13 @@ public final class SessionResource {
 
     public record SessionRef(String id, boolean offline) { }
 
+    @GET
+    @Path("status")
+    public Response status() {
+        authorize();
+        return response(Map.of("schema_version", 1));
+    }
+
     private static String sessionIdentifier(String value) {
         // Session IDs are opaque provider identifiers, not necessarily UUIDs.
         // They are passed as JSON to model lookups, never concatenated into SQL

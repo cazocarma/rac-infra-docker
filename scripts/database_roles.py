@@ -8,6 +8,7 @@ ROLES = {
     'ALERT_CONSUMER_DB_URL': 'rac_alert_consumer',
     'STANDING_RELAY_DB_URL': 'rac_standing_relay', 'STANDING_MATCH_DB_URL': 'rac_standing_match',
     'STANDING_ALERT_DB_URL': 'rac_standing_alert',
+    'STANDING_SESSION_DB_URL': 'rac_standing_sessions',
     'IDENTITY_DB_URL': 'rac_seed', 'BACKUP_DB_URL': 'rac_backup',
 }
 

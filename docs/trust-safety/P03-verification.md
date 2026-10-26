@@ -2,7 +2,7 @@
 
 Esta matriz distingue controles implementados de aceptación completa. No sustituye
 [acceptance](acceptance.md), que abarca todo el programa Trust & Safety. El preview
-sigue desactivado en el DEV persistente. V026 y platform v0.9.1 requieren despliegue
+sigue desactivado en el DEV persistente. V026/V027 y platform v0.9.1 requieren despliegue
 coordinado y las revisiones inmutables del manifiesto integrado.
 
 ## Rutas existentes
@@ -93,9 +93,12 @@ esa revisión; no sustituye el CI del adaptador de sesiones ni del futuro worker
    Las pruebas desechables de migración no son el respaldo del DEV real.
 6. Terminar sesiones de Keycloak al sancionar: el adaptador acotado de
    [ADR-009](ADR-009-session-revocation.md) ya permite capturar identificadores y
-   revocarlos sin administrar usuarios. Falta su worker durable de user, journal,
-   grants mínimos, carreras/reversión y wiring opt-in. El endpoint por sí solo
-   no completa este efecto. Los lectores y provisionador conservan su alcance.
+   revocarlos sin administrar usuarios. El [worker durable de user](P03-sessions.md),
+   V027, grants mínimos, carreras/reversión y wiring opt-in están implementados
+   y sus suites aisladas y el ensayo conectado pasan localmente, incluida caída
+   de Keycloak y recuperación tras reiniciar el worker. Falta el CI de la
+   revisión final; el endpoint por sí solo no prueba ese efecto completo.
+   Los lectores y provisionador conservan su alcance.
 
 La revisión del código oficial de [Keycloak 26.8.1, UserResource](https://github.com/keycloak/keycloak/blob/26.8.1/services/src/main/java/org/keycloak/services/resources/admin/UserResource.java)
 confirma que `logout()`, modificar y borrar usuarios exigen el mismo control

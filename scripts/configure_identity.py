@@ -9,6 +9,7 @@ import psycopg
 from pathlib import Path
 from identity_permissions import configure_provisioner, configure_staff
 from identity_standing import configure_standing
+from identity_sessions import configure_sessions
 
 BASE = os.environ.get("KEYCLOAK_INTERNAL_URL", "http://keycloak:8080")
 REALM = "rentacompa"
@@ -90,6 +91,13 @@ os.replace(role_file, role_directory / 'role-id')
 configure_staff(admin, origin)
 if os.environ.get('STANDING_ENFORCEMENT_ENABLED', 'false') == 'true':
     configure_standing(admin, '/credentials/standing')
+    session_directory = Path('/credentials/standing/sessions')
+    configure_sessions(admin, session_directory)
+    # Only the dedicated non-root session worker mounts this private volume.
+    os.chown(session_directory / 'secret', 10001, 10001)
+    os.chmod(session_directory / 'secret', 0o400)
+    os.chown(session_directory, 10001, 10001)
+    os.chmod(session_directory, 0o700)
 admin("PUT", "", {"revokeRefreshToken": True, "refreshTokenMaxReuse": 0,
     "bruteForceProtected": True, "failureFactor": 5, "waitIncrementSeconds": 60,
     "maxFailureWaitSeconds": 900, "accessTokenLifespan": 300,

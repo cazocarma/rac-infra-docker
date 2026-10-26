@@ -10,6 +10,7 @@ import struct
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 import zlib
@@ -224,6 +225,77 @@ if phase == 'seed':
     api('POST', f"/api/user/bookings/{state['review']}/review", state['buyer_token'], {'puntuacion': 5, 'comentario': 'Actividad de prueba.'}, expected=201)
     save()
     print('PASS: real OIDC/PKCE tokens, scoped services and positive commercial writer controls')
+elif phase == 'sessions':
+    # Real PKCE grants, the real non-root worker and the real Keycloak provider.
+    # The fixture receives neither the worker's OAuth secret nor its DB login.
+    normal = login('cliente2', return_tokens=True)
+    offline = login('cliente2', offline=True, return_tokens=True)
+    event = change(state['stranger'], 'suspended')['event_id']
+    wait(lambda: sql("SELECT state='completed' FROM standing.session_effect WHERE event_id=%s", (event,), True) == [(True,)],
+         'automatic identity session effect')
+    for grant in (normal, offline):
+        request = urllib.request.Request('http://keycloak:8080/realms/rentacompa/protocol/openid-connect/token',
+            data=urllib.parse.urlencode({'grant_type': 'refresh_token', 'client_id': 'rac-web',
+                                        'refresh_token': grant['refresh_token']}).encode())
+        try:
+            urllib.request.urlopen(request, timeout=5).close()
+        except urllib.error.HTTPError as error:
+            assert error.code == 400, 'Unexpected refresh failure'
+        else:
+            raise AssertionError('Sanctioned session can still refresh')
+    capture = sql('SELECT sessions,next_index FROM standing.session_effect WHERE event_id=%s', (event,), True)[0]
+    assert capture[0] and capture[1] == len(capture[0])
+    assert any(ref['offline'] for ref in capture[0]) and any(not ref['offline'] for ref in capture[0])
+    change(state['stranger'], 'active')
+    fresh = login('cliente2')
+    request = urllib.request.Request('http://keycloak:8080/realms/rentacompa/protocol/openid-connect/userinfo',
+                                     headers={'Authorization': 'Bearer ' + fresh})
+    with urllib.request.urlopen(request, timeout=5) as response:
+        assert response.code == 200
+    # Original JWT remains useful for protective API access, even after logout.
+    api('GET', '/api/user/me', state['stranger_token'])
+    print('PASS: durable automatic sanction closes real online/offline refresh grants; reversal permits fresh login and protective access survives')
+elif phase == 'sessions-prepare-outage':
+    state['session_outage_grants'] = [login('cliente2', return_tokens=True),
+                                      login('cliente2', offline=True, return_tokens=True)]
+    save()
+elif phase == 'sessions-offline':
+    state['session_outage_event'] = change(state['stranger'], 'suspended')['event_id']
+    save()
+    wait(lambda: sql("SELECT state='pending' AND sessions IS NULL AND failures>0 FROM standing.session_effect WHERE event_id=%s",
+                     (state['session_outage_event'],), True) == [(True,)], 'identity outage persisted retry')
+    def unavailable():
+        try:
+            urllib.request.urlopen('http://standing-session-worker:8080/ready', timeout=3).close()
+        except urllib.error.HTTPError as error:
+            assert error.code == 503
+            return True
+        return False
+    wait(unavailable, 'identity worker readiness reflects unavailable dependency')
+    with urllib.request.urlopen('http://standing-session-worker:8080/health', timeout=3) as response:
+        assert response.code == 200
+    api('PUT', '/api/user/me', state['stranger_token'], PROFILE, expected=403)
+    api('GET', '/api/user/me', state['stranger_token'])
+    print('PASS: Keycloak outage persists unfinished effect, withdraws readiness, preserves liveness and does not weaken standing')
+elif phase == 'sessions-recovered':
+    wait(lambda: sql("SELECT state='completed' FROM standing.session_effect WHERE event_id=%s",
+                     (state['session_outage_event'],), True) == [(True,)], 'identity recovery after worker restart')
+    for grant in state['session_outage_grants']:
+        request = urllib.request.Request('http://keycloak:8080/realms/rentacompa/protocol/openid-connect/token',
+            data=urllib.parse.urlencode({'grant_type': 'refresh_token', 'client_id': 'rac-web',
+                                        'refresh_token': grant['refresh_token']}).encode())
+        try:
+            urllib.request.urlopen(request, timeout=5).close()
+        except urllib.error.HTTPError as error:
+            assert error.code == 400
+        else:
+            raise AssertionError('Restarted worker lost revocation work')
+    change(state['stranger'], 'active')
+    fresh = login('cliente2')
+    api('GET', '/api/user/me', fresh)
+    del state['session_outage_grants']
+    save()
+    print('PASS: restarted worker recovers durable work after Keycloak outage and reversal permits new login')
 elif phase == 'writers':
     event = change(state['compa'], 'suspended')
     for INSTANCE in (1, 2):

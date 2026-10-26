@@ -19,7 +19,7 @@ from check_go_vendor import check as validate_vendor
 ROOT = Path(__file__).resolve().parents[1]
 APIS = ('backend-user', 'backend-match', 'backend-chat', 'backend-alert')
 WORKERS = ('standing-events-relay', 'standing-match-consumer',
-           'standing-alert-consumer', 'booking-events-relay', 'alert-events-consumer')
+           'standing-alert-consumer', 'booking-events-relay', 'alert-events-consumer', 'standing-session-worker')
 HARNESS_FILES = ('scripts/test_standing_e2e.py', 'scripts/standing_e2e_fixture.py',
                  'scripts/standing_measurements.py', 'compose.yaml',
                  'compose.standing.yaml', 'compose.standing-tests.yaml')
@@ -146,7 +146,7 @@ def main():
         validate_model(model, project)
         finished = False
         try:
-            for service in ('database-config',) + APIS:
+            for service in ('database-config', 'keycloak') + APIS:
                 print('BUILD: ' + service, flush=True)
                 run('build', service)
             run('up', '-d', '--wait', '--wait-timeout', '180', 'postgres', 'rabbitmq')
@@ -159,6 +159,13 @@ def main():
                 '--scale', 'backend-user=2', '--scale', 'backend-match=2',
                 '--scale', 'backend-chat=2', *APIS, *WORKERS)
             fixture('seed')
+            fixture('sessions')
+            fixture('sessions-prepare-outage')
+            run('stop', 'keycloak')
+            fixture('sessions-offline')
+            run('restart', 'standing-session-worker')
+            run('up', '-d', '--no-deps', 'keycloak')
+            fixture('sessions-recovered')
             # Freeze derived booking effects while exercising authority guards,
             # so cancellation does not mask authorization with a state conflict.
             run('stop', 'standing-match-consumer')

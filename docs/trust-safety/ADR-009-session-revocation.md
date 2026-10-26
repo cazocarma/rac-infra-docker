@@ -77,9 +77,11 @@ quedan fuera de todos esos reintentos. Una reversión que ocurre después de la
 comprobación final también ocurre después de la captura: una nueva sesión
 posterior a la reversión queda fuera sin comparar relojes entre sistemas.
 
-El worker no se declara conectado por tener el endpoint. Todavía requiere su
-journal forward, identidad PostgreSQL mínima, transiciones/reintentos, métricas,
-pruebas reales de carreras/reversión y wiring opt-in del stack. La función de
+El worker no se declara conectado por tener el endpoint. El
+[avance del worker durable](P03-sessions.md) incorpora journal forward, identidad
+PostgreSQL mínima, transiciones/reintentos, métricas, pruebas reales de
+carreras/reversión y wiring opt-in del stack. El ensayo conectado y la revisión
+final siguen siendo gates independientes. La función de
 sanción conserva su frontera de operador y auditoría; el futuro ingreso humano
 de P11 no debe ejecutar un logout global alternativo.
 

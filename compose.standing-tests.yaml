@@ -2,7 +2,8 @@
 # No host ports, imported DEV realm, or existing DEV volume names.
 services:
   keycloak:
-    command: [start-dev]
+    image: ${STANDING_TEST_IMAGE_PREFIX}-keycloak
+    command: [start-dev, --spi-realm-restapi-extension--rac-sessions--active=true]
     ports: !reset []
     volumes:
       - ./keycloak/themes/rac:/opt/keycloak/themes/rac:ro
@@ -17,6 +18,8 @@ services:
   backend-user:
     image: ${STANDING_TEST_IMAGE_PREFIX}-user
     build: ../rac-user-service
+  standing-session-worker:
+    image: ${STANDING_TEST_IMAGE_PREFIX}-user
   backend-match:
     image: ${STANDING_TEST_IMAGE_PREFIX}-match
     build: ../rac-match-service

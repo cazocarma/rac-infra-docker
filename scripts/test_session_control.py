@@ -176,6 +176,8 @@ def main():
                 return result['access_token']
 
             worker = worker_token()
+            assert request('GET', '/realms/rentacompa/rac-sessions/status', token=worker) == {'schema_version': 1}
+            request('GET', '/realms/rentacompa/rac-sessions/status', expected=401)
             claims = json.loads(base64.urlsafe_b64decode(worker.split('.')[1] + '=='))
             assert claims['sub'] == account['id'] and claims['azp'] == CLIENT
             assert claims['resource_access'] == {AUDIENCE: {'roles': ['sessions.revoke']}}
