@@ -78,8 +78,8 @@ esa revisión; no sustituye el CI del adaptador de sesiones ni del futuro worker
    100 sanciones, ocho sondas y peor p99 de primer rechazo 93.273 ms.
 3. El gate caliente pasa con 1184/1184 hits <=2 ms. HTTP, consulta fresca y
    adquisición con caché se distinguen; ver metodología y límites.
-4. El CI de `0583dfd` pasó sus cuatro jobs. Falta el CI de esta revisión final
-   con la ampliación de medición y el relay sin pausa por evento confirmado.
+4. El CI final de `fabb39b` pasó sus cuatro jobs, incluida la ampliación de
+   medición y el relay. PR #8 fusionado en main como `cafef75`; ver expediente.
 5. El DEV real tiene cold backup cifrado/restaurado y backup lógico restaurado.
    La copia restaurada pasa V017→V027, validate, repetición y conteos preservados.
 6. V027 y el worker mínimo de sesiones pasan carreras, ACK perdido, claims,
