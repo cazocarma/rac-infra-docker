@@ -129,3 +129,27 @@ Esto define y verifica el contrato compartido: todavía falta implementar la
 fuente autenticada/consistente y coordinar la comprobación final con la
 transacción del propietario. No elimina por sí solo una carrera entre lectura
 y commit. El SDK no está publicado ni integrado en consumidores todavía.
+
+
+## Quinto incremento: fuente PostgreSQL del propietario
+
+Platform `e9aed5b` implementa `documents/postgres.Source`. Una única sentencia
+lee la cabecera activa, su política, documentos, linajes y aceptaciones del
+usuario resuelto por el subject OIDC. No sustituye un registro sin activar por
+la publicación más reciente. La consulta devuelve solo una prueba por tipo
+requerido que coincida con el linaje activo; no arrastra todo el historial de
+aceptaciones a cada comprobación. Los errores internos se convierten en fallo
+opaco y nunca se usan para conceder acceso.
+
+`python scripts/test_document_source.py` ejecuta la SQL exacta extraída del
+checkout hermano `rac-platform` contra PostgreSQL desechable migrado. Pasa con
+`rac_user`, comprobando versión activa, cuenta inexistente, aislamiento entre
+usuarios, hashes, herencia histórica no material y reducción de múltiples
+aceptaciones. La prueba falla si falta esa fuente; no omite silenciosamente el
+caso. Vet y race de platform/documentos también pasan con el nuevo adaptador.
+
+La fuente está implementada pero aún no consumida: siguen pendientes transporte
+autenticado, generación de vendor del SDK, coordinación con escrituras,
+alineación de la lista pública con el registro activo y gate/intersticial 428.
+El script debe incorporarse al CI cuando su checkout de platform esté fijado a
+una versión que incluya esta fuente; aún no se afirma cobertura remota.
