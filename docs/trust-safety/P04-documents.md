@@ -77,3 +77,35 @@ antes de commits y efectos externos, publicar la versión del SDK con vendor
 generado en sus consumidores y conectar la respuesta 428 al intersticial.
 El manifiesto y los consumidores siguen en platform v0.9.1 hasta esa integración;
 no se edita vendor manualmente ni se declara el gate activo por compilar.
+
+
+## Tercer incremento: registro autoritativo y linaje
+
+V029 agrega un registro por idioma con versiones monotónicas, requisitos y
+linajes inmutables. La activación exige un conjunto completo de documentos
+aprobados y publicados, controla la versión esperada y registra el evento en
+la cadena de auditoría dentro de la misma transacción. Repetir el mismo evento
+no duplica auditoría ni retrocede el registro; cambiar su contenido se rechaza.
+
+El linaje incluye las publicaciones históricas: una revisión material intermedia
+obliga a reaceptar aunque no haya sido seleccionada como versión activa. Las
+revisiones no materiales conservan el linaje previo. Se rechazan regresiones,
+historias ambiguas y publicaciones retroactivas que alterarían un linaje ya
+fijado. La función bloquea las escrituras de publicación antes de tomar el
+bloqueo de la cabecera; un futuro ingreso de publicación debe conservar ese
+orden para evitar carreras e interbloqueos.
+
+Los servicios no pueden activar ni editar el registro. El usuario técnico de
+lectura obtiene solo las columnas necesarias; los respaldos incluyen el esquema.
+El bootstrap reconcilia su propietario con el migrador sin superusuario.
+Las pruebas usan bases desechables y documentos sintéticos. No se ha activado
+ningún documento ni aplicado esta migración al DEV persistente.
+
+La función es una primitiva de persistencia, no el flujo humano de publicación:
+los identificadores de aprobación todavía deben ligarse a una decisión
+verificada mediante ese flujo. También siguen pendientes la fuente fresca del
+SDK, los controles anteriores al commit y la respuesta 428 compartida.
+
+Validación: `test_database_permissions.py` pasa tanto en instalación nueva como
+en actualización desde V018, ejecutando las activaciones con el migrador real
+sin superusuario. Incluye las pruebas negativas, el dump y la restauración.

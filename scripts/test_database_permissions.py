@@ -69,6 +69,13 @@ def main():
             migrate(database, ROOT / 'db/migrations')
             bootstrap(database)  # Reconcile again with the standing schema present.
             assert sql(database, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname='standing';").stdout.strip() == 'rac_migrator'
+            if (ROOT / 'db/migrations/V029__document_registry.sql').exists():
+                from document_registry_checks import check as check_document_registry
+                assert sql(database, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname='documents';").stdout.strip() == 'rac_migrator'
+                check_document_registry(lambda statement: sql(database, statement).stdout.strip(),
+                                        lambda statement: sql(database, statement, ok=False).returncode != 0,
+                                        role='registry_fixture_' + database)
+
             assert sql(database, "SELECT count(*) FROM standing.account;", 'rac_user').returncode == 0
             assert sql(database, "UPDATE standing.account SET status='active';", 'rac_user', ok=False).returncode != 0
             assert sql(database, "SELECT count(*) FROM standing.account;", 'rac_match', ok=False).returncode != 0

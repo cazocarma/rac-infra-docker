@@ -108,6 +108,12 @@ try:
         assert '--- PASS: TestVerifiedReviews' in user_tests.stdout
         assert '--- PASS: TestProfileStandingProvisioning' in user_tests.stdout
         print("PASS: scoped user writes, standing guards, concurrent rollback, public visibility, reviews and protected reads")
+    if (migration_dir / 'V029__document_registry.sql').exists():
+        from document_registry_checks import check as check_document_registry
+        def registry_rejected(statement):
+            result = run("docker", "exec", "-i", NAME, "psql", "-X", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "fresh", "-At", input=statement, ok=False)
+            return result.returncode != 0
+        check_document_registry(lambda statement: sql('fresh', statement), registry_rejected)
     sql("legacy", (ROOT / "db/migrations/V001__initial_schema.sql").read_text())
     sql("legacy", "INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('00000000-0000-0000-0000-000000000001','Preservar','legacy@example.test','cliente','kc-legacy');")
     sql("legacy", "INSERT INTO compa_availability(compa_id,disponibilidad_json) VALUES('00000000-0000-0000-0000-000000000001','{\"lunes\":[\"18:00-20:00\"]}');")
