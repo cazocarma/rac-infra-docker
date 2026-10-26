@@ -173,3 +173,33 @@ ligada, respuesta vencida/futura, JSON desconocido o con datos adicionales,
 respuesta excesiva, ausencia de registro, redirección y acceso protector sin
 consulta. El handler aún no está montado en user ni el cliente en match/chat;
 no se ha ampliado ningún permiso de la App de GitHub o del realm OIDC.
+
+
+## Séptimo incremento: SDK publicado y autoridad conectada en user
+
+La etiqueta inmutable platform `v0.10.0` corresponde a `832da4174294`.
+Los cuatro consumidores actualizan go.mod/go.sum y vendor generado; la fuente
+se compara con el checkout fijado mediante `check_go_vendor.py` (pasa).
+`python scripts/vendor_platform.py v0.10.0` reproduce esa generación desde un
+tag existente y un checkout limpio, sin montar credenciales Git privadas en
+Docker. Usa un proxy local de ese módulo exacto y mantiene proxy/checksum
+públicos para las dependencias públicas. No modifica vendor manualmente.
+
+User monta `/internal/documents` en su listener interno cuando
+`DOCUMENTS_ENFORCEMENT_ENABLED=true`. Exige infraestructura standing activa,
+audiencia `rac-documents`, permiso `documents.read` y subject técnico ligado al
+cliente autorizado. Solo match/chat están admitidos; ni alert ni un admin humano
+obtienen ese acceso. La configuración inválida aborta el inicio. La opción está
+apagada por defecto y no se ha aplicado al DEV persistente.
+
+Vet y race pasan en user, match, chat y alert. Las pruebas con JWT firmados
+comprueban que el permiso/audiencia de standing no basta para documentos y que
+el listener aplica esa separación. La suite normal omite sus casos PostgreSQL
+sin fixture; no se presenta este resultado como una prueba integrada completa.
+El manifiesto fija los cinco commits y el workflow integrado incorpora
+`test_document_source.py`, ahora que el checkout de platform contiene la fuente.
+
+Todavía falta provisionar esa audiencia/permiso en el realm desechable y validar
+su token real, conectar los clientes de match/chat y los escritores locales,
+coordinar el control antes de commit, y terminar el flujo 428/intersticial.
+Publicar el SDK no activa ni completa P04 por sí solo.

@@ -237,6 +237,9 @@ jobs:
       - name: Database policies against companion services
         working-directory: rac-infra-docker
         run: python scripts/test_migrations.py
+      - name: Document owner SQL against scoped disposable PostgreSQL
+        working-directory: rac-infra-docker
+        run: python scripts/test_document_source.py
       - name: Transactional messaging against disposable PostgreSQL and RabbitMQ
         working-directory: rac-infra-docker
         run: python scripts/test_messaging.py
