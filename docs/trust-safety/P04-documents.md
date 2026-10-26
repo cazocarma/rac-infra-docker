@@ -54,3 +54,26 @@ ARB y metadata de revisión, flujos de publicación aprobados/auditados y prueba
 web conectadas. No usar estos endpoints para eludir standing o conceder roles.
 La aprobación jurídica de textos y su activación siguen pendientes de sus
 responsables; no se simulan mediante documentos de ejemplo en el DEV real.
+
+## Segundo incremento: reglas compartidas (en integración)
+
+`rac-platform` incorpora `documents.RequireAcceptedDocuments` en la rama
+`feat/versioned-documents` (`60edab6`). Reutiliza la clasificación de capacidades
+protectivas/comerciales de standing, sin copiar sus listas en cada servicio.
+Distingue registro/política indisponible de aceptaciones pendientes y rechaza
+registros vacíos, ambiguos, no revisados o futuros. Una nueva revisión no material
+conserva su linaje de aceptación; un cambio material crea uno nuevo y exige
+reaceptar. No hay bypass por rol administrativo: la persona documental se deriva
+del dueño según perfil/operación, no de un rol de staff enviado por el cliente.
+
+Vet y race de todos los paquetes del módulo pasan, incluyendo escenarios de
+cambio material, hash alterado, consentimiento futuro/prepublicación y derechos
+protectores con estado documental ausente. Esto prueba el evaluador de dominio,
+no un middleware desplegado ni una lectura fresca entre servicios.
+
+Falta persistir/derivar el linaje aprobado y el registro activo, conectar la
+fuente autoritativa con identidad/operación y frescura acotada, volver a verificar
+antes de commits y efectos externos, publicar la versión del SDK con vendor
+generado en sus consumidores y conectar la respuesta 428 al intersticial.
+El manifiesto y los consumidores siguen en platform v0.9.1 hasta esa integración;
+no se edita vendor manualmente ni se declara el gate activo por compilar.
