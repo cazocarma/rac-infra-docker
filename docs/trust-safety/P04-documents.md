@@ -109,3 +109,23 @@ SDK, los controles anteriores al commit y la respuesta 428 compartida.
 Validación: `test_database_permissions.py` pasa tanto en instalación nueva como
 en actualización desde V018, ejecutando las activaciones con el migrador real
 sin superusuario. Incluye las pruebas negativas, el dump y la restauración.
+
+
+## Cuarto incremento: comprobación fresca ligada a la operación
+
+Platform `54a5da3` agrega `documents.Check` y el contrato `Source`.
+La observación debe corresponder exactamente a cuenta, persona, capacidad e
+idioma, y declarar una revisión positiva. El propietario construye esa consulta
+a partir de la operación autenticada; no se deserializa del cuerpo público.
+La tolerancia de antigüedad debe ser positiva y nunca superar cinco segundos;
+se rechazan respuestas futuras, llamadas lentas, canceladas o fallidas.
+No hay caché ni permiso reutilizable en esta comprobación. Los derechos
+protectores no consultan la fuente documental.
+
+Vet y race de todo platform pasan; la suite documental adicional verifica que
+una segunda comprobación consulta de nuevo y rechaza un nuevo requisito material,
+y que no se consulta la autoridad con contexto cancelado o tolerancia inválida.
+Esto define y verifica el contrato compartido: todavía falta implementar la
+fuente autenticada/consistente y coordinar la comprobación final con la
+transacción del propietario. No elimina por sí solo una carrera entre lectura
+y commit. El SDK no está publicado ni integrado en consumidores todavía.
