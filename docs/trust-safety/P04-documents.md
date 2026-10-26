@@ -153,3 +153,23 @@ autenticado, generación de vendor del SDK, coordinación con escrituras,
 alineación de la lista pública con el registro activo y gate/intersticial 428.
 El script debe incorporarse al CI cuando su checkout de platform esté fijado a
 una versión que incluya esta fuente; aún no se afirma cobertura remota.
+
+
+## Sexto incremento: transporte interno autenticado
+
+Platform `832da41` agrega cliente y handler `documents/transport` con autenticador
+obligatorio, consultas comerciales validadas, respuestas ligadas a la consulta,
+JSON estricto, límite de 16 KiB y errores opacos. El cliente exige HTTPS salvo
+la opción explícita de desarrollo y nunca sigue redirecciones. La vigencia se
+comprueba mediante `documents.Check`; recibir una respuesta no concede por sí
+solo un permiso reutilizable. El listener del propietario debe verificar la
+identidad técnica, audiencia y permiso de lectura antes de consultar la fuente.
+
+El intercambio HTTP acotado se comparte con standing mediante un paquete
+interno; no se duplican sus reglas de credenciales, redirección y decodificación.
+Vet y race de todo platform pasan, incluyendo regresión de standing y sus
+credenciales. Las nuevas pruebas cubren acceso no autenticado, cuenta/operación
+ligada, respuesta vencida/futura, JSON desconocido o con datos adicionales,
+respuesta excesiva, ausencia de registro, redirección y acceso protector sin
+consulta. El handler aún no está montado en user ni el cliente en match/chat;
+no se ha ampliado ningún permiso de la App de GitHub o del realm OIDC.
