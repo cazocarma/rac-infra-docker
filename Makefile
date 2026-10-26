@@ -221,3 +221,17 @@ test-standing-authority:
 .PHONY: test-session-control
 test-session-control:
 	$(PYTHON) scripts/test_session_control.py
+
+.PHONY: backup-cold-postgres backup-restore-upgrade-test
+backup-cold-postgres:
+ifeq ($(ENV),dev)
+	$(PYTHON) scripts/backup_dev_cold_postgres.py
+else
+	$(error Cold backup workstation helper only supports DEV)
+endif
+backup-restore-upgrade-test:
+ifeq ($(ENV),dev)
+	$(PYTHON) scripts/test_backup_restore.py --verify-migrations
+else
+	$(error Restored data upgrade test only supports DEV)
+endif

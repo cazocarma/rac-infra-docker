@@ -1,6 +1,6 @@
 # Trazabilidad de aceptación
 
-Estado: **pendiente de implementación y ejecución**. Ninguna fila representa prueba aprobada. Los tests globales corresponden a la sección 10 del prompt; no confundir A1–A15 de amenazas con A1–A9 de consola.
+Estado: **programa en desarrollo**. La evidencia de E2E-04 está en [P03-close](P03-close.md); las demás filas expresan criterios requeridos, no pruebas aprobadas. Los tests globales corresponden a la sección 10 del prompt; no confundir A1–A15 de amenazas con A1–A9 de consola.
 
 | E2E | Criterio | PR / módulos | Evidencia requerida |
 |---|---|---|---|

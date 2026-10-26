@@ -343,7 +343,21 @@ elif phase == 'writers':
 elif phase == 'races':
     commit_races()
 elif phase == 'measure':
+    # Isolated synthetic entitlement removes the unrelated three-booking quota.
+    # Each acceptance is a new pending -> active transition, not an idempotent
+    # repeat against an already accepted booking. Setup is outside HTTP timing.
+    sql('CREATE SEQUENCE standing_accept_measure_slots')
+    sql("INSERT INTO compa_suscripcion(compa_id,referencia_externa,estado,inicio,fin) VALUES(%s,%s,'activa',now()-interval '1 hour',now()+interval '1 day')",
+        (state['compa'], 'isolated-standing-measurement'))
     def measured_call(operation, instance):
+        if operation == 'match.accept':
+            candidate = str(uuid.uuid4())
+            sql("""WITH slot AS (SELECT date_trunc('day',now())+interval '200 days 12 hours'+nextval('standing_accept_measure_slots')*interval '1 day' AS start_at)
+                INSERT INTO sesion(id,cliente_id,compa_id,fecha_inicio,fecha_fin,estado)
+                SELECT %s,%s,%s,start_at,start_at+interval '1 hour','pendiente' FROM slot""",
+                (candidate, state['buyer'], state['compa']))
+            return api('PUT', f'/api/match/session/{candidate}/state', state['compa_token'],
+                       {'estado': 'activa'}, expected=(200, 403), instance=instance, result_meta=True)
         method, path, data = {
             'user.profile': ('PUT', '/api/user/me', PROFILE),
             'match.availability': ('POST', f"/api/match/availability/{state['compa']}", {'availability': AVAILABILITY}),
@@ -365,7 +379,7 @@ elif phase == 'measure':
     print('MEASUREMENT_JSON:' + json.dumps(result), flush=True)
     if not result['hot_acquisition']['gate_passed']:
         raise AssertionError('Hot acquisition p99 exceeds 2ms; report must be retained')
-    print('PASS: 100 audited revocation trials across six concurrent old-JWT writer probes', flush=True)
+    print('PASS: 100 audited revocation trials across eight concurrent old-JWT probes, including real booking acceptance', flush=True)
 elif phase == 'prepare-outages':
     # Historical sanctions must repair the old bookings before creating new ones.
     wait(lambda: sql("SELECT count(*),count(*) FILTER(WHERE estado='cancelada') FROM sesion WHERE id IN(%s,%s)",

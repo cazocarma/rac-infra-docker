@@ -88,12 +88,35 @@ a otra lenta. promtool prueba incumplimiento sostenido, frontera exacta de 99%,
 muestra insuficiente, tráfico cold, inactividad y reinicio de contadores. Las
 17 reglas y esos escenarios pasan; CI ejecuta las pruebas de la alerta.
 
-## CI y límites pendientes
+## Medición final del 26-10-2026
+
+La [evidencia final](evidence/p03-final-performance.json) agrega `match.accept`
+en dos instancias: ocho sondas concurrentes, 100 sanciones auditadas, JWT reales
+anteriores y la misma cota conservadora desde el commit. Cada aceptación usa
+una reserva nueva pendiente y comprueba la transición real a activa. La
+preparación SQL del fixture ocurre fuera del tiempo HTTP; un entitlement
+sintético, solo dentro del laboratorio, evita confundir el límite gratuito con
+una denegación de standing. Los horarios no cruzan medianoche.
+
+El peor p99 de primer rechazo fue **93.273 ms**; para aceptación, **22.271 ms**
+y **20.229 ms**. La cota p99 del último éxito posterior al commit fue 0 ms en
+esta muestra; esto no promete ausencia universal de carreras ni latencia cero.
+Los 1184 hits calientes estuvieron dentro del bucket de 2 ms. La fase caliente
+mantiene seis sondas; no se atribuye ese histograma a rutas individuales.
+
+La carga de aceptaciones expuso una pausa fija por evento en el relay. Se
+retiró la pausa después de publicaciones confirmadas; se conservan espera idle,
+backoff de error, confirmaciones, orden por agregado y comprobación de apagado.
+La matriz posterior completó publicación y vaciado de colas con el plazo
+original, sin aumentarlo para hacer pasar el ensayo.
+
+## CI y activación
 
 El job integrado ejecuta el mismo gate y publica únicamente el JSON saneado
 como artefacto durante siete días, incluso ante fallo. Un resultado local no
 reemplaza el check remoto de las revisiones finales.
 
-Siguen pendientes el cierre acotado de sesiones Keycloak, la revisión final
-por requisito, CI remoto y backup/restore del DEV persistente antes de activarlo.
-Estos resultados no activan el preview ni autorizan una fusión automática.
+Las sesiones y el respaldo/restore del DEV ya tienen evidencia en
+[P03-sessions](P03-sessions.md) y [cierre](P03-close.md). El check remoto debe
+corresponder a la revisión final. La activación persistente es una operación
+coordinada, no un efecto implícito de obtener un percentil favorable.

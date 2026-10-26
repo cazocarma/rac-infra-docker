@@ -70,35 +70,25 @@ e integración, incluida la matriz Compose con ambos gates estadísticos y el
 recorrido en navegador. Publicó el artefacto de rendimiento saneado. Esto prueba
 esa revisión; no sustituye el CI del adaptador de sesiones ni del futuro worker.
 
-## Estado de gates
+## Estado de gates al 26-10-2026
 
-1. El [ensayo Compose](P03-compose.md) pasó localmente: JWT real previo, dos
-   instancias de user/match/chat, escritores, seis carreras de commit, caída de
-   broker/autoridad, reinicio, recuperación y derechos protectores. También pasó
-   en el CI de `449d5bb`; requiere repetirse al integrar el efecto de sesiones.
-2. La [medición local reproducible](P03-performance.md) pasó 100 revocaciones
-   reales en seis sondas concurrentes. El mayor p99 de primer rechazo fue
-   101.652 ms y el de la cota del último éxito posterior al commit, 2.933 ms.
-   Cubre tres rutas representativas y sus gates pasaron en ese CI. La revisión
-   final debe contrastar el criterio E2E-04 con las rutas concretas: la fase
-   estadística actual usa perfil, disponibilidad y envío; no mide aceptación de
-   reserva como sonda independiente, aunque la matriz funcional sí la ejercita.
-3. Acquire con caché original pasó el gate de >=99% dentro de 2 ms en las seis
-   instancias; 1187 hits observados estuvieron dentro del bucket. La latencia
-   HTTP caliente p99 máxima fue 37.686 ms. Consulta final fresca y HTTP no se
-   confunden con ese presupuesto. Ver metodología y límites en la evidencia.
-4. Cierre de revisión por requisito y CI remoto de la revisión final. Mantener PR
-   en draft hasta resolver los gates de P03; no activarlo solo por compilar.
-5. Backup y restore aislado del estado persistente antes del rollout autorizado.
-   Las pruebas desechables de migración no son el respaldo del DEV real.
-6. Terminar sesiones de Keycloak al sancionar: el adaptador acotado de
-   [ADR-009](ADR-009-session-revocation.md) ya permite capturar identificadores y
-   revocarlos sin administrar usuarios. El [worker durable de user](P03-sessions.md),
-   V027, grants mínimos, carreras/reversión y wiring opt-in están implementados
-   y sus suites aisladas y el ensayo conectado pasan localmente, incluida caída
-   de Keycloak y recuperación tras reiniciar el worker. Falta el CI de la
-   revisión final; el endpoint por sí solo no prueba ese efecto completo.
-   Los lectores y provisionador conservan su alcance.
+1. La matriz Compose completa pasa con el efecto de sesiones integrado,
+   caída de Keycloak, reinicio del worker, JWT anterior y derechos protectores.
+2. La medición final incluye aceptación real de reservas en dos instancias:
+   100 sanciones, ocho sondas y peor p99 de primer rechazo 93.273 ms.
+3. El gate caliente pasa con 1184/1184 hits <=2 ms. HTTP, consulta fresca y
+   adquisición con caché se distinguen; ver metodología y límites.
+4. El CI de `0583dfd` pasó sus cuatro jobs. Falta el CI de esta revisión final
+   con la ampliación de medición y el relay sin pausa por evento confirmado.
+5. El DEV real tiene cold backup cifrado/restaurado y backup lógico restaurado.
+   La copia restaurada pasa V017→V027, validate, repetición y conteos preservados.
+6. V027 y el worker mínimo de sesiones pasan carreras, ACK perdido, claims,
+   reversión, permisos y revocación online/offline real. El cierre de sesiones
+   no sustituye la autoridad de capacidades ni bloquea el ingreso protector.
+
+El [expediente de cierre](P03-close.md) enlaza la evidencia de cada requisito,
+el alcance aprobado y la siguiente entrega P04. El rollout persistente sigue
+separado del cierre de código; no se activa por inferencia de una prueba.
 
 La revisión del código oficial de [Keycloak 26.8.1, UserResource](https://github.com/keycloak/keycloak/blob/26.8.1/services/src/main/java/org/keycloak/services/resources/admin/UserResource.java)
 confirma que `logout()`, modificar y borrar usuarios exigen el mismo control

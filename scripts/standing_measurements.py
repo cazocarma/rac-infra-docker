@@ -25,7 +25,7 @@ def measure_revocation(call, transition, samples=100):
     """
     if not isinstance(samples, int) or not 100 <= samples <= 1000:
         raise ValueError('Revocation gate requires 100..1000 distinct transitions')
-    groups = ('user.profile', 'match.availability', 'chat.send')
+    groups = ('user.profile', 'match.availability', 'match.accept', 'chat.send')
     keys = [(group, instance) for group in groups for instance in (1, 2)]
     period = .1
     records = {key: {'first_denial_bound_ms': [], 'last_success_bound_ms': [],
