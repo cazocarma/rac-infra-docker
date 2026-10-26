@@ -203,3 +203,33 @@ Todavía falta provisionar esa audiencia/permiso en el realm desechable y valida
 su token real, conectar los clientes de match/chat y los escritores locales,
 coordinar el control antes de commit, y terminar el flujo 428/intersticial.
 Publicar el SDK no activa ni completa P04 por sí solo.
+
+
+## Octavo incremento: identidad documental probada en Keycloak
+
+El provisionador standing acepta una opción documental explícita (desactivada
+por defecto). Crea el recurso bearer-only `rac-documents` y el permiso
+`documents.read`, asignados y limitados por scope solo a match/chat; alert
+conserva exclusivamente standing. Se reutilizan los secretos montados actuales,
+sin rotación implícita ni permisos realm-management. Reconciliar elimina los
+permisos directos ajenos al conjunto aprobado. Se conservan los nombres de
+mappers standing para actualizar instalaciones existentes.
+
+`configure_identity.py` valida la opción documental antes de mutaciones:
+requiere `DOCUMENTS_ENFORCEMENT_ENABLED=true` y standing activo. Todavía no hay
+un overlay documental habilitado en Compose; no se ejecutó el provisionador
+contra el realm DEV persistente.
+
+`test_identity_permissions.py` pasa contra Keycloak desechable con TLS: dos
+reconciliaciones con documentos conservan subjects/secretos, tokens reales de
+match/chat incluyen audiencia y permiso, alert queda excluido y sigue sin
+administración. Go verifica firma/issuer/audiencia/subject y deniega tanto un
+token previo solo-standing como el de alert. La credencial OAuth real completa
+intercambios con las autoridades standing y documental. Al deshabilitar la
+opción, los tokens nuevos pierden documentos y conservan standing; los JWT ya
+emitidos tienen su vencimiento corto habitual, no revocación instantánea por
+quitar un mapper. El listener debe apagarse junto con ese rollout.
+
+Pasan también las regresiones FGAP, denegación de privilegios, OTP/PKCE y MFA de
+staff. El siguiente pendiente funcional sigue siendo aplicar el control en
+escritores y conectar la experiencia 428; esta prueba no los sustituye.

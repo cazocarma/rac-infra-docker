@@ -129,7 +129,22 @@ def main():
         assert 'realm-management' not in alert_claims.get('resource_access', {})
         assert 'refresh_token' not in alert_token and alert_token['expires_in'] <= 300
         request('GET', '/admin/realms/rentacompa/users', token=alert_token['access_token'], expected=403)
-        assert configure_standing(admin, standing_directory) == bindings
+        standing_only_token = request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
+            'client_id': 'rac-match-standing', 'client_secret': standing_secret, 'grant_type': 'client_credentials'}, form=True)['access_token']
+        assert configure_standing(admin, standing_directory, documents=True) == bindings
+        assert configure_standing(admin, standing_directory, documents=True) == bindings
+        chat_document_token = request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
+            'client_id': 'rac-chat-standing', 'client_secret': chat_secret, 'grant_type': 'client_credentials'}, form=True)['access_token']
+        chat_document_claims = json.loads(base64.urlsafe_b64decode(chat_document_token.split('.')[1] + '=='))
+        assert 'rac-documents' in chat_document_claims['aud']
+        assert chat_document_claims['resource_access']['rac-documents']['roles'] == ['documents.read']
+        assert 'realm-management' not in chat_document_claims.get('resource_access', {})
+        # Alert is reconciled too, but receives neither document mapper nor role.
+        alert_after = request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
+            'client_id': 'rac-alert-standing', 'client_secret': alert_secret, 'grant_type': 'client_credentials'}, form=True)['access_token']
+        alert_after_claims = json.loads(base64.urlsafe_b64decode(alert_after.split('.')[1] + '=='))
+        assert 'rac-documents' not in alert_after_claims['aud']
+        assert 'rac-documents' not in alert_after_claims.get('resource_access', {})
         assert (standing_directory / 'match/secret').read_text().strip() == standing_secret
         reader = admin('GET', '/clients?clientId=rac-match-standing')[0]
         assert not reader['fullScopeAllowed'] and not reader['standardFlowEnabled'] and not reader['directAccessGrantsEnabled']
@@ -142,6 +157,8 @@ def main():
         assert reader_claims['sub'] == bindings['rac-match-standing']
         assert 'rac-standing' in reader_claims['aud']
         assert reader_claims['resource_access']['rac-standing']['roles'] == ['standing.read']
+        assert 'rac-documents' in reader_claims['aud']
+        assert reader_claims['resource_access']['rac-documents']['roles'] == ['documents.read']
         assert 'realm-management' not in reader_claims.get('resource_access', {})
         request('GET', '/admin/realms/rentacompa/users', token=reader_token['access_token'], expected=403)
         request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
@@ -153,7 +170,8 @@ def main():
             fixture.write_text(json.dumps({'issuer': base + '/realms/rentacompa',
                 'jwks': 'https://identity-fixture:8443/realms/rentacompa/protocol/openid-connect/certs',
                 'runtimeIssuer': 'https://identity-fixture:8443/realms/rentacompa',
-                'subjects': bindings, 'token': reader_token['access_token']}), encoding='utf-8')
+                'subjects': bindings, 'token': reader_token['access_token'],
+                'standingOnlyToken': standing_only_token, 'alertToken': alert_after, 'chatToken': chat_document_token}), encoding='utf-8')
             os.chmod(fixture, 0o644)
             command('docker', 'run', '--rm', '--network', name,
                 '--mount', f'type=bind,source={directory},target=/fixture,readonly',
@@ -164,7 +182,15 @@ def main():
                 'golang:1.27.2', 'go', 'test', '-race', '-count=1', './internal/platform', '-run', 'TestProvisionedStandingReaderKeycloak')
         else:
             raise RuntimeError('User checkout required for real standing JWT verification')
-        print('PASS: idempotent standing credentials, scoped real client token, no refresh/password/admin access, Go signature verification and real OAuth credentials to authenticated authority HTTP')
+        assert configure_standing(admin, standing_directory, documents=False) == bindings
+        disabled_token = request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
+            'client_id': 'rac-match-standing', 'client_secret': standing_secret, 'grant_type': 'client_credentials'}, form=True)['access_token']
+        disabled_claims = json.loads(base64.urlsafe_b64decode(disabled_token.split('.')[1] + '=='))
+        assert 'rac-documents' not in disabled_claims['aud']
+        assert 'rac-documents' not in disabled_claims.get('resource_access', {})
+        assert disabled_claims['resource_access']['rac-standing']['roles'] == ['standing.read']
+        assert (standing_directory / 'match/secret').read_text().strip() == standing_secret
+        print('PASS: idempotent standing/document credentials, match/chat document scope, alert exclusion, no refresh/password/admin access, Go signature verification and real OAuth to both authority HTTP endpoints')
         assert admin('GET', '/users/' + account['id'] + '/role-mappings/clients/' + management['id']) == []
         assert admin('GET', '/clients/' + client['id'] + '/scope-mappings/clients/' + management['id']) == []
         admin('POST', '/users', {'username': 'subject', 'enabled': True})

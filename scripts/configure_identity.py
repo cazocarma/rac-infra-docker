@@ -14,6 +14,11 @@ from identity_sessions import configure_sessions
 BASE = os.environ.get("KEYCLOAK_INTERNAL_URL", "http://keycloak:8080")
 REALM = "rentacompa"
 ENV = os.environ["RAC_ENV"]
+DOCUMENTS = os.environ.get('DOCUMENTS_ENFORCEMENT_ENABLED', 'false')
+if DOCUMENTS not in ('true', 'false'):
+    raise RuntimeError('Invalid document rollout configuration')
+if DOCUMENTS == 'true' and os.environ.get('STANDING_ENFORCEMENT_ENABLED') != 'true':
+    raise RuntimeError('Document authority requires standing infrastructure')
 def request(method, path, data=None, token=None, form=False):
     headers = {"Content-Type": "application/x-www-form-urlencoded" if form else "application/json"}
     if token: headers["Authorization"] = "Bearer " + token
@@ -90,7 +95,7 @@ os.chmod(role_file, 0o644)
 os.replace(role_file, role_directory / 'role-id')
 configure_staff(admin, origin)
 if os.environ.get('STANDING_ENFORCEMENT_ENABLED', 'false') == 'true':
-    configure_standing(admin, '/credentials/standing')
+    configure_standing(admin, '/credentials/standing', documents=DOCUMENTS == 'true')
     session_directory = Path('/credentials/standing/sessions')
     configure_sessions(admin, session_directory)
     # Only the dedicated non-root session worker mounts this private volume.
