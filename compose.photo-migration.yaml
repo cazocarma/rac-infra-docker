@@ -5,7 +5,7 @@ services:
     entrypoint: [/app/migrate-photos]
     env_file: [envs/.env.photos-s3.pending]
     environment:
-      DATABASE_URL: ${DATABASE_URL:?Configurar DATABASE_URL}
+      DATABASE_URL: ${USER_DB_URL:?Inicializar credenciales separadas}
       PROFILE_PHOTO_DIR: /var/lib/rac/photos
     volumes: ["profile-photos:/var/lib/rac/photos:ro"]
     networks: [default, photo-storage]

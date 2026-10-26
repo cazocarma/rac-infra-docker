@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "kind": "compose_revocation",
+  "transitions": 100,
+  "instances_per_service": 2,
+  "concurrency": 6,
+  "target_requests_per_second_per_worker": 10.0,
+  "duration_seconds": 32.786656661,
+  "commit_bracket_ms": {
+    "samples": 100,
+    "p50": 1.369809,
+    "p95": 2.36606,
+    "p99": 6.125696,
+    "max": 8.909845
+  },
+  "groups": [
+    {
+      "operation": "user.profile",
+      "instance": 1,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 76.862919,
+        "p95": 86.209398,
+        "p99": 87.990561,
+        "max": 88.138513
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 1.503114
+      },
+      "http_ms": {
+        "samples": 300,
+        "p50": 6.205958,
+        "p95": 24.888121,
+        "p99": 31.695073,
+        "max": 37.3046
+      },
+      "allowed": 99,
+      "denied": 201,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "user.profile",
+      "instance": 2,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 75.188052,
+        "p95": 81.184823,
+        "p99": 83.181702,
+        "max": 84.672395
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0.993532,
+        "max": 1.857829
+      },
+      "http_ms": {
+        "samples": 300,
+        "p50": 4.976207,
+        "p95": 26.044968,
+        "p99": 29.722585,
+        "max": 31.41414
+      },
+      "allowed": 100,
+      "denied": 200,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "match.availability",
+      "instance": 1,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 80.507629,
+        "p95": 90.53143,
+        "p99": 92.922562,
+        "max": 94.737163
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0.090884,
+        "p99": 1.44736,
+        "max": 1.956766
+      },
+      "http_ms": {
+        "samples": 300,
+        "p50": 12.44086,
+        "p95": 29.013501,
+        "p99": 38.970634,
+        "max": 42.255862
+      },
+      "allowed": 94,
+      "denied": 206,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "match.availability",
+      "instance": 2,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 78.484842,
+        "p95": 84.33582,
+        "p99": 84.891242,
+        "max": 88.72659
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 5.883309,
+        "max": 6.620793
+      },
+      "http_ms": {
+        "samples": 300,
+        "p50": 7.549607,
+        "p95": 24.715048,
+        "p99": 35.235506,
+        "max": 38.576425
+      },
+      "allowed": 98,
+      "denied": 202,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "chat.send",
+      "instance": 1,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 74.742147,
+        "p95": 92.752341,
+        "p99": 93.732612,
+        "max": 94.847243
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 2.838218,
+        "p99": 6.051313,
+        "max": 6.944312
+      },
+      "http_ms": {
+        "samples": 300,
+        "p50": 16.315373,
+        "p95": 35.25805,
+        "p99": 42.615997,
+        "max": 47.095821
+      },
+      "allowed": 71,
+      "denied": 229,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "chat.send",
+      "instance": 2,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 79.391352,
+        "p95": 91.920386,
+        "p99": 94.394847,
+        "max": 100.665724
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 3.105679,
+        "p99": 4.984783,
+        "max": 6.273323
+      },
+      "http_ms": {
+        "samples": 300,
+        "p50": 16.614111,
+        "p95": 35.747749,
+        "p99": 42.099555,
+        "max": 52.103201
+      },
+      "allowed": 83,
+      "denied": 217,
+      "rate_overruns": 0
+    }
+  ],
+  "docker": {
+    "cpus": 12,
+    "memory_bytes": 8301367296,
+    "server_version": "29.8.2",
+    "architecture": "x86_64"
+  },
+  "companion_revisions": {
+    "rac-auth-service": "8ab0f75007234ad843788fbe2baa1932b9e94ca9",
+    "rac-user-service": "634fbd6e338f8e2756ea7e81df5f8d7e5236e2ab",
+    "rac-match-service": "e4751c50384ea291d5c7817996db2de74ecc428e",
+    "rac-chat-service": "716a81440b906e6c471e1613745d1a42a82986f6",
+    "rac-frontend-flutter": "960524c762ff3f6210688abab238ebf36698ab25",
+    "rac-alert-service": "7bda8f0bcf7fe3add5c0d18ae649ac75c5d2cce3",
+    "rac-admin-service": "f8e46217fdc97d21ffa3b5bfa611885c38bfaed1",
+    "rac-platform": "156458edfb30422781c66b004f011df9a18c8f4c"
+  },
+  "harness_sha256": "90ce9862891b972f5bab495573b4b51ed3d81b015fe8d435d5406df21e66b5d6"
+}

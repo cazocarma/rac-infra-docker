@@ -25,12 +25,12 @@ class Form(HTMLParser):
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl): return None
 
-def login(username, bad_verifier=False):
+def login(username, bad_verifier=False, *, offline=False, return_tokens=False):
     verifier = secrets.token_urlsafe(48)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
     state, nonce = secrets.token_urlsafe(24), secrets.token_urlsafe(24)
     params = {"client_id": "rac-web", "response_type": "code", "redirect_uri": REDIRECT,
-        "scope": "openid profile email", "state": state, "nonce": nonce, "code_challenge": challenge, "code_challenge_method": "S256"}
+        "scope": "openid profile email" + (" offline_access" if offline else ""), "state": state, "nonce": nonce, "code_challenge": challenge, "code_challenge_method": "S256"}
     cookies = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookies))
     page = opener.open(KC + "/realms/rentacompa/protocol/openid-connect/auth?" + urllib.parse.urlencode(params)).read().decode()
@@ -57,7 +57,7 @@ def login(username, bad_verifier=False):
     claims = json.loads(base64.urlsafe_b64decode(token["id_token"].split(".")[1] + "=="))
     assert claims["nonce"] == nonce and claims["iss"] == os.environ["OIDC_ISSUER"]
     TOKENS.append(token)
-    return token["access_token"]
+    return token if return_tokens else token["access_token"]
 
 def api(method, path, token=None, data=None, expected=200):
     headers = {"Content-Type": "application/json"}
@@ -70,3 +70,17 @@ def api(method, path, token=None, data=None, expected=200):
     if not body: return None
     try: return json.loads(body)
     except json.JSONDecodeError: return body.decode()
+
+
+def wait_booking_notifications(token, booking_id, states, timeout=45):
+    """Poll observable asynchronous effects; HTTP failures still fail immediately."""
+    import time
+    deadline = time.monotonic() + timeout
+    while True:
+        inbox = api("GET", "/api/alert/notifications?limit=100", token)
+        found = [n for n in inbox['items'] if n['sesion_id'] == booking_id]
+        if set(states).issubset({n['tipo'] for n in found}):
+            return found
+        if time.monotonic() >= deadline:
+            raise AssertionError("Booking notifications did not arrive before deadline")
+        time.sleep(0.2)

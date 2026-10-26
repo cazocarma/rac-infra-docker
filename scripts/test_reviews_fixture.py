@@ -20,7 +20,7 @@ else:
         buyer=login(username);me=api("GET","/api/user/me",buyer)
         provider_token=login("compa2");provider=api("GET","/api/user/me",provider_token)
         start=(dt.datetime.now(dt.timezone.utc)+dt.timedelta(days=135)).replace(hour=12,minute=0,second=0,microsecond=0)
-        with psycopg.connect(os.environ["DATABASE_URL"]) as db:
+        with psycopg.connect() as db:
             # Offset deterministically away from existing fixture bookings.
             for day in range(20):
                 slot=start+dt.timedelta(days=day)
@@ -29,7 +29,7 @@ else:
             else:raise RuntimeError("No free review fixture slot")
         booking=api("POST","/api/match/session",buyer,{"compa_id":provider["id"],"fecha_inicio":slot.isoformat(),"fecha_fin":(slot+dt.timedelta(hours=1)).isoformat()},expected=201)
         api("PUT","/api/match/session/"+booking["id"]+"/state",provider_token,{"estado":"activa"})
-        with psycopg.connect(os.environ["DATABASE_URL"]) as db:
+        with psycopg.connect() as db:
             # This row was created above and belongs exclusively to this fixture.
             db.execute("UPDATE sesion SET fecha_inicio=now()-interval '3 hours',fecha_fin=now()-interval '2 hours' WHERE id=%s AND cliente_id=%s",(booking["id"],me["id"]))
         api("PUT","/api/match/session/"+booking["id"]+"/state",provider_token,{"estado":"finalizada"})

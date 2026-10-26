@@ -9,6 +9,9 @@ services:
   backend-match:
     image: ${MATCH_IMAGE:?Configurar MATCH_IMAGE con tag inmutable o digest}
     restart: unless-stopped
+  backend-admin:
+    image: ${ADMIN_IMAGE:?Configurar ADMIN_IMAGE con digest inmutable}
+    restart: unless-stopped
   flutter-web:
     image: ${FRONTEND_IMAGE:?Configurar FRONTEND_IMAGE con tag inmutable o digest}
     restart: unless-stopped
@@ -26,3 +29,17 @@ services:
     restart: unless-stopped
   nginx:
     restart: unless-stopped
+  booking-events-relay:
+    image: ${MATCH_IMAGE:?Configurar MATCH_IMAGE}
+  alert-events-consumer:
+    image: ${ALERT_IMAGE:?Configurar ALERT_IMAGE}
+
+  booking-maintenance:
+    image: ${MATCH_IMAGE:?Configurar MATCH_IMAGE}
+  standing-events-relay:
+    image: ${MATCH_IMAGE:?Configurar MATCH_IMAGE}
+  standing-match-consumer:
+    image: ${MATCH_IMAGE:?Configurar MATCH_IMAGE}
+
+  standing-alert-consumer:
+    image: ${ALERT_IMAGE:?Configurar ALERT_IMAGE}

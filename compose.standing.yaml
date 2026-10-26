@@ -1,0 +1,84 @@
+# Opt-in DEV preview only. Not a declaration that all P03 writers are covered.
+# Provision identity-config before starting these APIs. Never publish port 8082.
+services:
+  keycloak:
+    image: rac-${RAC_ENV}-keycloak-sessions:local
+    build:
+      context: .
+      dockerfile: keycloak/session-control/Dockerfile
+    command: [start-dev, --spi-realm-restapi-extension--rac-sessions--active=true]
+  identity-config:
+    environment:
+      STANDING_ENFORCEMENT_ENABLED: "true"
+    volumes:
+      - identity-standing-sessions:/credentials/standing/sessions
+      - identity-standing-readers:/credentials/standing/readers
+      - identity-standing-match:/credentials/standing/match
+      - identity-standing-chat:/credentials/standing/chat
+      - identity-standing-alert:/credentials/standing/alert
+  backend-user:
+    environment:
+      STANDING_ENFORCEMENT_ENABLED: "true"
+      STANDING_SUBJECTS_FILE: /run/standing-readers/subjects.json
+    volumes:
+      - identity-standing-readers:/run/standing-readers:ro
+  backend-match:
+    environment:
+      STANDING_ENFORCEMENT_ENABLED: "true"
+      STANDING_AUTHORITY_URL: http://backend-user:8082/internal/standing
+      STANDING_TOKEN_URL: http://keycloak:8080/realms/rentacompa/protocol/openid-connect/token
+      STANDING_CLIENT_SECRET_FILE: /run/standing-client/secret
+    volumes:
+      - identity-standing-match:/run/standing-client:ro
+  backend-chat:
+    environment:
+      STANDING_ENFORCEMENT_ENABLED: "true"
+      STANDING_AUTHORITY_URL: http://backend-user:8082/internal/standing
+      STANDING_TOKEN_URL: http://keycloak:8080/realms/rentacompa/protocol/openid-connect/token
+      STANDING_CLIENT_SECRET_FILE: /run/standing-client/secret
+    volumes:
+      - identity-standing-chat:/run/standing-client:ro
+  standing-match-consumer:
+    environment:
+      STANDING_ENFORCEMENT_ENABLED: "true"
+      RAC_ENV: dev
+      STANDING_AUTHORITY_URL: http://backend-user:8082/internal/standing
+      STANDING_TOKEN_URL: http://keycloak:8080/realms/rentacompa/protocol/openid-connect/token
+      STANDING_CLIENT_SECRET_FILE: /run/standing-client/secret
+    volumes:
+      - identity-standing-match:/run/standing-client:ro
+  standing-alert-consumer:
+    environment:
+      STANDING_ENFORCEMENT_ENABLED: "true"
+      RAC_ENV: dev
+      STANDING_AUTHORITY_URL: http://backend-user:8082/internal/standing
+      STANDING_TOKEN_URL: http://keycloak:8080/realms/rentacompa/protocol/openid-connect/token
+      STANDING_CLIENT_SECRET_FILE: /run/standing-client/secret
+    volumes:
+      - identity-standing-alert:/run/standing-client:ro
+  standing-session-worker:
+    image: rac-${RAC_ENV}-user:local
+    user: "10001:10001"
+    entrypoint: [/app/standing-sessions]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${STANDING_SESSION_DB_URL:?Inicializar credenciales separadas}
+      RAC_ENV: dev
+      SESSION_CONTROL_ALLOW_DEV_HTTP: "true"
+      SESSION_CONTROL_URL: http://keycloak:8080/realms/rentacompa/rac-sessions
+      SESSION_TOKEN_URL: http://keycloak:8080/realms/rentacompa/protocol/openid-connect/token
+      SESSION_CLIENT_SECRET_FILE: /run/session-client/secret
+    volumes:
+      - identity-standing-sessions:/run/session-client:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+volumes:
+  identity-standing-sessions:
+  identity-standing-readers:
+  identity-standing-match:
+  identity-standing-chat:
+  identity-standing-alert:

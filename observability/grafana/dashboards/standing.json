@@ -1,0 +1,187 @@
+{
+  "uid": "rac-standing",
+  "title": "RAC · Autorización de cuenta",
+  "schemaVersion": 40,
+  "version": 1,
+  "refresh": "15s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Acquire con caché dentro de 2 ms",
+      "description": "Proporción observada en el bucket exacto de 2 ms; no es una interpolación de p99. Sin solicitudes no hay proporción válida.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (service, instance) (rate(rac_standing_acquire_duration_seconds_bucket{cache=\"hit\",le=\"0.002\"}[5m])) / sum by (service, instance) (rate(rac_standing_acquire_duration_seconds_count{cache=\"hit\"}[5m]))",
+          "legendFormat": "{{service}} / {{instance}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Adquisiciones por segundo",
+      "description": "Hit solo cuando todos los participantes reutilizan un lease válido. Miss incluye refresh y denegaciones.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (service, instance, cache) (rate(rac_standing_acquire_duration_seconds_count[5m]))",
+          "legendFormat": "{{service}} / {{instance}} / {{cache}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Acquire con refresh · p99",
+      "description": "Incluye consulta de autoridad. Cuantil interpolado del histograma; no prueba el gate de 2 ms.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (service, instance, le) (rate(rac_standing_acquire_duration_seconds_bucket{cache=\"miss\"}[5m])))",
+          "legendFormat": "{{service}} / {{instance}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Comprobación fresca de commit · p99",
+      "description": "Check vuelve a consultar la versión de autoridad, incluso cuando Acquire fue hit.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (service, instance, le) (rate(rac_standing_commit_check_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{service}} / {{instance}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Muestra caliente · últimos 10 min",
+      "description": "La alerta de presupuesto requiere al menos 100 observaciones por instancia.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (service, instance) (increase(rac_standing_acquire_duration_seconds_count{cache=\"hit\"}[10m]))",
+          "legendFormat": "{{service}} / {{instance}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Petición HTTP completa · p99",
+      "description": "Incluye las rutas HTTP del servicio; es una vista operacional, no el coste aislado de autorización.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (service, instance, le) (rate(rac_http_request_duration_seconds_bucket{service=~\"rac-(user|match|chat)-service\"}[5m])))",
+          "legendFormat": "{{service}} / {{instance}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

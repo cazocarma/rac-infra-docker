@@ -1,0 +1,416 @@
+{
+  "schema_version": 1,
+  "state": "complete",
+  "lab_completed": true,
+  "started_at_utc": "2026-10-26T17:22:41.516422+00:00",
+  "harness_sha256": "b4dd8fca5b58a7670b27c02aa5a2a65acfbf7dc1ad52bf2145431969ef46608d",
+  "infra_base_revision": "0583dfd5e55abce6622fae61d1f2e4b8ec02375f",
+  "kind": "compose_revocation",
+  "transitions": 100,
+  "instances_per_service": 2,
+  "concurrency": 8,
+  "target_requests_per_second_per_worker": 10.0,
+  "duration_seconds": 35.108311486,
+  "commit_bracket_ms": {
+    "samples": 100,
+    "p50": 1.215748,
+    "p95": 1.674287,
+    "p99": 1.844303,
+    "max": 1.907165
+  },
+  "groups": [
+    {
+      "operation": "user.profile",
+      "instance": 1,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 70.376957,
+        "p95": 82.457297,
+        "p99": 85.852761,
+        "max": 87.160994
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "restoration_bound_ms": {
+        "samples": 100,
+        "p50": 12.725612,
+        "p95": 25.731005,
+        "p99": 32.398322,
+        "max": 187.801378
+      },
+      "restoration_denials": 0,
+      "http_ms": {
+        "samples": 300,
+        "p50": 8.933198,
+        "p95": 19.122134,
+        "p99": 21.770178,
+        "max": 26.839475
+      },
+      "allowed": 100,
+      "denied": 200,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "user.profile",
+      "instance": 2,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 69.312935,
+        "p95": 82.15812,
+        "p99": 85.150596,
+        "max": 86.251381
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "restoration_bound_ms": {
+        "samples": 100,
+        "p50": 13.004322,
+        "p95": 26.433236,
+        "p99": 30.089827,
+        "max": 183.888557
+      },
+      "restoration_denials": 0,
+      "http_ms": {
+        "samples": 300,
+        "p50": 8.628383,
+        "p95": 19.460296,
+        "p99": 23.452242,
+        "max": 25.429503
+      },
+      "allowed": 100,
+      "denied": 200,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "match.availability",
+      "instance": 1,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 70.573232,
+        "p95": 84.065919,
+        "p99": 88.897121,
+        "max": 92.779028
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "restoration_bound_ms": {
+        "samples": 100,
+        "p50": 18.887087,
+        "p95": 34.566244,
+        "p99": 44.586069,
+        "max": 189.357361
+      },
+      "restoration_denials": 0,
+      "http_ms": {
+        "samples": 300,
+        "p50": 10.230455,
+        "p95": 23.742257,
+        "p99": 26.752918,
+        "max": 36.657144
+      },
+      "allowed": 100,
+      "denied": 200,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "match.availability",
+      "instance": 2,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 71.662803,
+        "p95": 80.785636,
+        "p99": 85.828346,
+        "max": 93.104871
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "restoration_bound_ms": {
+        "samples": 100,
+        "p50": 20.008738,
+        "p95": 32.05573,
+        "p99": 35.732017,
+        "max": 182.35162
+      },
+      "restoration_denials": 0,
+      "http_ms": {
+        "samples": 300,
+        "p50": 10.222278,
+        "p95": 21.854154,
+        "p99": 26.004246,
+        "max": 31.20123
+      },
+      "allowed": 100,
+      "denied": 200,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "match.accept",
+      "instance": 1,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 13.293525,
+        "p95": 18.646969,
+        "p99": 22.270501,
+        "max": 22.878686
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "restoration_bound_ms": {
+        "samples": 100,
+        "p50": 50.76328,
+        "p95": 61.685495,
+        "p99": 69.384445,
+        "max": 213.880459
+      },
+      "restoration_denials": 0,
+      "http_ms": {
+        "samples": 300,
+        "p50": 8.281402,
+        "p95": 14.05896,
+        "p99": 15.524976,
+        "max": 17.192605
+      },
+      "allowed": 0,
+      "denied": 300,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "match.accept",
+      "instance": 2,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 14.031187,
+        "p95": 19.141235,
+        "p99": 20.228751,
+        "max": 22.664949
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "restoration_bound_ms": {
+        "samples": 100,
+        "p50": 50.679528,
+        "p95": 61.012071,
+        "p99": 69.678773,
+        "max": 220.767653
+      },
+      "restoration_denials": 0,
+      "http_ms": {
+        "samples": 300,
+        "p50": 8.253644,
+        "p95": 14.373492,
+        "p99": 15.657435,
+        "max": 18.302153
+      },
+      "allowed": 0,
+      "denied": 300,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "chat.send",
+      "instance": 1,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 77.262217,
+        "p95": 90.918263,
+        "p99": 93.272194,
+        "max": 99.914421
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "restoration_bound_ms": {
+        "samples": 100,
+        "p50": 25.592892,
+        "p95": 36.480469,
+        "p99": 51.477688,
+        "max": 200.291833
+      },
+      "restoration_denials": 0,
+      "http_ms": {
+        "samples": 300,
+        "p50": 13.541186,
+        "p95": 27.488225,
+        "p99": 31.535619,
+        "max": 44.95973
+      },
+      "allowed": 100,
+      "denied": 200,
+      "rate_overruns": 0
+    },
+    {
+      "operation": "chat.send",
+      "instance": 2,
+      "first_denial_bound_ms": {
+        "samples": 100,
+        "p50": 77.773913,
+        "p95": 88.570431,
+        "p99": 91.03171,
+        "max": 91.649734
+      },
+      "last_success_bound_ms": {
+        "samples": 100,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "restoration_bound_ms": {
+        "samples": 100,
+        "p50": 26.640336,
+        "p95": 38.049512,
+        "p99": 46.737049,
+        "max": 190.539953
+      },
+      "restoration_denials": 0,
+      "http_ms": {
+        "samples": 300,
+        "p50": 13.823715,
+        "p95": 26.517192,
+        "p99": 29.649544,
+        "max": 36.09333
+      },
+      "allowed": 100,
+      "denied": 200,
+      "rate_overruns": 0
+    }
+  ],
+  "hot_acquisition": {
+    "concurrency": 6,
+    "requests_per_worker": 200,
+    "duration_seconds": 2.793062626,
+    "groups": [
+      {
+        "operation": "user.profile",
+        "instance": 1,
+        "hot_acquisitions": 199,
+        "within_2ms": 199,
+        "fraction_within_2ms": 1.0,
+        "http_ms": {
+          "samples": 200,
+          "p50": 5.977315,
+          "p95": 16.803475,
+          "p99": 21.456095,
+          "max": 22.189964
+        }
+      },
+      {
+        "operation": "user.profile",
+        "instance": 2,
+        "hot_acquisitions": 199,
+        "within_2ms": 199,
+        "fraction_within_2ms": 1.0,
+        "http_ms": {
+          "samples": 200,
+          "p50": 5.891712,
+          "p95": 18.165742,
+          "p99": 24.037358,
+          "max": 26.754487
+        }
+      },
+      {
+        "operation": "match.availability",
+        "instance": 1,
+        "hot_acquisitions": 198,
+        "within_2ms": 198,
+        "fraction_within_2ms": 1.0,
+        "http_ms": {
+          "samples": 200,
+          "p50": 8.410504,
+          "p95": 17.805395,
+          "p99": 22.116213,
+          "max": 27.792835
+        }
+      },
+      {
+        "operation": "match.availability",
+        "instance": 2,
+        "hot_acquisitions": 198,
+        "within_2ms": 198,
+        "fraction_within_2ms": 1.0,
+        "http_ms": {
+          "samples": 200,
+          "p50": 8.428969,
+          "p95": 17.357931,
+          "p99": 20.404719,
+          "max": 27.658078
+        }
+      },
+      {
+        "operation": "chat.send",
+        "instance": 1,
+        "hot_acquisitions": 195,
+        "within_2ms": 195,
+        "fraction_within_2ms": 1.0,
+        "http_ms": {
+          "samples": 200,
+          "p50": 8.898716,
+          "p95": 29.899341,
+          "p99": 33.948309,
+          "max": 35.276062
+        }
+      },
+      {
+        "operation": "chat.send",
+        "instance": 2,
+        "hot_acquisitions": 195,
+        "within_2ms": 195,
+        "fraction_within_2ms": 1.0,
+        "http_ms": {
+          "samples": 200,
+          "p50": 8.814314,
+          "p95": 29.529526,
+          "p99": 32.584331,
+          "max": 35.545336
+        }
+      }
+    ],
+    "gate_passed": true
+  },
+  "docker": {
+    "cpus": 12,
+    "memory_bytes": 8301367296,
+    "server_version": "29.8.2",
+    "architecture": "x86_64"
+  },
+  "built_companion_revisions": {
+    "rac-user-service": "2e8f5ea70e8ff274628022457d454debb044f076",
+    "rac-match-service": "cc06c93fbef5a0a9f7d2c705222a7ee1091532eb",
+    "rac-chat-service": "f0b7b7c8ef5e5bfb52b53c11f2a33067a6ff90ac",
+    "rac-alert-service": "7e572bb06a2a946eea484c41a09d059004038259",
+    "rac-platform": "5fd205acf8377a096d6ec989bdd5412fade42e07"
+  }
+}

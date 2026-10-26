@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "source": "persistent local DEV",
+  "private_data_published": false,
+  "source_schema_before_upgrade": 17,
+  "restored_schema_after_upgrade": 27,
+  "business_counts_preserved": true,
+  "proofs": {
+    "cold_restore": {
+      "sha256": "7f69cd30df526f87979919215f30591a0c858b57f6c8d9c39e06e72c0165be28",
+      "verified_at_unix": 1793035028
+    },
+    "logical_restore_upgrade": {
+      "sha256": "23b2b1fd59c39d23688a46a06c7a42de20a7444816fedd130f915864be981529",
+      "verified_at_unix": 1793035286
+    }
+  }
+}

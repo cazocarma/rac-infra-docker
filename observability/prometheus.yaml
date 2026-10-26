@@ -13,5 +13,23 @@ scrape_configs:
         labels: {service: rac-match-service}
       - targets: [backend-chat:8080]
         labels: {service: rac-chat-service}
+      - targets: [booking-maintenance:8080]
+        labels: {service: rac-booking-maintenance}
+      - targets: [backend-admin:8080]
+        labels: {service: rac-admin-service}
       - targets: [backend-alert:8080]
         labels: {service: rac-alert-service}
+  - job_name: rac-messaging
+    static_configs:
+      - targets: [rabbitmq:15692]
+        labels: {service: rabbitmq}
+      - targets: [booking-events-relay:8080]
+        labels: {service: booking-events-relay}
+      - targets: [alert-events-consumer:8080]
+        labels: {service: alert-events-consumer}
+      - targets: [standing-events-relay:8080]
+        labels: {service: standing-events-relay}
+      - targets: [standing-match-consumer:8080]
+        labels: {service: standing-match-consumer}
+      - targets: [standing-alert-consumer:8080]
+        labels: {service: standing-alert-consumer}

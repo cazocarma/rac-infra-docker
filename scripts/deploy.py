@@ -6,8 +6,8 @@ from pathlib import Path
 import re
 import subprocess
 import urllib.request
-from urllib.parse import urlsplit
 from release_policy import load_release, infrastructure_digest
+from database_roles import validate_credentials
 
 def require(condition, message="Deployment gate rejected"):
     if not condition: raise RuntimeError(message)
@@ -48,8 +48,7 @@ for line in env_file.read_text().splitlines():
         key, value = line.split("=", 1); values[key.strip()] = value.strip().strip('"').strip("'")
 require(values.get("RAC_ENV") == environment)
 require(values.get("POSTGRES_DB") == "rac_" + environment, "Wrong target DB")
-database = urlsplit(values.get("DATABASE_URL", ""))
-require(database.hostname == "postgres" and database.path == "/" + values["POSTGRES_DB"], "Application DB differs from migration target")
+validate_credentials(values)
 for key, image in manifest.items(): require(values.get(key) == image, "Host image manifest differs from approved release")
 deployment = api("/deployments", {"ref":os.environ["GITHUB_SHA"], "environment":environment, "auto_merge":False,
     "required_contexts":[], "payload":{"release_sha256":release_hash,"infra_sha256":infra_hash}, "description":"Approved immutable RAC release"})
