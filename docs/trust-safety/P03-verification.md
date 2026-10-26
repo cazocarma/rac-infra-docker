@@ -64,16 +64,25 @@ estadísticos pasaron. Promtool valida 17 reglas y los escenarios de la nueva
 alerta. Los resultados anteriores de identidad y Flutter corresponden a su
 revisión indicada; no se modificaron esas integraciones en esta entrega.
 
-## Gates todavía abiertos
+El [CI 40246956163](https://github.com/cazocarma/rac-infra-docker/actions/runs/40246956163)
+pasó sus cuatro trabajos en la revisión `449d5bb`: storage, accesos, migraciones
+e integración, incluida la matriz Compose con ambos gates estadísticos y el
+recorrido en navegador. Publicó el artefacto de rendimiento saneado. Esto prueba
+esa revisión; no sustituye el CI del adaptador de sesiones ni del futuro worker.
+
+## Estado de gates
 
 1. El [ensayo Compose](P03-compose.md) pasó localmente: JWT real previo, dos
    instancias de user/match/chat, escritores, seis carreras de commit, caída de
-   broker/autoridad, reinicio, recuperación y derechos protectores. Falta confirmar
-   su ejecución en CI para la revisión final.
+   broker/autoridad, reinicio, recuperación y derechos protectores. También pasó
+   en el CI de `449d5bb`; requiere repetirse al integrar el efecto de sesiones.
 2. La [medición local reproducible](P03-performance.md) pasó 100 revocaciones
    reales en seis sondas concurrentes. El mayor p99 de primer rechazo fue
    101.652 ms y el de la cota del último éxito posterior al commit, 2.933 ms.
-   Cubre tres rutas representativas; falta confirmarla en el CI final.
+   Cubre tres rutas representativas y sus gates pasaron en ese CI. La revisión
+   final debe contrastar el criterio E2E-04 con las rutas concretas: la fase
+   estadística actual usa perfil, disponibilidad y envío; no mide aceptación de
+   reserva como sonda independiente, aunque la matriz funcional sí la ejercita.
 3. Acquire con caché original pasó el gate de >=99% dentro de 2 ms en las seis
    instancias; 1187 hits observados estuvieron dentro del bucket. La latencia
    HTTP caliente p99 máxima fue 37.686 ms. Consulta final fresca y HTTP no se
@@ -82,15 +91,18 @@ revisión indicada; no se modificaron esas integraciones en esta entrega.
    en draft hasta resolver los gates de P03; no activarlo solo por compilar.
 5. Backup y restore aislado del estado persistente antes del rollout autorizado.
    Las pruebas desechables de migración no son el respaldo del DEV real.
-6. Terminar sesiones de Keycloak al sancionar, con un mecanismo realmente acotado
-   y pruebas de privilegios negativos; sigue pendiente. No otorgar administración
-   general a los lectores de standing o al provisionador de `compa` para resolverlo.
+6. Terminar sesiones de Keycloak al sancionar: el adaptador acotado de
+   [ADR-009](ADR-009-session-revocation.md) ya permite capturar identificadores y
+   revocarlos sin administrar usuarios. Falta su worker durable de user, journal,
+   grants mínimos, carreras/reversión y wiring opt-in. El endpoint por sí solo
+   no completa este efecto. Los lectores y provisionador conservan su alcance.
 
 La revisión del código oficial de [Keycloak 26.8.1, UserResource](https://github.com/keycloak/keycloak/blob/26.8.1/services/src/main/java/org/keycloak/services/resources/admin/UserResource.java)
 confirma que `logout()`, modificar y borrar usuarios exigen el mismo control
 `requireManage(user)`. Por eso un grant de gestión no equivale a una identidad
-limitada a cerrar sesiones. Ese efecto debe diseñarse y probarse con un límite
-real de privilegios; no se declara resuelto por los tokens cortos ni por standing.
+limitada a cerrar sesiones. El nuevo adaptador usa el SPI REST y proveedores de
+sesiones, sin tablas JPA propias ni credenciales de administración. No se declara
+conectado al cambio de standing solo por tener ese endpoint.
 La recuperación de un evento antiguo tampoco debe cerrar sesiones nuevas después
 de una reversión. El principal técnico actual conserva su alcance previo.
 

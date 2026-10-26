@@ -92,6 +92,9 @@ jobs:
       - name: Persisted Keycloak upgrade and RAC theme
         run: python scripts/test_keycloak_upgrade.py
         working-directory: rac-infra-docker
+      - name: Scoped session revocation, privilege denials and two-node restart
+        run: python -u scripts/test_session_control.py
+        working-directory: rac-infra-docker
       - run: python -m unittest discover -s scripts -p "test_database_credentials.py"
         working-directory: rac-infra-docker
       - run: python -m unittest discover -s scripts -p "test_backup_identity.py"
