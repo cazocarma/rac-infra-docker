@@ -1,9 +1,9 @@
 {
   "rac-auth-service": "8ab0f75007234ad843788fbe2baa1932b9e94ca9",
-  "rac-user-service": "2e8f5ea70e8ff274628022457d454debb044f076",
+  "rac-user-service": "8e6d65e0ac16e2da0aed0549524f7e29b196f2a6",
   "rac-match-service": "cc06c93fbef5a0a9f7d2c705222a7ee1091532eb",
   "rac-chat-service": "f0b7b7c8ef5e5bfb52b53c11f2a33067a6ff90ac",
-  "rac-frontend-flutter": "960524c762ff3f6210688abab238ebf36698ab25",
+  "rac-frontend-flutter": "6c8c38136be5f8c3944ea3722737db2a76fb5321",
   "rac-alert-service": "7e572bb06a2a946eea484c41a09d059004038259",
   "rac-admin-service": "f8e46217fdc97d21ffa3b5bfa611885c38bfaed1",
   "rac-platform": "5fd205acf8377a096d6ec989bdd5412fade42e07"

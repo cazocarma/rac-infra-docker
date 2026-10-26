@@ -102,6 +102,9 @@ try:
         assert '--- PASS: TestStandingSessionsPostgres' in user_tests.stdout
         print('PASS: durable session captures, ACK loss, reversal races, claim fencing and least-privilege journal')
         assert '--- PASS: TestCompaOnboardingTransaction' in user_tests.stdout
+        if (onboarding_source / 'internal/http/documents_test.go').exists():
+            assert '--- PASS: TestVersionedDocumentsPostgres' in user_tests.stdout
+            print('PASS: reviewed immutable documents, exact-hash consent, atomic batches, concurrent retries and private acceptance isolation')
         assert '--- PASS: TestVerifiedReviews' in user_tests.stdout
         assert '--- PASS: TestProfileStandingProvisioning' in user_tests.stdout
         print("PASS: scoped user writes, standing guards, concurrent rollback, public visibility, reviews and protected reads")
