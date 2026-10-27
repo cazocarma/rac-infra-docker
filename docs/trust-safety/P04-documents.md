@@ -10,8 +10,9 @@ La garantía de confirmación depende de la base compartida actual, descrita en
 [ADR-010](ADR-010-document-coordination.md).
 
 No habilitado en el DEV persistente. P04 no está cerrado: quedan publicación
-humana aprobada, otros caminos de contenido público, validación web conectada
-del intersticial, cuestionario e historial y rollout coordinado. El historial siguiente conserva
+humana aprobada, otros caminos de contenido público, integración web de los
+otros dueños y rollout coordinado. El recorrido desktop de documentos,
+cuestionario e historial se probó conectado en el laboratorio descrito abajo. El historial siguiente conserva
 los avances y los pendientes que existían en cada incremento.
 
 ## Primer incremento
@@ -598,3 +599,52 @@ autenticación y cambio a otra identidad con cursor/usuario ajenos sin filas;
 migraciones frescas/legacy/repetidas/checksum; Flutter analyze, 72 pruebas y build
 web; OpenAPI y ocho pruebas de contrato. No se aplicó a DEV persistente ni se
 publicaron estos commits. Falta la comprobación conectada en navegador.
+
+
+## Laboratorio web conectado y regresiones encontradas
+
+Se agregó [P04-browser-lab.md](P04-browser-lab.md), Compose y un runner con
+credenciales generadas, puertos de loopback, PostgreSQL tmpfs y recursos con
+prefijo aleatorio. No lee credenciales DEV ni combina su overlay. El validador
+rechaza recursos persistentes, puertos públicos, escrituras de host e imágenes
+DEV, y corre en `make test-workflows` antes de las suites costosas.
+
+Recorrido real en el navegador integrado, 1280×720, con Keycloak/OIDC/PKCE,
+backend auth/user, frontend compilado y PostgreSQL migrado hasta V033:
+
+- Login sintético y bloqueo de publicación por cinco documentos. Casilla vacía,
+  botón deshabilitado y escape a derechos accesible sin aceptar.
+- Lectura de las cinco versiones y consentimiento explícito; no hubo reenvío
+  automático de la publicación.
+- Nuevo intento abrió cuestionario con cinco casillas/tres respuestas vacías.
+  El servidor rechazó respuestas incorrectas y permitió corregirlas. Completar
+  el paso no publicó el perfil; un intento explícito posterior sí lo publicó y
+  el frontend verificó el rol compa tras refrescar la sesión.
+- Un cambio material sintético activó únicamente privacidad v2. El formulario
+  pidió esa versión nueva y conservó la aprobación del cuestionario inmutable.
+  El historial mostró privacidad v1 y v2, y el lector histórico no ofreció una
+  nueva aceptación.
+- Conteos finales: seis aceptaciones, una aprobación de cuestionario, un perfil,
+  registro documental 2 y esquema V033. No se crearon intentos fallidos como
+  aprobaciones ni perfiles duplicados.
+
+Se encontraron y corrigieron dos regresiones que los tests previos no mostraban:
+SelectableText pintaba el texto completo sin exponerlo al árbol accesible web;
+se agregó una etiqueta semántica completa manteniendo selección. Además, la URL
+inicial de la plataforma podía generar rutas antes del gate de sesión y dejar
+una puerta dormida debajo del inicio. Se construye una sola ruta bootstrap y
+luego Home/ruta solicitada; se probó con `defaultRouteNameTestValue` y en navegador
+tras recargar historial. Home quedó como raíz, sin un Atrás hacia una pantalla
+vacía. La API de formulario también preserva el tipo 428 para no presentarlo como
+un problema de conexión.
+
+Analyze y 78 pruebas Flutter aprobados; Docker construyó y ejecutó la versión
+corregida. La evidencia local está en `.local/p04-browser-proof/report.json`, con
+revisiones, hashes del harness, capturas y conteos sanitizados. La limpieza fue
+verificada: cero contenedores/redes/volúmenes del proyecto y RustFS original sano.
+Las imágenes de build quedan como caché local; no contienen el env de la fixture.
+
+Límites: recorrido conectado desktop manual; tamaños móviles siguen cubiertos
+por widgets, no por este navegador. No inició match/chat/alert/pagos ni demuestra
+los E2E del ecosistema completo. Las aprobaciones y textos fueron sintéticos;
+no es una publicación jurídica definitiva ni un rollout de DEV persistente.

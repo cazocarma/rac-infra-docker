@@ -1,0 +1,40 @@
+# Disposable local browser lab only; never combine with the DEV overlay.
+services:
+  postgres:
+    volumes: !override
+      - ./db/bootstrap/001-keycloak.sh:/docker-entrypoint-initdb.d/001-keycloak.sh:ro
+    tmpfs: [/var/lib/postgresql/data]
+  keycloak:
+    image: ${DOCUMENTS_TEST_PROJECT:?Disposable lab required}-keycloak
+    volumes:
+      - ./keycloak/themes/rac:/opt/keycloak/themes/rac:ro
+  database-config:
+    image: ${DOCUMENTS_TEST_PROJECT}-tools
+  identity-config:
+    image: ${DOCUMENTS_TEST_PROJECT}-tools
+    environment:
+      DOCUMENTS_ENFORCEMENT_ENABLED: "true"
+  backend-auth:
+    image: ${DOCUMENTS_TEST_PROJECT}-auth
+    build: ../rac-auth-service
+  backend-user:
+    image: ${DOCUMENTS_TEST_PROJECT}-user
+    build: ../rac-user-service
+    environment:
+      DOCUMENTS_ENFORCEMENT_ENABLED: "true"
+  flutter-web:
+    image: ${DOCUMENTS_TEST_PROJECT}-frontend
+    build: ../rac-frontend-flutter
+  nginx:
+    depends_on: !reset {}
+  test-documents:
+    profiles: [tests]
+    image: ${DOCUMENTS_TEST_PROJECT}-tools
+    environment:
+      RAC_ENV: dev
+      RAC_DISPOSABLE_PROJECT: ${DOCUMENTS_TEST_PROJECT}
+      PGHOST: postgres
+      PGDATABASE: rac_documents_e2e
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    command: [python, documents_e2e_fixture.py]

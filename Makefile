@@ -255,4 +255,19 @@ endif
 .PHONY: test-workflows
 test-workflows:
 	docker run --rm --mount "type=bind,source=$(CURDIR),target=/repo,readonly" -w /repo rhysd/actionlint@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9 -shellcheck= -oneline
-	docker run --rm --mount "type=bind,source=$(CURDIR),target=/repo,readonly" -w /repo python@sha256:57b29a7c050c4e679e4bea572e14b3965cf4b5839de2da49d55e49ffc4024f39 sh -c "pip install --disable-pip-version-check --quiet -r ci/requirements-workflows.txt && python scripts/check_workflow_context.py && python -m unittest discover -s scripts -p test_workflow_context.py && python -m unittest discover -s scripts -p test_ci_access.py && python -m unittest discover -s scripts -p test_oauth_token.py"
+	docker run --rm --mount "type=bind,source=$(CURDIR),target=/repo,readonly" -w /repo python@sha256:57b29a7c050c4e679e4bea572e14b3965cf4b5839de2da49d55e49ffc4024f39 sh -c "pip install --disable-pip-version-check --quiet -r ci/requirements-workflows.txt && python scripts/check_workflow_context.py && python -m unittest discover -s scripts -p test_workflow_context.py && python -m unittest discover -s scripts -p test_ci_access.py && python -m unittest discover -s scripts -p test_oauth_token.py && python -m unittest discover -s scripts -p test_documents_lab.py"
+
+
+.PHONY: documents-lab-start documents-lab-stop documents-lab-status
+documents-lab-start:
+	$(PYTHON) scripts/documents_lab.py start
+documents-lab-stop:
+	$(PYTHON) scripts/documents_lab.py stop --state "$(LAB_STATE)"
+documents-lab-status:
+	$(PYTHON) scripts/documents_lab.py status --state "$(LAB_STATE)"
+
+documents-lab-change:
+	$(PYTHON) scripts/documents_lab.py material-change --state "$(LAB_STATE)"
+documents-lab-refresh:
+	$(PYTHON) scripts/documents_lab.py refresh-web --state "$(LAB_STATE)"
+.PHONY: documents-lab-change documents-lab-refresh
