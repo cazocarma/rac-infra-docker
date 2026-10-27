@@ -503,3 +503,32 @@ Pendiente de este requisito: asistente Flutter de cinco casillas/tres preguntas,
 enforcement final dentro de todos los caminos de publicación, publicación humana
 aprobada y pruebas de navegador. No se activó V032 sobre el DEV persistente ni
 se enviaron estos commits a remoto durante la CI anterior.
+
+
+## Asistente Flutter de declaraciones y cuestionario
+
+`/compa-rules`, protegido por autenticación y accesible desde Sé Compa, carga
+la definición revisada de la API propia. Presenta cinco casillas independientes
+inicialmente desmarcadas y tres preguntas sin alternativa elegida. El cliente
+no incorpora soluciones ni califica: el servidor valida las tres respuestas.
+El modelo rechaza definiciones incompletas/duplicadas, referencias inválidas y
+respuestas que contengan una clave `correct_option` expuesta por error.
+
+Confirmar envía versión, hash, referencia del registro y selecciones, sin sujeto,
+fechas ni flags de aprobación. Una respuesta incorrecta o fallo transitorio
+conserva lo editado para corregir/reintentar; un 409 borra todas las selecciones,
+inhabilita el envío y exige cargar nuevamente. Una aprobación ya existente se
+muestra como tal, sin enviar otro intento automáticamente. El éxito no publica
+el perfil ni concede permisos. Se conserva la salida de datos/derechos.
+
+Las etiquetas de interfaz nuevas están en ARB es/en; las declaraciones y
+situaciones se muestran tal como fueron revisadas por el servidor (locale es).
+Si no hay definición aprobada o no se puede cargar, muestra indisponibilidad y
+reintento sin inventar declaraciones, soluciones o un estado de aprobación.
+
+Verificación local: analyze limpio, 65 pruebas Flutter y build web release.
+Casos nuevos: envío acotado a los campos de contrato, definición inválida,
+casillas/radios vacíos y envío correcto en 360/1200 px, corrección tras 422,
+reinicio por 409 e indisponibilidad. Pendiente navegador conectado y enforcement
+transaccional de todos los writers. El formulario de publicación actual aún no
+exige este paso; no presentar este avance como un bloqueo completo del bypass.
