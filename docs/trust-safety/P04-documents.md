@@ -366,3 +366,18 @@ concurrente y publicación no activa; Flutter analyze, 49 pruebas y build web;
 OpenAPI validado y cuatro pruebas de contrato. Este incremento todavía no
 implementa el intersticial global, ni activa enforcement en DEV. Los commits de
 API, aplicación y contrato permanecen locales mientras corre la corrección de CI.
+
+
+## Transporte del intersticial (trabajo local)
+
+El transporte JSON común reconoce únicamente 428 con el código documental y un
+conjunto no vacío de hasta cinco identidades válidas y únicas. Conserva ID,
+tipo, hash y linaje; no conserva el cuerpo del mensaje, reserva o pago rechazado.
+Emite una notificación efímera y mantiene el error original para la pantalla que
+inició la operación. No refresca sesión por 428 y no repite la escritura.
+
+Pendiente conectar la presentación S2 y los clientes HTTP propios de MatchApi y
+UserApi. Esta base de transporte no implica cobertura global ni cierre del gate
+web. La prueba local cubre rechazo de metadata malformada/duplicada y ausencia
+de reenvío automático. Flutter analyze y las 51 pruebas de la suite pasaron
+localmente después de corregir una fixture de prueba con tipo incompatible.
