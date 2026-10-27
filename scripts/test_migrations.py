@@ -53,12 +53,19 @@ try:
     # Exercise the weekly quota against this disposable DB, including concurrent acceptance.
     quota_source = ROOT.parent / "rac-match-service"
     if quota_source.exists() and "match" in args.services:
+        sql("fresh", "CREATE DATABASE document_match;")
+        flyway("document_match", migration_dir)
+        from document_writer_fixture import seed as seed_document_writer
+        seed_document_writer(lambda statement: sql('document_match', statement))
         quota_tests = run("docker", "run", "--rm", "--network", NAME,
             "--mount", f"type=bind,source={quota_source},target=/sources,readonly",
             "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-match-go-build:/root/.cache/go-build",
             "-e", f"RAC_QUOTA_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
+            "-e", f"RAC_DOCUMENT_MATCH_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/document_match?sslmode=disable",
             "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/repo ./internal/http")
         print("PASS: concurrent weekly allowance, refund, week boundary and subscription entitlement")
+        assert '--- PASS: TestBookingDocumentsPostgres' in quota_tests.stdout
+        print('PASS: booking document preconditions, remote owner authority, commit race rollback, quota and protective cancellation during outage')
         if (quota_source / 'internal/http/standing_test.go').exists():
             assert '--- PASS: TestOldJWTBookingStandingPostgres' in quota_tests.stdout
             assert '--- PASS: TestBookingStandingPostgresHTTP' in quota_tests.stdout
@@ -80,12 +87,19 @@ try:
         print('PASS: original-event recovery without broker, missed sanction followed by reversal, fresh authorization preserved, counterpart quota, outages, claim expiry/fencing and event gaps')
     chat_source = ROOT.parent / "rac-chat-service"
     if (chat_source / "internal/http/router_test.go").exists() and "chat" in args.services:
-        run("docker", "run", "--rm", "--network", NAME,
+        sql("fresh", "CREATE DATABASE document_chat;")
+        flyway("document_chat", migration_dir)
+        from document_writer_fixture import seed as seed_document_writer
+        seed_document_writer(lambda statement: sql('document_chat', statement), active=True)
+        chat_tests = run("docker", "run", "--rm", "--network", NAME,
             "--mount", f"type=bind,source={chat_source},target=/sources,readonly",
             "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-chat-go-build:/root/.cache/go-build",
             "-e", f"RAC_CHAT_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
             "-e", "RAC_CHAT_MIGRATED=1",
+            "-e", f"RAC_DOCUMENT_CHAT_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/document_chat?sslmode=disable",
             "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http")
+        assert '--- PASS: TestChatDocumentsPostgres' in chat_tests.stdout
+        print('PASS: remote document authority, booking-derived persona, commit/outbox rollback on material race, mismatched registry, outage and protective chat reads/retry')
         print("PASS: private booking chat, idempotent concurrent messages, cursor pages and DB cancellation guard")
     sql("fresh", "CREATE DATABASE legacy;")
     onboarding_source = ROOT.parent / "rac-user-service"

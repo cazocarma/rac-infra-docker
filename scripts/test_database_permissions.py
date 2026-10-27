@@ -80,6 +80,16 @@ def main():
                     for denied_role in ('rac_match', 'rac_chat', 'rac_alert', 'rac_backup'):
                         assert sql(database, "SELECT documents.lock_head('es');", denied_role, ok=False).returncode != 0
                     assert sql(database, "SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE oid='documents.lock_head(text)'::regprocedure;").stdout.strip() == 'rac_migrator'
+                if (ROOT / 'db/migrations/V031__document_reader_commit_fence.sql').exists():
+                    for reader_role in ('rac_user', 'rac_match', 'rac_chat'):
+                        assert sql(database, "BEGIN; SELECT * FROM documents.lock_registry('es'); ROLLBACK;", reader_role).returncode == 0
+                    for reader_role in ('rac_match', 'rac_chat'):
+                        for private_table in ('public.legal_documents', 'public.document_acceptances', 'documents.registry'):
+                            assert sql(database, 'SELECT * FROM ' + private_table + ';', reader_role, ok=False).returncode != 0
+                    for denied_role in ('rac_alert', 'rac_backup'):
+                        assert sql(database, "SELECT * FROM documents.lock_registry('es');", denied_role, ok=False).returncode != 0
+                    assert sql(database, "SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE oid='documents.lock_registry(text)'::regprocedure;").stdout.strip() == 'rac_migrator'
+
 
 
             assert sql(database, "SELECT count(*) FROM standing.account;", 'rac_user').returncode == 0

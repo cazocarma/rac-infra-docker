@@ -1,4 +1,21 @@
-# P04 — Documentos y aceptaciones, primer incremento
+# P04 — Documentos y aceptaciones (en desarrollo)
+
+## Estado actual
+
+Registro y linaje inmutables, consentimiento exacto y control transaccional
+implementados en user, reservas/agendas y envíos nuevos de chat. Los servicios
+usan platform v0.12.0; match/chat leen datos documentales por la autoridad HTTP
+con credencial técnica y solo bloquean metadata de coordinación en PostgreSQL.
+La garantía de confirmación depende de la base compartida actual, descrita en
+[ADR-010](ADR-010-document-coordination.md).
+
+No habilitado en el DEV persistente. P04 no está cerrado: quedan la lista
+alineada al registro activo, intersticial/ARB, declaraciones y cuestionario,
+historial, publicación humana aprobada, otros caminos de contenido público,
+pruebas web conectadas y rollout coordinado. El historial siguiente conserva
+los avances y los pendientes que existían en cada incremento.
+
+## Primer incremento
 
 Rama independiente `feat/versioned-documents`, posterior al cierre de código de
 P03. No declara P04 completo ni activa obligaciones sobre los usuarios.
@@ -277,3 +294,54 @@ No está activo en el DEV persistente. P04 permanece abierto: faltan escritores
 match/chat y su coordinación, otros caminos que puedan cambiar contenido público,
 alinear la lista servida al registro activo, intersticial/ARB, declaraciones y
 cuestionario compa, historial y el ingreso humano aprobado de publicación.
+
+
+## Décimo incremento: reservas, agendas y chat coordinados
+
+Platform v0.12.0 (`d943c4e1de48`) añade comprobación remota bajo bloqueo y el
+constructor de cliente técnico con secreto montado. V031 concede a user/match/chat
+solo `documents.lock_registry`; devuelve revisión y referencia de política bajo
+bloqueo compartido y no concede SELECT de tablas documentales a match/chat.
+El SDK exige que la autoridad autenticada responda esa misma revisión/política,
+con identidad, persona, operación, idioma y frescura correctos. Ver ADR-010 para
+la dependencia explícita de la base compartida, sin prometer un lock distribuido.
+
+Match comprueba al comprador para crear/extender reservas y al compa para
+aceptarlas. Agendas y ausencias comprueban propietario y actor cuando difieren.
+Hay preflight y control final dentro de la transacción. Se reutiliza una única
+instancia configurada del repositorio también en ausencias; no se construye un
+segundo repositorio que omita sus controles. Las cancelaciones y lecturas propias
+no consultan la autoridad documental.
+
+Chat deriva la persona de la relación en la reserva, nunca del rol admin del
+JWT. Un envío nuevo comprueba antes de insertar y antes de confirmar su mensaje
+y outbox. El replay idéntico de un envío ya confirmado devuelve el resultado
+original sin crear efectos ni exigir aceptación nueva; no es un nuevo envío.
+Historia, seguridad y bloqueo siguen disponibles si documentos está caído.
+
+Evidencia local del incremento:
+
+- Vet y race de platform y los cuatro consumidores pasan; vendor generado
+  coincide con el SDK fijado y todos usan v0.12.0.
+- `test_document_source.py` prueba el bloqueo real con cada rol user/match/chat,
+  observa la transacción abierta, fuerza timeout de activación sin efectos
+  parciales y reintenta el mismo evento tras liberar el escritor.
+- `test_database_permissions.py` pasa fresh/upgrade V018 con migrador sin
+  superusuario, propietario correcto de la función, negativas de lectura
+  documental en match/chat, exclusión de alert/backup y respaldo/restauración.
+- `test_migrations.py` completo pasa (user/match/chat). Las bases aisladas
+  document_match y document_chat verifican HTTP con autoridad privada real en
+  rol rac_user, escritores rac_match/rac_chat, aceptación por persona, cupo,
+  cambio material entre preflight/commit, reversión de reservas/mensajes/outbox,
+  política discordante, outage y acceso protector/reintentos sin nuevo efecto.
+  El bearer de estos fixtures es sintético y se valida en el handler; firma,
+  issuer y audiencia se verifican en la suite Keycloak del octavo incremento.
+  También pasan las regresiones P03, recuperación sin broker, sesiones,
+  migraciones legacy, repetibilidad y detección de checksum.
+- OpenAPI valida y pasan sus cuatro pruebas; los escritores match y el envío
+  privado declaran el 428 compartido. No se afirma todavía CI remoto del head.
+
+No se ha agregado el overlay de activación ni ejecutado estas migraciones sobre
+el DEV persistente. El siguiente trabajo es la lista autoritativa y la experiencia
+web/mobile de aceptación, manteniendo los pendientes de publicación y revisión
+humana del plan completo.
