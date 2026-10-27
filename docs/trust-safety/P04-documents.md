@@ -9,7 +9,7 @@ con credencial técnica y solo bloquean metadata de coordinación en PostgreSQL.
 La garantía de confirmación depende de la base compartida actual, descrita en
 [ADR-010](ADR-010-document-coordination.md).
 
-No habilitado en el DEV persistente. P04 no está cerrado: quedan intersticial/ARB, declaraciones y cuestionario,
+No habilitado en el DEV persistente. P04 no está cerrado: quedan validación conectada del intersticial/ARB, declaraciones y cuestionario,
 historial, publicación humana aprobada, otros caminos de contenido público,
 pruebas web conectadas y rollout coordinado. El historial siguiente conserva
 los avances y los pendientes que existían en cada incremento.
@@ -396,3 +396,38 @@ Flutter analyze y 52 pruebas pasaron localmente, incluyendo respuestas válidas,
 malformadas y superiores al límite con comparación del cuerpo original y una
 única solicitud. Falta conectar la interfaz S2 y comprobarla en navegador;
 conectar el transporte no constituye la aceptación del usuario.
+
+
+## S2 y localización de interfaz (implementación local)
+
+La raíz de Flutter escucha las precondiciones de todos los transportes conectados
+con una única suscripción y evita abrir pantallas simultáneas. S2 consulta el
+registro activo y comprueba que cada ID, tipo y hash pendiente siga en ese
+conjunto; si cambió, pide volver a la acción original. No deduce la persona
+cliente/compa del rol admin y no acepta documentos adicionales por inferencia.
+
+Muestra hasta tres puntos del resumen del registro y enlaces a los textos
+completos. Comprueba identidad y hash del detalle antes de habilitar la marca de
+lectura. La casilla de consentimiento comienza desmarcada; tras revisar todos
+los textos, el usuario puede aceptar el lote exacto con la referencia del
+registro. El backend conserva atomicidad. Un 409 borra la selección e impide
+reintentar con una referencia antigua. Cerrar o completar S2 nunca repite la
+reserva, mensaje o pago original.
+
+Los textos nuevos de interfaz están en ARB español/inglés, con flutter gen-l10n,
+configuración versionada y salidas generadas. No se traducen ni publican términos
+legales por este mecanismo: los textos documentales siguen viniendo de la
+versión revisada del servidor, actualmente idioma español.
+
+La salida a datos/derechos es accesible sin marcar consentimiento y permite ir
+al perfil. La pantalla declara expresamente que exportación y eliminación están
+en construcción y que no se envió ninguna solicitud. El workflow de derechos
+sigue pendiente de P12; este enlace no demuestra que ya esté implementado.
+
+Evidencia local: análisis sin incidencias, suite completa de 56 pruebas aprobada,
+siete pruebas focalizadas de S2 aprobadas (tres casos añadidos después de la
+suite) y build web release correcto. Casos: 360/1200 px, casilla desmarcada,
+lectura exacta, lote con referencia, hash distinto, conflicto, deduplicación y
+cancelación de suscripción, salida de derechos sin aceptación. Pendiente prueba
+en navegador con backend conectado, revisión visual y activación coordinada.
+No se activaron obligaciones sobre usuarios DEV ni se enviaron estos commits.
