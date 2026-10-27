@@ -648,3 +648,37 @@ Límites: recorrido conectado desktop manual; tamaños móviles siguen cubiertos
 por widgets, no por este navegador. No inició match/chat/alert/pagos ni demuestra
 los E2E del ecosistema completo. Las aprobaciones y textos fueron sintéticos;
 no es una publicación jurídica definitiva ni un rollout de DEV persistente.
+
+
+## Cambios de contenido del perfil público
+
+Las rutas `PUT /me`, `PUT /me/photo` y el reemplazo heredado `POST /profile`
+comprueban los documentos y el cuestionario de compa cuando el dueño ya tiene
+un `compa_perfil`. La persona se deriva de esa relación persistida, no del rol
+del JWT: un token antiguo con `cliente` no evita los requisitos. La lectura se
+hace en la transacción de escritura y conserva el bloqueo compartido del
+registro hasta el commit. Para fotos se adquiere antes de escribir el objeto.
+
+`PUT /me` compara nombre, biografía e intereses bajo bloqueo de la fila: editar
+solo contacto/localización sin cambiar esos campos públicos no agrega una
+obligación documental. El reemplazo heredado sigue siendo una escritura completa
+de perfil. La creación inicial sin perfil comercial no exige cuestionario;
+eliminar la foto, consultar documentos y consultar datos propios mantienen sus
+rutas protectoras. Los controles de standing existentes se conservan.
+
+Esto cubre los campos que el catálogo toma directamente de `usuario`; no
+sustituye la revisión/moderación de contenido de P08/P09 ni declara terminada
+la publicación humana aprobada de documentos. La prueba PostgreSQL de guardas
+incluye token con rol antiguo, rollback de ambos escritores de perfil, ausencia
+de nuevos objetos en una carga rechazada, edición de contacto y eliminación de
+foto con aceptación documental pendiente.
+
+
+Verificación local de este incremento: `go vet -mod=vendor ./...` y
+`go test -mod=vendor ./... -count=1` en Go 1.27.2; además
+`python scripts/test_migrations.py --services user` completo (incluye la suite
+HTTP con `-race` contra PostgreSQL migrado, bases fresh/legacy, repetibilidad y
+deriva de checksums). El laboratorio copió los archivos actuales de producción
+y de prueba; sus SHA256 coincidieron antes de ejecutar. Evidencia local:
+`.local/p04-public-profile-go.log` y `.local/p04-public-profile-postgres.log`.
+Los recursos desechables se retiraron al finalizar; DEV no se migró ni activó.
