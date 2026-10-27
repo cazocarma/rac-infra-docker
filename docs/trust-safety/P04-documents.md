@@ -9,9 +9,9 @@ con credencial técnica y solo bloquean metadata de coordinación en PostgreSQL.
 La garantía de confirmación depende de la base compartida actual, descrita en
 [ADR-010](ADR-010-document-coordination.md).
 
-No habilitado en el DEV persistente. P04 no está cerrado: quedan validación conectada del intersticial/ARB, declaraciones y cuestionario,
-historial, publicación humana aprobada, otros caminos de contenido público,
-pruebas web conectadas y rollout coordinado. El historial siguiente conserva
+No habilitado en el DEV persistente. P04 no está cerrado: quedan publicación
+humana aprobada, otros caminos de contenido público, validación web conectada
+del intersticial, cuestionario e historial y rollout coordinado. El historial siguiente conserva
 los avances y los pendientes que existían en cada incremento.
 
 ## Primer incremento
@@ -569,3 +569,32 @@ Flutter analyze, 67 pruebas y build web; OpenAPI y siete pruebas de contrato.
 No se aplicó a DEV persistente ni se envió este incremento. Pendiente navegador
 conectado, publicación humana y rollout; los otros writers de contenido público
 fuera de estas tres rutas siguen en la revisión general de P04/P08.
+
+
+## Historial propio de aceptaciones (V033 y Flutter)
+
+`GET /me/documents/history` devuelve versiones históricas exactas, hash, fecha y
+contexto originales. La identidad procede únicamente del token; no selecciona
+cuentas por parámetros. No depende de standing comercial ni de un registro
+activo, no expone contenido completo ni acepta documentos. Respuestas no-store.
+
+Paginación descendente por `(accepted_at, document_id)`, límite 20 por defecto y
+1–50 permitido, cursor versionado/base64url de hasta 512 caracteres y sin valor
+de autorización. La consulta siempre vuelve a limitar al sujeto autenticado.
+Rechaza límites/cursors duplicados o inválidos. V033 agrega un índice por usuario,
+fecha e identificador. Las nuevas aceptaciones pueden requerir recargar la primera
+página: no se presenta como un export consistente a un instante.
+
+Flutter ofrece Historial desde el encabezado de Documentos, incluso cuando no
+se puede cargar el registro actual. Muestra fecha local con zona y contexto,
+permite cargar más conservando filas anteriores ante fallos y abre el texto
+histórico en el lector con aceptación ya registrada, sin casilla ni envío nuevo.
+Las etiquetas nuevas están en ARB es/en. No inventa aceptación de una versión
+nueva a partir de una firma anterior o de su linaje no material.
+
+Verificación local: Go vet/race, fixture PostgreSQL con tres aceptaciones de
+igual timestamp paginadas de una en una, versiones ya no actuales, límites,
+autenticación y cambio a otra identidad con cursor/usuario ajenos sin filas;
+migraciones frescas/legacy/repetidas/checksum; Flutter analyze, 72 pruebas y build
+web; OpenAPI y ocho pruebas de contrato. No se aplicó a DEV persistente ni se
+publicaron estos commits. Falta la comprobación conectada en navegador.

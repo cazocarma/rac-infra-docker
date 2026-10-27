@@ -65,3 +65,10 @@ workflow-policy, acceso, storage y migrations aprobados. La integración pasó
 Keycloak, las bases/autoridad documental, standing, preparación DEV, fotos y API;
 se observó instalando el runtime del navegador. Esto verifica las etapas de las
 regresiones anteriores, pero todavía no demuestra la ejecución completa en verde.
+
+
+Resultado confirmado: la ejecución `40516304223`, revisión `752e9b1`, terminó en
+**Success** con los cinco jobs aprobados: workflow-policy 15 s, repository-access
+9 s, storage 31 s, migrations 5 min 8 s e integration 27 min 45 s. Duración total
+33 min 16 s. Incluyó las pruebas web. Los incrementos posteriores de P04 siguen
+locales y este verde no se atribuye a esos commits todavía no enviados.
