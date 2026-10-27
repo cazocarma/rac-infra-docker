@@ -62,14 +62,16 @@ def configure_staff(admin, origin):
             admin('PUT', '/authentication/config/' + execution['authenticationConfig'], config)
         else:
             admin('POST', '/authentication/executions/' + execution['id'] + '/config', config)
-    payload = {'clientId': 'rac-staff', 'enabled': False, 'protocol': 'openid-connect',
+    payload = {'clientId': 'rac-staff', 'enabled': False, 'protocol': 'openid-connect', 'fullScopeAllowed': False,
         'publicClient': True, 'standardFlowEnabled': True, 'directAccessGrantsEnabled': False,
         'implicitFlowEnabled': False, 'serviceAccountsEnabled': False,
         'redirectUris': [origin + '/staff/redirect.html'], 'webOrigins': [origin],
         'authenticationFlowBindingOverrides': {'browser': flow['id']},
         'attributes': {'pkce.code.challenge.method': 'S256', 'access.token.lifespan': '300'},
         'protocolMappers': [{'name': 'rac-staff-amr', 'protocol': 'openid-connect',
-            'protocolMapper': 'oidc-amr-mapper', 'config': {'access.token.claim': 'true', 'id.token.claim': 'true'}}]}
+            'protocolMapper': 'oidc-amr-mapper', 'config': {'access.token.claim': 'true', 'id.token.claim': 'true'}},
+            {'name': 'rac-staff-api-audience', 'protocol': 'openid-connect', 'protocolMapper': 'oidc-audience-mapper',
+             'config': {'included.custom.audience': 'rac-admin-staff', 'access.token.claim': 'true', 'id.token.claim': 'false'}}]}
     existing = admin('GET', '/clients?clientId=rac-staff')
     if existing:
         admin('PUT', '/clients/' + existing[0]['id'], payload)
@@ -83,3 +85,6 @@ def configure_staff(admin, origin):
             if error.code != 404:
                 raise
             admin('POST', '/clients/' + ident + '/roles', {'name': name})
+    roles = admin('GET', '/clients/' + ident + '/roles')
+    admin('POST', '/clients/' + ident + '/scope-mappings/clients/' + ident,
+          [role for role in roles if role['name'] in ('ts_agent', 'ts_lead', 'legal', 'support', 'business_admin')])

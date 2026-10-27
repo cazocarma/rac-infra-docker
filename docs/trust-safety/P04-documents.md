@@ -682,3 +682,34 @@ deriva de checksums). El laboratorio copió los archivos actuales de producción
 y de prueba; sus SHA256 coincidieron antes de ejecutar. Evidencia local:
 `.local/p04-public-profile-go.log` y `.local/p04-public-profile-postgres.log`.
 Los recursos desechables se retiraron al finalizar; DEV no se migró ni activó.
+
+
+## Entrada autenticada para revisión humana (primer incremento)
+
+Admin prepara un guard independiente para la consola con audiencia
+`rac-admin-staff`, cliente autorizado `rac-staff`, roles de cliente y prueba
+pwd+otp en AMR. Exige autenticación de menos de cinco minutos y tokens de cinco
+minutos como máximo; refrescar no prolonga el MFA. El rol legal obtiene los
+permisos documentales; los otros cuatro roles staff solo consultan su propia
+sesión en esta etapa. Un admin de realm/app o un rol legal de otro cliente no
+obtiene esos permisos. Matriz y configuración: `rac-admin-service/README.md`.
+
+`STAFF_ACCESS_ENABLED` está apagado por defecto y no está incorporado a los
+overlays. Solo se agrega una ruta de lectura de sesión; no se publican textos,
+no hay conexión de admin a BD ni se otorgan grants de escritura. El cliente
+Keycloak permanece deshabilitado: se agrega audiencia explícita, se elimina
+fullScopeAllowed y se limita el scope a sus cinco roles propios, sin asignarlos
+a personas. No se modifica DEV persistente durante estas pruebas.
+
+Pasaron vet y race de admin, los nueve tests de contratos y el ensayo completo
+`python scripts/test_identity_permissions.py` con Keycloak 26.8.1 y TLS en un
+realm desechable. El ensayo verifica el token real con JWKS, issuer, audiencia,
+azp, rol legal, AMR/frescura y la ruta HTTP de sesión; rechaza ID/service tokens,
+prueba contraseña insuficiente y OTP+PKCE válido, comprueba que no hay permisos
+administrativos y deja el cliente apagado. Archivos locales de evidencia:
+`.local/p04-staff-access-go.log` y `.local/p04-staff-access-keycloak.log`.
+
+Quedan los comandos de borrador/revisión/publicación con hash y versión
+esperados, revisión humana atribuida y auditoría atómica; este incremento no
+cierra ese pendiente ni P04. El enrolamiento real de staff y su activación
+siguen dependiendo de D10.

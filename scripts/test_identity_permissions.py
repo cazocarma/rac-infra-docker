@@ -217,7 +217,7 @@ def main():
         request('GET', '/admin/realms/master/users', token=provisioner_token, expected=403)
         request('GET', '/admin/realms/rentacompa/roles/compa', token=provisioner_token, expected=403)
         staff = admin('GET', '/clients?clientId=rac-staff')[0]
-        assert not staff['enabled'] and not staff['directAccessGrantsEnabled']
+        assert not staff['enabled'] and not staff['directAccessGrantsEnabled'] and not staff['fullScopeAllowed']
         executions = admin('GET', '/authentication/flows/rac-staff-mfa/executions')
         assert [(e['providerId'], e['requirement']) for e in executions] == [('auth-username-password-form','REQUIRED'), ('auth-otp-form','REQUIRED')]
         assert len(admin('GET', '/clients/' + staff['id'] + '/roles')) == 5
@@ -230,6 +230,20 @@ def main():
             'credentials': [{'type': 'password', 'value': password, 'temporary': False},
                 {'type': 'otp', 'secretData': json.dumps({'value': otp_secret}),
                  'credentialData': json.dumps({'subType': 'totp', 'digits': 6, 'counter': 0, 'period': 30, 'algorithm': 'HmacSHA1'})}]})
+
+        staff_user = admin('GET', '/users?username=staff-fixture&exact=true')[0]
+        legal_role = admin('GET', '/clients/' + staff['id'] + '/roles/legal')
+        admin('POST', '/users/' + staff_user['id'] + '/role-mappings/clients/' + staff['id'], [legal_role])
+
+        # Compile before obtaining the short-lived staff token. Download only
+        # public pinned modules here; final verification is offline and fresh.
+        admin_source = Path(__file__).resolve().parents[2] / 'rac-admin-service'
+        if not admin_source.is_dir():
+            raise RuntimeError('Admin checkout required for staff JWT verification')
+        command('docker', 'run', '--rm',
+            '--mount', f'type=bind,source={admin_source},target=/source,readonly',
+            '-v', 'rac-admin-go-build:/root/.cache/go-build', '-v', 'rac-quota-go-cache:/go/pkg/mod', '-w', '/source',
+            'golang:1.27.2', 'go', 'test', '-mod=readonly', '-race', '-run', '^$', './internal/staff')
 
         class Form(HTMLParser):
             action = None
@@ -280,6 +294,24 @@ def main():
         claims = json.loads(base64.urlsafe_b64decode(tokens['access_token'].split('.')[1] + '=='))
         assert set(claims['amr']) == {'pwd','otp'} and claims['azp'] == 'rac-staff'
         assert abs(time.time() - claims['auth_time']) < 30
+        assert 'rac-admin-staff' in claims['aud']
+        assert claims['resource_access']['rac-staff']['roles'] == ['legal']
+        assert 'realm-management' not in claims.get('resource_access', {})
+        staff_fixture = directory / 'staff-fixture.json'
+        staff_fixture.write_text(json.dumps({'issuer': base + '/realms/rentacompa',
+            'jwks': 'https://identity-fixture:8443/realms/rentacompa/protocol/openid-connect/certs',
+            'subject': staff_user['id'], 'token': tokens['access_token'],
+            'idToken': tokens['id_token'], 'serviceToken': provisioner_token}), encoding='utf-8')
+        os.chmod(staff_fixture, 0o644)
+        staff_result = command('docker', 'run', '--rm', '--network', name,
+            '--mount', f'type=bind,source={directory},target=/fixture,readonly',
+            '--mount', f'type=bind,source={admin_source},target=/source,readonly',
+            '-v', 'rac-admin-go-build:/root/.cache/go-build', '-v', 'rac-quota-go-cache:/go/pkg/mod',
+            '-e', 'SSL_CERT_FILE=/fixture/cert.pem', '-e', 'RAC_STAFF_IDENTITY_FIXTURE=/fixture/staff-fixture.json',
+            '-e', 'GOPROXY=off', '-e', 'GOSUMDB=off', '-w', '/source',
+            'golang:1.27.2', 'go', 'test', '-mod=readonly', '-race', '-v', '-count=1', './internal/staff', '-run', '^TestProvisionedStaffKeycloak$')
+        assert '--- PASS: TestProvisionedStaffKeycloak' in staff_result, 'staff integration test absent or skipped'
+        print('PASS: real staff token signature/issuer/audience, scoped legal role, AMR/freshness and HTTP permissions; ID/service tokens denied')
         # Exercise renewal even on a fast local runner, without lengthening or
         # changing Keycloak's actual token lifetime or retrying a denied action.
         clock_offset[0] += operator.lifetime + 1
