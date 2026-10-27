@@ -108,15 +108,23 @@ try:
         flyway("session_effects", migration_dir)
         sql("fresh", "CREATE DATABASE document_writes;")
         flyway("document_writes", migration_dir)
+        sql("fresh", "CREATE DATABASE attestations;")
+        flyway("attestations", migration_dir)
+        from document_writer_fixture import seed as seed_attestations
+        seed_attestations(lambda statement: sql('attestations', statement))
         user_tests = run("docker", "run", "--rm", "--network", NAME,
             "--mount", f"type=bind,source={onboarding_source},target=/sources,readonly",
             "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-user-go-build:/root/.cache/go-build",
             "-e", f"RAC_ONBOARDING_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
             "-e", f"RAC_DOCUMENT_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
+            "-e", f"RAC_ATTESTATIONS_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/attestations?sslmode=disable",
             "-e", f"RAC_SESSION_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/session_effects?sslmode=disable",
             "-e", "RAC_SESSION_TEST_ISOLATED=1",
             "-e", f"RAC_DOCUMENT_WRITES_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/document_writes?sslmode=disable",
             "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol")
+        if (onboarding_source / 'internal/http/attestations_test.go').exists():
+            assert '--- PASS: TestCompaAttestationsPostgres' in user_tests.stdout
+            print('PASS: reviewed compa assessment, explicit declarations, three correct answers, scoped API, concurrent idempotence and registry lease')
         assert '--- PASS: TestStandingSessionsPostgres' in user_tests.stdout
         print('PASS: durable session captures, ACK loss, reversal races, claim fencing and least-privilege journal')
         assert '--- PASS: TestDocumentGuardPostgres' in user_tests.stdout

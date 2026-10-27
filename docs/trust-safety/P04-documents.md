@@ -466,3 +466,40 @@ Verificación del núcleo: `go vet ./...` y `go test -race -count=1 ./...`
 aprobados en user con Go 1.27.2. Las pruebas PostgreSQL que requieren fixtures
 no se ejecutan en este comando sin sus variables; esto no prueba persistencia
 de declaraciones ni cierre transaccional del onboarding.
+
+
+## Persistencia y API de declaraciones (V032, local)
+
+V032 agrega definiciones con contenido/hash inmutable, revisión y publicación;
+bindings inmutables por registro documental; y aprobaciones propias por usuario
+y definición. No inserta cuestionarios ni bindings. Runtime puede leer y
+registrar aprobaciones, sin publicar, aprobar, modificar ni borrar estos datos.
+La supresión futura queda reservada al workflow revisado de derechos/retención:
+no se agregó un trigger que impida el borrado del sujeto por cascada.
+
+`GET /me/compa/attestation?locale=es|en` devuelve únicamente la definición
+revisada vinculada al registro activo, sin clave de soluciones, y la fecha de
+primera aprobación de la identidad autenticada. Un binding ausente o borrador
+produce 503. `POST` recibe versión, hash, referencia del registro, cinco marcas
+y tres respuestas. Rechaza propiedades desconocidas/duplicadas, JSON adicional,
+exceso de cuerpo (8 KiB), referencias antiguas y respuestas incorrectas. El
+sujeto, la definición y la fecha son determinados por el servidor.
+
+La transacción toma el lease del registro documental y registra solo intentos
+correctos. Ocho solicitudes concurrentes y sus reintentos conservan una fila y
+la primera fecha. Un binding no material puede reutilizar la misma definición
+y aprobación; enviar una referencia antigua sigue devolviendo 409. La operación
+no concede roles, no acepta documentos y no aprueba ni publica perfiles.
+
+Evidencia local: Go vet y race de user; suite de migraciones con fixture propia
+`attestations`; ocho envíos concurrentes, privacidad por sujeto, permisos
+negativos, versión inmutable y activación concurrente detenida por el lease;
+actualización desde V018 con migrador no superusuario y dump/restore con rol
+backup; OpenAPI validado y seis pruebas de contrato. La fixture usa únicamente
+contenido sintético y nunca la base DEV. El driver exige el PASS explícito de
+`TestCompaAttestationsPostgres` cuando el repo contiene esa prueba.
+
+Pendiente de este requisito: asistente Flutter de cinco casillas/tres preguntas,
+enforcement final dentro de todos los caminos de publicación, publicación humana
+aprobada y pruebas de navegador. No se activó V032 sobre el DEV persistente ni
+se enviaron estos commits a remoto durante la CI anterior.
