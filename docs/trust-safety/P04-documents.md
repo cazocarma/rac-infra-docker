@@ -431,3 +431,38 @@ lectura exacta, lote con referencia, hash distinto, conflicto, deduplicación y
 cancelación de suscripción, salida de derechos sin aceptación. Pendiente prueba
 en navegador con backend conectado, revisión visual y activación coordinada.
 No se activaron obligaciones sobre usuarios DEV ni se enviaron estos commits.
+
+
+## Reglas de declaraciones y cuestionario (núcleo local)
+
+`rac-user-service/internal/attestations` valida una definición revisada de cinco
+declaraciones independientes y tres preguntas de situación, con 2–4 opciones por
+pregunta. Las cinco identidades corresponden a sustancias ilícitas, servicios
+sexuales, catálogo, mayoría de edad y actuación/apelación. No contiene textos
+jurídicos definitivos ni definiciones activas: las pruebas usan texto sintético.
+
+La definición se vincula a revisión del registro documental y política, idioma,
+versión, hash de contenido y autor/fechas de revisión y publicación. La aprobación
+es información confiable que debe proveer el dueño, nunca una afirmación del
+cliente. Se rechazan borradores, publicaciones futuras, claves/IDs duplicados,
+respuestas correctas inexistentes, texto inválido y cambios de contenido.
+El digest usa JSON de las estructuras Go, con orden de campos definido y orden
+de arreglos preservado; cualquier adaptador de persistencia/publicación debe
+conservar ese contrato, sin sustituirlo por otro serializador JSON implícito.
+
+El intento exige exactamente las cinco marcas verdaderas y las tres respuestas
+correctas para la versión/hash indicados. Una marca ausente o falsa y campos
+adicionales no equivalen a consentimiento. La vista pública excluye la clave de
+respuestas por estructura y copia sus arreglos para evitar alias mutables.
+El resultado no verifica identidad, no acepta documentos, no aprueba un listing,
+no concede un rol y no sanciona intentos fallidos.
+
+Pendiente: persistencia de definiciones/intentos aprobados con idempotencia,
+API autenticada, referencia vigente bloqueada en la transacción de publicación,
+contratos, asistente Flutter y pruebas conectadas. El paquete puro por sí solo
+no impide saltarse el onboarding y no cierra el requisito de declaraciones.
+
+Verificación del núcleo: `go vet ./...` y `go test -race -count=1 ./...`
+aprobados en user con Go 1.27.2. Las pruebas PostgreSQL que requieren fixtures
+no se ejecutan en este comando sin sus variables; esto no prueba persistencia
+de declaraciones ni cierre transaccional del onboarding.
