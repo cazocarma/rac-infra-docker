@@ -381,3 +381,18 @@ UserApi. Esta base de transporte no implica cobertura global ni cierre del gate
 web. La prueba local cubre rechazo de metadata malformada/duplicada y ausencia
 de reenvío automático. Flutter analyze y las 51 pruebas de la suite pasaron
 localmente después de corregir una fixture de prueba con tipo incompatible.
+
+
+## Clientes HTTP anteriores conectados
+
+MatchApi, UserApi y CompaApi usan un observador del transporte HTTP que conserva
+bytes, estado y cabeceras de la respuesta. Solo inspecciona respuestas 428, con
+un máximo de 16 KiB de metadata acumulada; cuerpos mayores o JSON inválido no
+generan avisos ni cambian el error original. No retiene solicitudes ni altera
+los reintentos existentes de los consumidores. El cierre del cliente sigue
+cerrando el transporte subyacente.
+
+Flutter analyze y 52 pruebas pasaron localmente, incluyendo respuestas válidas,
+malformadas y superiores al límite con comparación del cuerpo original y una
+única solicitud. Falta conectar la interfaz S2 y comprobarla en navegador;
+conectar el transporte no constituye la aceptación del usuario.
