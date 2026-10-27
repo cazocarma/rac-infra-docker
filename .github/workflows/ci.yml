@@ -9,6 +9,14 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  workflow-policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - run: make test-workflows
   repository-access:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -71,6 +79,10 @@ jobs:
       - if: always()
         run: make storage-stop
   migrations:
+    needs: workflow-policy
+    defaults:
+      run:
+        working-directory: rac-infra-docker
     timeout-minutes: 20
     runs-on: ubuntu-24.04
     steps:
@@ -79,52 +91,36 @@ jobs:
           persist-credentials: false
           path: rac-infra-docker
       - run: python scripts/test_migrations.py
-        working-directory: rac-infra-docker
       - name: Audit chain permissions and concurrency (disposable PostgreSQL)
         run: python scripts/test_audit_foundation.py
-        working-directory: rac-infra-docker
       - name: Fresh and upgrade with non-superuser migration and scoped service roles
         run: python scripts/test_database_permissions.py
-        working-directory: rac-infra-docker
       - name: Standing authority atomicity, concurrency and permissions
         run: python scripts/test_standing_authority.py
-        working-directory: rac-infra-docker
       - name: Persisted Keycloak upgrade and RAC theme
         run: python scripts/test_keycloak_upgrade.py
-        working-directory: rac-infra-docker
       - name: Scoped session revocation, privilege denials and two-node restart
         run: python -u scripts/test_session_control.py
-        working-directory: rac-infra-docker
       - run: python -m unittest discover -s scripts -p "test_database_credentials.py"
-        working-directory: rac-infra-docker
       - run: python -m unittest discover -s scripts -p "test_backup_identity.py"
-        working-directory: rac-infra-docker
       - run: python -m unittest discover -s scripts -p "test_ci_access.py"
       - run: python -m unittest discover -s scripts -p "test_oauth_token.py"
-        working-directory: rac-infra-docker
       - run: python scripts/check_configuration.py
-        working-directory: rac-infra-docker
       - name: Validate Prometheus configuration and alert expressions
-        working-directory: rac-infra-docker
         run: |
           docker run --rm --entrypoint promtool --mount type=bind,source="$PWD/observability",target=/etc/prometheus,readonly prom/prometheus:v3.5.0 check config /etc/prometheus/prometheus.yaml
           docker run --rm --entrypoint promtool --mount type=bind,source="$PWD/observability",target=/etc/prometheus,readonly -w /etc/prometheus prom/prometheus:v3.5.0 test rules standing-alerts.test.yaml
       - run: python scripts/check_backup_configuration.py
-        working-directory: rac-infra-docker
       - run: python scripts/test_deployment_guards.py
-        working-directory: rac-infra-docker
       - name: Validate reviewed Actions and runner policy
-        working-directory: rac-infra-docker
         run: |
           python scripts/check_actions.py
           python -m unittest discover -s scripts -p "test_actions.py"
       - run: python -m unittest discover -s scripts -p "test_build_dev.py"
-        working-directory: rac-infra-docker
       - run: python -m unittest discover -s scripts -p "test_release_policy.py"
-        working-directory: rac-infra-docker
   integration:
     timeout-minutes: 55
-    needs: [migrations, repository-access]
+    needs: [migrations, repository-access, workflow-policy]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

@@ -25,3 +25,36 @@ Se puede seleccionar Python con `make test-ci-regressions PYTHON=/ruta/a/python`
 Las cuatro pruebas unitarias de la concesión del token pasaron. Los tres scripts de integración pasaron localmente: renovación real con TTL de 60 segundos y dos adquisiciones, documentos con consentimiento por hash y activación concurrente en su fixture, y fotos/migración contra RustFS. No se desactivaron las comprobaciones de aislamiento ni las denegaciones de permisos.
 
 La validación remota del nuevo código sigue pendiente hasta enviarlo y observar su ejecución. Evitar relanzar revisiones antiguas que todavía contienen los fallos y agrupar cambios ya comprobados antes de hacer push.
+
+
+## Regresión de directorio del workflow (ejecución 40513744887)
+
+[El job migrations](https://github.com/cazocarma/rac-infra-docker/actions/runs/40513744887/job/122222111398)
+falló en `test_ci_access.py`: `Start directory is not importable: 'scripts'`.
+El checkout estaba en `rac-infra-docker`, pero al insertar la nueva prueba del
+token se dejó la prueba anterior sin `working-directory`. La suite local previa
+se había ejecutado dentro del repositorio y no cubría el contexto del runner.
+Las migraciones, permisos, auditoría y sesiones anteriores de ese job pasaron;
+la integración fue omitida por la dependencia fallida, no ejecutada con éxito.
+
+El job usa ahora `defaults.run.working-directory: rac-infra-docker`, evitando
+copiar ese atributo a cada paso. La nueva etapa `workflow-policy`, previa a
+migraciones/integración, ejecuta el mismo `make test-workflows` que se usa localmente:
+
+- actionlint para sintaxis/expresiones del workflow (sin shellcheck; los comandos
+  de shell no se presentan como analizados por esta comprobación).
+- Validador de directorios: para comandos que referencian scripts locales,
+  compara la ruta del checkout propio con el contexto efectivo del paso,
+  respetando precedencia paso > job > workflow.
+- Cuatro pruebas de contexto, siete pruebas de acceso con fakes y cuatro del
+  token. No contacta GitHub ni usa credenciales de la App.
+
+Las imágenes de las herramientas se fijan por digest y PyYAML por versión.
+El validador de contexto se limita a referencias locales `scripts`; no ejecuta
+GitHub Actions completo ni demuestra cobertura de shell o de todos sus recursos.
+`make test-ci-regressions` depende de esta puerta rápida antes de crear fixtures.
+
+Verificación: el error original se reprodujo desde la raíz del workspace; el
+validador rechazó el YAML real de `86748bf` y aceptó el corregido. La puerta local
+completa pasó con 15 pruebas; la política existente de Actions también pasó.
+El resultado remoto de esta corrección requiere observar una nueva ejecución.
