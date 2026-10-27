@@ -22,6 +22,7 @@ import tempfile
 from pathlib import Path
 from identity_permissions import configure_provisioner, configure_staff
 from identity_standing import configure_standing
+from oauth_token import TokenLease
 
 IMAGE = 'quay.io/keycloak/keycloak:26.8.1@sha256:79c623a22abacf3fe6c00a5fb30f5b7843d717b234033b80995891c06116d244'
 
@@ -77,10 +78,13 @@ def main():
             raw = response.read()
             return json.loads(raw) if raw else None
 
+        clock_offset = [0.0]
+        operator = TokenLease(lambda: request('POST', '/realms/master/protocol/openid-connect/token', {
+            'client_id': 'admin-cli', 'grant_type': 'password', 'username': 'operator', 'password': password}, form=True),
+            clock=lambda: time.monotonic() + clock_offset[0])
         for _ in range(90):
             try:
-                token = request('POST', '/realms/master/protocol/openid-connect/token', {
-                    'client_id': 'admin-cli', 'grant_type': 'password', 'username': 'operator', 'password': password}, form=True)['access_token']
+                token = operator.get()
                 break
             except (OSError, RuntimeError):
                 time.sleep(1)
@@ -89,7 +93,7 @@ def main():
         request('POST', '/admin/realms', {'realm': 'rentacompa', 'enabled': True}, token)
 
         def admin(method, path, data=None):
-            return request(method, '/admin/realms/rentacompa' + path, data, token)
+            return request(method, '/admin/realms/rentacompa' + path, data, operator.get())
 
         for role in ('cliente', 'compa', 'admin'):
             admin('POST', '/roles', {'name': role})
@@ -276,7 +280,12 @@ def main():
         claims = json.loads(base64.urlsafe_b64decode(tokens['access_token'].split('.')[1] + '=='))
         assert set(claims['amr']) == {'pwd','otp'} and claims['azp'] == 'rac-staff'
         assert abs(time.time() - claims['auth_time']) < 30
+        # Exercise renewal even on a fast local runner, without lengthening or
+        # changing Keycloak's actual token lifetime or retrying a denied action.
+        clock_offset[0] += operator.lifetime + 1
         admin('PUT', '/clients/' + staff['id'], {'enabled': False})
+        assert operator.acquisitions >= 2
+        print(f'PASS: operator token renewal uses advertised expiry; issuer TTL={operator.lifetime}s unchanged, acquisitions={operator.acquisitions}')
         print('PASS: real FGAP v2, compa-only grant, privilege denials, password-only cannot enter staff, OTP/PKCE succeeds with actual AMR proof; staff client disabled')
     finally:
         command('docker', 'rm', '-f', name, ok=False)

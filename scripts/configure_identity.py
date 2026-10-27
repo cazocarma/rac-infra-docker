@@ -10,6 +10,7 @@ from pathlib import Path
 from identity_permissions import configure_provisioner, configure_staff
 from identity_standing import configure_standing
 from identity_sessions import configure_sessions
+from oauth_token import TokenLease
 
 BASE = os.environ.get("KEYCLOAK_INTERNAL_URL", "http://keycloak:8080")
 REALM = "rentacompa"
@@ -27,21 +28,23 @@ def request(method, path, data=None, token=None, form=False):
         raw = r.read()
         return json.loads(raw) if raw else None
 
+operator = TokenLease(lambda: request("POST", "/realms/master/protocol/openid-connect/token", {
+    "client_id": "admin-cli", "grant_type": "password", "username": os.environ["KEYCLOAK_ADMIN"],
+    "password": os.environ["KEYCLOAK_ADMIN_PASSWORD"]}, form=True))
 for attempt in range(60):
     try:
-        token = request("POST", "/realms/master/protocol/openid-connect/token", {
-            "client_id": "admin-cli", "grant_type": "password", "username": os.environ["KEYCLOAK_ADMIN"],
-            "password": os.environ["KEYCLOAK_ADMIN_PASSWORD"]}, form=True)["access_token"]
+        operator.get()
         break
     except (OSError, urllib.error.URLError):
         if attempt == 59: raise RuntimeError("Keycloak did not become ready") from None
         time.sleep(2)
 
-def admin(method, path, data=None): return request(method, "/admin/realms/" + REALM + path, data, token)
+
+def admin(method, path, data=None): return request(method, "/admin/realms/" + REALM + path, data, operator.get())
 try: admin("GET", "")
 except urllib.error.HTTPError as e:
     if e.code != 404: raise
-    request("POST", "/admin/realms", {"realm": REALM, "enabled": True, "registrationAllowed": True}, token)
+    request("POST", "/admin/realms", {"realm": REALM, "enabled": True, "registrationAllowed": True}, operator.get())
 
 for name in ("cliente", "compa", "admin"):
     try: admin("GET", "/roles/" + name)

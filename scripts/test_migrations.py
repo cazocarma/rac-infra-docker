@@ -112,6 +112,7 @@ try:
             "--mount", f"type=bind,source={onboarding_source},target=/sources,readonly",
             "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-user-go-build:/root/.cache/go-build",
             "-e", f"RAC_ONBOARDING_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
+            "-e", f"RAC_DOCUMENT_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
             "-e", f"RAC_SESSION_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/session_effects?sslmode=disable",
             "-e", "RAC_SESSION_TEST_ISOLATED=1",
             "-e", f"RAC_DOCUMENT_WRITES_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/document_writes?sslmode=disable",

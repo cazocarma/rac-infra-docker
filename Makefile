@@ -57,6 +57,7 @@ help:
 	@echo QA y PRD requieren secretos e imagenes publicadas; no se construyen localmente.
 	@echo make migrate / migration-info / migration-validate / identity-config / observe
 	@echo make test / test-go / test-flutter / test-integration
+	@echo make test-ci-regressions - identidad, documentos y fotos con fixtures locales
 	@echo make storage-up / storage-activate / storage-test / storage-test-persistence / storage-stop
 	@echo make backup-enable / backup-now / backup-status / backup-restore-test
 	@echo make database-init / test-database-permissions / test-identity-permissions
@@ -234,4 +235,16 @@ ifeq ($(ENV),dev)
 	$(PYTHON) scripts/test_backup_restore.py --verify-migrations
 else
 	$(error Restored data upgrade test only supports DEV)
+endif
+
+# Focused reproduction of the failing CI gates; never migrates the DEV database.
+.PHONY: test-ci-regressions
+test-ci-regressions:
+ifeq ($(ENV),dev)
+	$(PYTHON) -m unittest discover -s scripts -p "test_oauth_token.py"
+	$(PYTHON) scripts/test_identity_permissions.py
+	$(PYTHON) scripts/test_migrations.py --services user
+	$(PYTHON) scripts/test_photo_storage.py
+else
+	$(error test-ci-regressions solo admite fixtures locales en DEV)
 endif

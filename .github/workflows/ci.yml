@@ -100,6 +100,7 @@ jobs:
       - run: python -m unittest discover -s scripts -p "test_backup_identity.py"
         working-directory: rac-infra-docker
       - run: python -m unittest discover -s scripts -p "test_ci_access.py"
+      - run: python -m unittest discover -s scripts -p "test_oauth_token.py"
         working-directory: rac-infra-docker
       - run: python scripts/check_configuration.py
         working-directory: rac-infra-docker
