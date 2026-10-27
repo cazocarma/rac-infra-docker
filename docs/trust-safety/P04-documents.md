@@ -713,3 +713,54 @@ Quedan los comandos de borrador/revisión/publicación con hash y versión
 esperados, revisión humana atribuida y auditoría atómica; este incremento no
 cierra ese pendiente ni P04. El enrolamiento real de staff y su activación
 siguen dependiendo de D10.
+
+
+## Ledger editorial y comandos transaccionales (verificado en laboratorio)
+
+V034 agrega `documents.editorial_revision`, `editorial_review` y
+`editorial_event`, inmutables. `draft_document` guarda un texto/hash exacto y su
+autor; `review_document` exige un revisor distinto y registra aprobación o
+rechazo sobre esa versión; `publish_document` solo publica la aprobación exacta.
+Un rechazo es definitivo para ese borrador: corregirlo requiere otra versión,
+no sobrescribir el texto revisado. Las fechas pertenecen al servidor. Una
+publicación no activa automáticamente el registro ni liga un cuestionario.
+
+Cada comando es idempotente por event_id y contenido exacto del comando
+(incluidos actor/política/hash); reutilizar el evento con otros datos falla.
+Comandos, metadata de revisión y append de auditoría comparten transacción:
+si el escritor de auditoría no está configurado, no queda un borrador parcial ni
+una publicación sin evento. Los comandos respetan el mismo orden de bloqueo del
+prefijo documental que `documents.activate`. Se serializa este camino editorial
+de baja frecuencia, sin cambiar el bloqueo compartido de las escrituras de app.
+
+La cadena registra tres acciones explícitas: `document.drafted`,
+`document.reviewed`, `document.published`. `actor_id` sigue siendo el principal
+de servicio autenticado en PostgreSQL; el actor humano está en el ledger
+propietario y se correlaciona por event_id. El comando guarda hash y metadata,
+no duplica el texto ni incorpora tokens o datos de contacto en la cadena.
+El enum se amplía en el módulo y contrato; el canónico RAC-AUDIT-1 no cambia.
+Antes de habilitar el ingreso hay que publicar la siguiente versión del módulo
+y actualizar sus verificadores/consumidores, que hoy siguen en v0.12.0.
+
+Las funciones están cerradas: no reciben EXECUTE los roles de runtime, backup
+ni PUBLIC; tampoco se crea un login editorial. No son por sí solas una prueba
+de identidad humana: el futuro ingreso propietario debe verificar el token staff,
+derivar actor/política del contexto autorizado y volver a comprobar su frescura
+antes de commit. Admin no debe recibir grants sobre las tablas de user: enviará
+comandos al dueño por su API interna. Faltan ese ingreso, la vinculación de
+privilegios mínimos, el flujo del cuestionario y la activación revisada del
+conjunto. No se declaran publicación humana completa ni cierre de P04.
+
+
+Verificación de V034: suite completa de migraciones de user con race y casos
+editoriales sobre PostgreSQL real, fresh/legacy/repetibilidad/checksums, y suite
+de permisos fresh + upgrade desde V018 con Flyway no superusuario y
+pg_dump/restore. El ensayo editorial reconstruye en Python los nueve hashes
+encadenados, verifica el servicio y la atribución humana separada y prueba
+replays/competencia entre revisores, rechazo, inmutabilidad y permisos negativos.
+Pasaron vet/race de platform y diez pruebas de contratos. Evidencia local:
+`.local/p04-editorial-postgres-recheck.log`, `.local/p04-editorial-permissions.log`
+y `.local/p04-editorial-platform.log`. El primer intento reveló la codificación
+implícita de subprocess en Windows; el ejecutor usa UTF-8 explícito y el caso
+con texto español se conserva. Los recursos desechables se limpiaron; DEV no
+se migró. No hay versión nueva del SDK publicada ni rollout editorial activado.

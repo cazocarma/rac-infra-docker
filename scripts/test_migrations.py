@@ -17,7 +17,7 @@ args = parser.parse_args()
 ROOT = Path(__file__).resolve().parent.parent
 NAME = "rac-migration-test-" + uuid.uuid4().hex[:12]
 def run(*args, ok=True, input=None):
-    p = subprocess.run(list(args), input=input, text=True, capture_output=True)
+    p = subprocess.run(list(args), input=input, text=True, encoding='utf-8', capture_output=True)
     if ok and p.returncode:
         failures = "\n".join(line for line in p.stdout.splitlines() if ".go:" in line or "FAIL" in line or "panic:" in line)
         raise RuntimeError(failures + "\n" + p.stdout[-2000:] + p.stderr[-2000:])
@@ -142,6 +142,13 @@ try:
             result = run("docker", "exec", "-i", NAME, "psql", "-X", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "fresh", "-At", input=statement, ok=False)
             return result.returncode != 0
         check_document_registry(lambda statement: sql('fresh', statement), registry_rejected)
+    if (migration_dir / 'V034__document_editorial_workflow.sql').exists():
+        sql('fresh', 'CREATE DATABASE document_editorial;')
+        flyway('document_editorial', migration_dir)
+        from document_editorial_checks import check as check_document_editorial
+        def editorial_rejected(statement):
+            return run('docker', 'exec', '-i', NAME, 'psql', '-X', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', 'document_editorial', '-At', input=statement, ok=False).returncode != 0
+        check_document_editorial(lambda statement: sql('document_editorial', statement), editorial_rejected)
     sql("legacy", (ROOT / "db/migrations/V001__initial_schema.sql").read_text())
     sql("legacy", "INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('00000000-0000-0000-0000-000000000001','Preservar','legacy@example.test','cliente','kc-legacy');")
     sql("legacy", "INSERT INTO compa_availability(compa_id,disponibilidad_json) VALUES('00000000-0000-0000-0000-000000000001','{\"lunes\":[\"18:00-20:00\"]}');")
