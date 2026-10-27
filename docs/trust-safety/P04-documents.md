@@ -9,8 +9,7 @@ con credencial técnica y solo bloquean metadata de coordinación en PostgreSQL.
 La garantía de confirmación depende de la base compartida actual, descrita en
 [ADR-010](ADR-010-document-coordination.md).
 
-No habilitado en el DEV persistente. P04 no está cerrado: quedan la lista
-alineada al registro activo, intersticial/ARB, declaraciones y cuestionario,
+No habilitado en el DEV persistente. P04 no está cerrado: quedan intersticial/ARB, declaraciones y cuestionario,
 historial, publicación humana aprobada, otros caminos de contenido público,
 pruebas web conectadas y rollout coordinado. El historial siguiente conserva
 los avances y los pendientes que existían en cada incremento.
@@ -345,3 +344,25 @@ No se ha agregado el overlay de activación ni ejecutado estas migraciones sobre
 el DEV persistente. El siguiente trabajo es la lista autoritativa y la experiencia
 web/mobile de aceptación, manteniendo los pendientes de publicación y revisión
 humana del plan completo.
+
+
+## Registro activo en API y aplicación
+
+La lista de documentos con enforcement habilitado procede del conjunto activo,
+no de la última publicación de cada tipo. Devuelve referencia de idioma,
+revisión y política, con un máximo de tres puntos de resumen revisados. Una
+publicación que todavía no pertenece al conjunto activo no cambia la lista.
+Un idioma sin registro activo devuelve indisponibilidad, sin fallback implícito.
+
+La aceptación envía la referencia del registro junto al ID y hash exactos del
+texto que se leyó. El servidor bloquea el registro durante la transacción y
+rechaza referencias ausentes o antiguas con 409; no guarda consentimiento parcial.
+Flutter conserva la referencia al abrir el lector y pide actualizar la lista si
+cambió el registro. No preselecciona aceptación ni acepta versiones nuevas por
+herencia del consentimiento anterior.
+
+Verificación local: Go vet/race, migraciones de usuario con escenarios de cambio
+concurrente y publicación no activa; Flutter analyze, 49 pruebas y build web;
+OpenAPI validado y cuatro pruebas de contrato. Este incremento todavía no
+implementa el intersticial global, ni activa enforcement en DEV. Los commits de
+API, aplicación y contrato permanecen locales mientras corre la corrección de CI.
