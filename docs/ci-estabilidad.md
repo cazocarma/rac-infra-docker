@@ -58,3 +58,10 @@ Verificación: el error original se reprodujo desde la raíz del workspace; el
 validador rechazó el YAML real de `86748bf` y aceptó el corregido. La puerta local
 completa pasó con 15 pruebas; la política existente de Actions también pasó.
 El resultado remoto de esta corrección requiere observar una nueva ejecución.
+
+
+Seguimiento de [40516304223](https://github.com/cazocarma/rac-infra-docker/actions/runs/40516304223):
+workflow-policy, acceso, storage y migrations aprobados. La integración pasó
+Keycloak, las bases/autoridad documental, standing, preparación DEV, fotos y API;
+se observó instalando el runtime del navegador. Esto verifica las etapas de las
+regresiones anteriores, pero todavía no demuestra la ejecución completa en verde.

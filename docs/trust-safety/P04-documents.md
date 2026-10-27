@@ -532,3 +532,40 @@ casillas/radios vacíos y envío correcto en 360/1200 px, corrección tras 422,
 reinicio por 409 e indisponibilidad. Pendiente navegador conectado y enforcement
 transaccional de todos los writers. El formulario de publicación actual aún no
 exige este paso; no presentar este avance como un bloqueo completo del bypass.
+
+
+## Exigencia final de cuestionario en publicación y notificación a Flutter
+
+Con `DOCUMENTS_ENFORCEMENT_ENABLED=true`, el chequeo transaccional de publicación
+compa exige también una aprobación correcta de la definición revisada actualmente
+vinculada al registro. Se aplica a PUT del perfil propio, POST legacy de compas
+y reemplazo de habilidades, mediante el mismo chequeo final que ya usaban esos
+writers. No se agregó una bandera alternativa que permita encender documentos
+y omitir declaraciones. El control ocurre antes de asignar el rol externo y se
+mantiene el lease del registro hasta confirmar/revertir la escritura.
+
+Una aprobación ausente devuelve 428 `COMPA_ATTESTATION_REQUIRED`; una definición
+no disponible o una aprobación almacenada inconsistente devuelve 503. La revisión
+lee y valida las marcas/respuestas almacenadas, no solo la existencia de una fila.
+Un nuevo binding puede reutilizar una definición inmutable ya aprobada, pero una
+definición nueva requiere completar su propio cuestionario. Cancelar reservas,
+leer datos, reportar, aceptar documentos y presentar el cuestionario no dependen
+de esta exigencia de publicación.
+
+Para la edición de habilidades por staff se comprueban actor y dueño. Si faltan
+obligaciones documentales o de cuestionario del dueño, devuelve 409
+`owner_prerequisites_required`, sin pedir al actor que acepte en su nombre.
+Las indisponibilidades no se transforman en autorización ni en aprobación.
+
+Flutter reconoce el nuevo 428 en ambos transportes y abre una única pantalla de
+cuestionario, compartiendo la exclusión de pantallas simultáneas con S2. La
+notificación no contiene el cuerpo de la operación ni produce reenvío automático.
+El usuario vuelve a intentar la publicación después de completar el requisito.
+
+Verificación local: Go vet/race; fixture PostgreSQL de user con cambio de definición
+entre preflight y commit, rollback de perfil/habilidades, bloqueo antes de grant,
+no bypass de admin y caso actor/dueño; migraciones frescas/legacy/repetidas/checksum;
+Flutter analyze, 67 pruebas y build web; OpenAPI y siete pruebas de contrato.
+No se aplicó a DEV persistente ni se envió este incremento. Pendiente navegador
+conectado, publicación humana y rollout; los otros writers de contenido público
+fuera de estas tres rutas siguen en la revisión general de P04/P08.
