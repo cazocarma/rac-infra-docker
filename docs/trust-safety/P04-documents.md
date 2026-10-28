@@ -868,3 +868,41 @@ Evidencias locales: `.local/p04-editorial-ingress-go-final.log`,
 `.local/p04-editorial-ingress-image.log` y
 `.local/p04-editorial-ingress-vendor.log`. Los recursos de ensayo se limpiaron.
 Este conjunto permanece local y sin activación de DEV.
+
+
+## Proxy de consola hacia el dueño documental
+
+Admin incorpora el proxy de origen fijo, sin BD de user. Las rutas
+/api/admin/staff/documents/drafts, reviews, publications y lectura por id se
+registran solo con staff y proxy habilitados. El mismo token viaja al listener
+editorial de user, que exige su propia audiencia y vuelve a imponer actor,
+MFA, revisión/hash y commit. Contrato de entrada intacto; no se normalizan campos
+ambiguos ni se conceden roles. Variables y detalles: rac-admin-service/README.md.
+
+El transporte no sigue redirecciones, no toma destino/query/host de la solicitud,
+no usa proxies de entorno y no reintenta escrituras. Solo envía bearer y tipo de
+contenido, con cuerpo/límite de respuesta 1 MiB y RPC de cuatro segundos como
+máximo, también acotado por la sesión. Respuestas se validan completas: id
+esperado, texto/hash y campos previstos o error permitido. No expone HTML,
+campos/diagnósticos extra, cookies o cabeceras de origen. El readiness del dueño
+se integra cuando el proxy está activo, mediante un probe sin credenciales.
+
+Una pérdida de respuesta no equivale a rollback. La consola conservará evento
+y cuerpo hasta resolver el resultado; el reintento explícito reutiliza event_id
+con MFA vigente. La prueba cancela solo después de que el dueño recibió el
+cuerpo, observando una única llamada y ninguna repetición automática.
+
+Pasaron vet/race de admin, doce tests de contratos y OpenAPI 3.1, integridad de
+vendor desde v0.13.0 e imagen admin con red deshabilitada. Tests HTTP usan JWT
+firmados y verificadores separados; el ensayo Keycloak real recorre la ruta de
+producción admin→proxy→guard del dueño, comprobando identidad/cuerpo. Ese último
+dueño es una fixture HTTP autenticada: no sustituye el ensayo PostgreSQL de user
+ni declara todavía una prueba conjunta de consola y BD. Evidencias locales:
+.local/p04-editorial-proxy-final-go.log, .local/p04-editorial-proxy-keycloak.log,
+.local/p04-editorial-proxy-image.log y .local/p04-editorial-proxy-vendor.log.
+Recursos de ensayo retirados; solo RustFS original permanece saludable.
+
+Siguen pendientes consola web/login staff, provisión revisada de credenciales,
+flujo editorial del cuestionario y activación atómica revisada del conjunto,
+además del recorrido conjunto y rollout coordinado. Flags, cliente staff y DEV
+persistente no se activaron ni migraron. Este incremento queda local, sin push.
