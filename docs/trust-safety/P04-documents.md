@@ -1004,3 +1004,20 @@ La autorización sigue en cada API; ocultar el widget no sustituye esos guards.
 Pendientes formularios de borrador/revisión/publicación/activación, provisión,
 recorrido real de ambos callbacks y conjunto completo, y rollout coordinado.
 P04 permanece abierto; no hay push ni activación sobre DEV.
+
+
+### Decisiones de consola: precondiciones y resultado incierto
+
+Frontend d9918f8 prepara editorialDecision y EditorialDecisionAttempt, aún sin
+botones conectados. Construye comandos desde la revisión cargada, con UUIDv4
+seguro y hash exacto, sin actor/política cliente. Exige permiso propio, impide
+revisión del autor y publicación sin aprobación; los guards de dueño siguen
+siendo la autoridad. Un comprobante válido debe contener solo el identificador
+esperado. No permite enviar de nuevo un intento ya resuelto o simultáneo.
+
+Una respuesta 401 de reintento no resuelve una escritura 503 anterior: conserva
+la incertidumbre y el mismo comando hasta comprobante válido. Tres pruebas
+pasan en .local/p04-editorial-decision-tests.log. Queda conectar confirmación y
+acciones, además de resolver conservación segura durante reautenticación con
+navegación completa: el modelo actual es solo en memoria y no debe presentarse
+como recuperación duradera. Borradores y activación también pendientes en UI.
