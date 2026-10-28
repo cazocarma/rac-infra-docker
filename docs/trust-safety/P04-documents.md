@@ -1103,3 +1103,26 @@ una única advertencia de llaves en el guard de cambio material, corregida en
 frontend 6fe853d. La segunda copia fija terminó con código 0 y No issues found
 en .local/p04-editorial-draft-final-analysis.log (13,1 s). No quedan procesos
 pendientes de esta verificación. Estos resultados no incluyen navegador real.
+
+
+### Editor estructurado de cuestionarios privados
+
+Frontend 04a96f4 conecta AssessmentDraftForm: cinco compromisos con IDs fijos,
+tres preguntas, dos a cuatro alternativas y selección explícita de respuesta
+correcta sin premarcar. Idioma y versión explícitos, sin textos jurídicos de
+semilla. Al retirar una alternativa seleccionada se limpia la respuesta para
+no trasladar silenciosamente su significado. La confirmación muestra el texto
+y marca la alternativa elegida; no expone una interfaz de edición JSON.
+
+El cliente valida forma/textos pero no afirma aprobación ni impone hash. User
+calcula el hash canónico y el recibo exige definition_id exacto y SHA256 válido,
+antes de limpiar el journal. La consola muestra ese hash asignado por el dueño.
+El contrato público sigue excluyendo correct_option; los controles de acceso
+siguen siendo responsabilidad de las APIs, además de los permisos de UI.
+
+Cuatro pruebas pasan en .local/p04-assessment-editor-tests.log: forma completa,
+clave ausente/opciones inválidas/control chars, recibo/hash de dueño y formulario
+incompleto sin dispatch ni respuestas premarcadas. Suite completa y análisis de
+copia fija en curso en .local/p04-assessment-editor-snapshot.log. Pendientes
+activación desde consola y pruebas conectadas/cifrado/provisión/rollout. P04 sigue
+abierto, sin push, flags nuevos ni cambios en DEV persistente.
