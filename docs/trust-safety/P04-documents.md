@@ -1231,3 +1231,38 @@ activación, logout, recuperación con MFA/recarga ni observación del ciphertex
 Provisión operativa/rollout y cierre de P04 continúan pendientes. El mensaje de
 herramientas en construcción todavía aparece junto a herramientas ya operativas;
 ajuste de copy pendiente junto al resto de observaciones de UI.
+
+
+### Revisión independiente y vencimiento de MFA observados en navegador
+
+En el mismo laboratorio se marcó lectura como autor y aprobar/rechazar siguieron
+deshabilitados. Se comprobó logout OIDC real y retorno a /#/staff sin sesión;
+evidencia author-self-review-denied.txt y staff-logout.txt en
+.local/p04-editorial-connected-proof/. Después ingresó editor-reviewer con su
+contraseña y OTP propios, leyó el mismo ID/hash, confirmó aprobación y luego
+publicación. Tras aprobar, una nueva decisión quedó deshabilitada y publicar se
+habilitó solamente tras nueva lectura explícita.
+
+Verificación independiente: independent-review-publication-database.json registra
+un documento publicado, head_es=0, tres eventos y tres registros de auditoría,
+autor correcto, revisor correcto y sujetos distintos. Captura
+independent-publication.png conserva el comprobante. Se crearon después otros
+dos borradores desde UI (términos Compa y comunidad), todavía sin publicar.
+El estado posterior es documents=3, published=1, head_es=0, events=audit_records=5.
+
+Una escritura de privacidad posterior recibió 403 al vencer MFA en la prueba
+larga (contador de admin: tres drafts 200 y uno 403); no agregó filas. La UI
+retiraba el comando al tratarlo como rechazo definitivo y no ofrecía reautenticar
+en ese estado. Frontend 9c2a547 distingue únicamente el error controlado
+staff_step_up_required, conserva el mismo comando en journal en auth requerida,
+ofrece MFA también sin pendientes y explica el vencimiento sin diagnosticar
+permisos inexistentes. No cambia TTL ni reglas del servidor. El copy de En
+construcción ya no se muestra junto a herramientas legales operativas.
+
+115 pruebas completas y análisis sin incidencias de copia fija en
+.local/p04-staff-stepup-ui-snapshot.log (código 0). La regresión widget cubre 503
+y 403 de step-up, recreación y reintento con cuerpo idéntico; cliente no conserva
+mensajes arbitrarios del upstream. Refresh de frontend del laboratorio en curso
+(handle 25721, .local/p04-editorial-stepup-refresh.log); aún falta verificar este
+ajuste en navegador y completar el conjunto/cuestionario/activación/recuperación.
+P04 sigue abierto. Laboratorio retenido; sin push ni cambios en DEV persistente.
