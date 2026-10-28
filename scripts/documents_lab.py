@@ -17,7 +17,7 @@ PROJECT = re.compile(r'rac-documents-e2e-[0-9a-f]{12}')
 FILES = ('compose.yaml', 'compose.standing.yaml', 'compose.documents-lab.yaml')
 
 
-def validate_model(model, project, web_port, identity_port):
+def validate_model(model, project, web_port, identity_port, staff=False):
     if not PROJECT.fullmatch(project) or model.get('name') != project:
         raise RuntimeError('Disposable document lab required')
     database = model['services'].get('postgres', {})
@@ -42,7 +42,10 @@ def validate_model(model, project, web_port, identity_port):
                 raise RuntimeError('Document lab cannot reuse existing resources')
     if model.get('secrets') or model.get('configs'):
         raise RuntimeError('Document lab cannot import external secrets/configs')
-    for service in ('database-config', 'identity-config', 'keycloak', 'backend-auth', 'backend-user', 'flutter-web', 'test-documents'):
+    owned_services = ('database-config', 'identity-config', 'keycloak', 'backend-auth', 'backend-user', 'flutter-web', 'test-documents')
+    if staff:
+        owned_services += ('backend-admin', 'backend-match', 'backend-chat', 'staff-fixture')
+    for service in owned_services:
         if not model['services'].get(service, {}).get('image', '').startswith(project + '-'):
             raise RuntimeError('Document lab cannot overwrite DEV images')
 
@@ -57,7 +60,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('start', 'stop', 'status', 'seed', 'refresh-web', 'material-change'))
     parser.add_argument('--state', type=Path)
+    parser.add_argument('--staff', action='store_true', help='Enable editorial fixtures in a fresh disposable lab only')
     args = parser.parse_args()
+    if args.staff and args.action != 'start':
+        parser.error('--staff is only valid when creating a fresh lab')
     if args.action == 'start':
         project = 'rac-documents-e2e-' + uuid.uuid4().hex[:12]
         directory = STATE_ROOT / project
@@ -67,7 +73,7 @@ def main():
         while web_port == identity_port:
             identity_port = port()
         state = {'project': project, 'web_port': web_port, 'identity_port': identity_port,
-                 'state': 'preparing', 'web_url': f'http://localhost:{web_port}',
+                 'state': 'preparing', 'staff': args.staff, 'web_url': f'http://localhost:{web_port}',
                  'identity_url': f'http://localhost:{identity_port}'}
         values = dict(line.split('=', 1) for line in (ROOT / 'envs/.env.dev.example').read_text(encoding='utf-8').splitlines()
                       if '=' in line and not line.startswith('#'))
@@ -77,6 +83,9 @@ def main():
                       OIDC_WEB_REDIRECT_URI=state['web_url'] + '/redirect.html', DOCUMENTS_TEST_PROJECT=project)
         for key in ('POSTGRES_PASSWORD', 'KEYCLOAK_ADMIN_PASSWORD', 'KEYCLOAK_DB_PASSWORD', 'RABBITMQ_PASSWORD', 'COMPA_PROVISIONER_SECRET'):
             values[key] = secrets.token_urlsafe(36)
+        if args.staff:
+            values['DOCUMENT_EDITORIAL_POLICY_VERSION'] = str(uuid.uuid4())
+            values['DOCUMENT_EDITORIAL_DATABASE_URL'] = 'postgresql://rac_editorial_lab:' + secrets.token_urlsafe(36) + '@postgres:5432/rac_documents_e2e?sslmode=disable'
         env_file = directory / 'fixture.env'
         with os.fdopen(os.open(env_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w', encoding='utf-8') as output:
             output.write(''.join(key + '=' + value + '\n' for key, value in values.items()))
@@ -93,12 +102,14 @@ def main():
             raise RuntimeError('Document lab identity mismatch')
         env_file = state_path.parent / 'fixture.env'
         web_port, identity_port = state['web_port'], state['identity_port']
+    if state.get('staff') and args.action in ('seed', 'material-change'):
+        raise RuntimeError('Editorial lab changes must use the authenticated owner workflow')
     values = dict(line.split('=', 1) for line in env_file.read_text(encoding='utf-8').splitlines() if '=' in line)
     if values.get('POSTGRES_DB') != 'rac_documents_e2e' or values.get('DOCUMENTS_TEST_PROJECT') != project:
         raise RuntimeError('Disposable database environment required')
     environment = {key: value for key, value in os.environ.items() if key not in values}
     compose = ['docker', 'compose', '--env-file', str(env_file), '-p', project, '--profile', 'tools', '--profile', 'tests']
-    for file in FILES:
+    for file in FILES + (('compose.editorial-lab.yaml',) if state.get('staff') else ()):
         compose += ['-f', file]
 
     def run(*arguments, check=True, timeout=900, input=None):
@@ -113,13 +124,16 @@ def main():
         return result
 
     model = json.loads(run('config', '--format', 'json').stdout)
-    validate_model(model, project, web_port, identity_port)
+    validate_model(model, project, web_port, identity_port, staff=state.get('staff', False))
     def save():
         state_path.write_text(json.dumps(state, indent=2) + '\n', encoding='utf-8')
     if args.action == 'start':
         save()
         try:
-            for service in ('database-config', 'keycloak', 'backend-auth', 'backend-user', 'flutter-web'):
+            services = ('database-config', 'keycloak', 'backend-auth', 'backend-user', 'flutter-web')
+            if state.get('staff'):
+                services += ('backend-match', 'backend-chat', 'backend-admin')
+            for service in services:
                 print('BUILD: ' + service, flush=True)
                 run('build', service)
             run('up', '-d', '--no-deps', '--wait', '--wait-timeout', '120', 'postgres')
@@ -127,8 +141,18 @@ def main():
             run('run', '--rm', '--no-deps', 'migrate')
             run('up', '-d', '--no-deps', 'keycloak')
             run('run', '--rm', '--no-deps', 'identity-config')
-            run('run', '--rm', '--no-deps', 'test-documents')
+            if state.get('staff'):
+                fixture = json.loads(run('run', '--rm', '--no-deps', 'staff-fixture').stdout)
+                if len(fixture.get('accounts', [])) != 2:
+                    raise RuntimeError('Synthetic two-person staff fixture required')
+                fixture_path = state_path.parent / 'staff-fixture.json'
+                with os.fdopen(os.open(fixture_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w', encoding='utf-8') as output:
+                    json.dump(fixture, output)
+            else:
+                run('run', '--rm', '--no-deps', 'test-documents')
             run('up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'backend-auth', 'backend-user', 'flutter-web')
+            if state.get('staff'):
+                run('up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'backend-match', 'backend-chat', 'backend-admin')
             run('up', '-d', '--no-deps', 'nginx')
             state['state'] = 'ready'
             save()

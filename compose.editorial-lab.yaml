@@ -1,0 +1,39 @@
+# Only combined by documents_lab.py --staff in an owned disposable project.
+services:
+  backend-user:
+    environment:
+      DOCUMENT_EDITORIAL_ENABLED: "true"
+      DOCUMENT_EDITORIAL_DATABASE_URL: ${DOCUMENT_EDITORIAL_DATABASE_URL:?Disposable editorial credential required}
+      DOCUMENT_EDITORIAL_POLICY_VERSION: ${DOCUMENT_EDITORIAL_POLICY_VERSION:?Synthetic policy required}
+  backend-admin:
+    image: ${DOCUMENTS_TEST_PROJECT:?Disposable lab required}-admin
+    build: ../rac-admin-service
+    depends_on: !reset {}
+    environment:
+      STAFF_ACCESS_ENABLED: "true"
+      EDITORIAL_PROXY_ENABLED: "true"
+      DOCUMENT_EDITORIAL_URL: http://backend-user:8083
+  backend-match:
+    image: ${DOCUMENTS_TEST_PROJECT}-match
+    build: ../rac-match-service
+    environment:
+      DOCUMENTS_ENFORCEMENT_ENABLED: "true"
+  backend-chat:
+    image: ${DOCUMENTS_TEST_PROJECT}-chat
+    build: ../rac-chat-service
+    environment:
+      DOCUMENTS_ENFORCEMENT_ENABLED: "true"
+  staff-fixture:
+    profiles: [tests]
+    image: ${DOCUMENTS_TEST_PROJECT}-tools
+    environment:
+      RAC_ENV: dev
+      RAC_DISPOSABLE_PROJECT: ${DOCUMENTS_TEST_PROJECT}
+      PGHOST: postgres
+      PGDATABASE: rac_documents_e2e
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      DOCUMENT_EDITORIAL_DATABASE_URL: ${DOCUMENT_EDITORIAL_DATABASE_URL}
+    command: [python, editorial_lab_fixture.py]

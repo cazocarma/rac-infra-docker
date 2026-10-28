@@ -82,3 +82,32 @@ servicios de configuración ausentes. `make test-workflows` incluye esa matriz.
 La evidencia de navegador y los conteos sanitizados se registran por ejecución.
 Una prueba manual positiva aquí no sustituye los demás gates del plan ni prueba
 funciones fuera de este laboratorio.
+
+
+## Variante editorial con MFA (solo laboratorio)
+
+`python scripts/documents_lab.py start --staff` crea otro proyecto desechable con
+DB tmpfs, imágenes propias y puertos loopback. Agrega admin/match/chat reales a
+las dependencias de salud, sin sustituir sus respuestas por mocks. El overlay
+compose.editorial-lab.yaml habilita únicamente en ese proyecto el ingreso user
+8083 interno y el proxy staff; no publica ese puerto al host ni cambia DEV.
+
+Después de migrar, editorial_lab_fixture.py provisiona rac_editorial_lab con
+USAGE y EXECUTE de once funciones exactas, sin grants de tablas, y su escritor
+con cadena de auditoría propia. Habilita el cliente rac-staff de ese realm y crea
+dos cuentas legales sintéticas con contraseña y OTP. No concede realm admin.
+El harness captura las credenciales en .local/<proyecto>/staff-fixture.json, sin
+imprimirlas. No volcar ese archivo, fixture.env ni tokens a registros/evidencias.
+El estado y la URL pública se imprimen al quedar listo.
+
+El registro comienza en versión cero: no se usa documents_e2e_fixture.py ni SQL
+para simular decisiones/publicaciones. Las acciones seed/material-change se
+rechazan en esta variante. La autoría, revisión por otra cuenta, publicación y
+activación deberán recorrer la consola y sus APIs. stop/status/refresh-web usan
+el --state del proyecto; no repetir --staff en esas acciones.
+
+La configuración staff admite post-logout únicamente hacia sus redirectUris
+registradas y Nginx aplica no-store a ambos callbacks mediante la misma regla.
+La sintaxis Nginx pasa y los dos tests de aislamiento incluyen las imágenes
+extra y el rechazo de publicar 8083. Esto prepara el ensayo; todavía no acredita
+un recorrido conectado ni la persistencia cifrada observada en navegador.

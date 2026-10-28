@@ -218,6 +218,7 @@ def main():
         request('GET', '/admin/realms/rentacompa/roles/compa', token=provisioner_token, expected=403)
         staff = admin('GET', '/clients?clientId=rac-staff')[0]
         assert not staff['enabled'] and not staff['directAccessGrantsEnabled'] and not staff['fullScopeAllowed']
+        assert staff['attributes'].get('post.logout.redirect.uris') == '+', 'staff logout must return only to registered redirects'
         executions = admin('GET', '/authentication/flows/rac-staff-mfa/executions')
         assert [(e['providerId'], e['requirement']) for e in executions] == [('auth-username-password-form','REQUIRED'), ('auth-otp-form','REQUIRED')]
         assert len(admin('GET', '/clients/' + staff['id'] + '/roles')) == 5

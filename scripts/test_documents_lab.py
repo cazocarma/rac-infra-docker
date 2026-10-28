@@ -33,3 +33,22 @@ class DocumentLabIsolation(unittest.TestCase):
             bad = copy.deepcopy(model); mutate(bad)
             with self.assertRaises(RuntimeError):
                 validate_model(bad, model['name'], 12345, 12346)
+
+    def test_editorial_lab_requires_owned_images_for_every_extra_service(self):
+        model = self.model()
+        for name in ('backend-admin', 'backend-match', 'backend-chat', 'staff-fixture'):
+            model['services'][name] = {'image': model['name'] + '-fixture'}
+        validate_model(model, model['name'], 12345, 12346, staff=True)
+        for name in ('backend-admin', 'backend-match', 'backend-chat', 'staff-fixture'):
+            missing = copy.deepcopy(model)
+            missing['services'].pop(name)
+            with self.assertRaises(RuntimeError):
+                validate_model(missing, model['name'], 12345, 12346, staff=True)
+            shared = copy.deepcopy(model)
+            shared['services'][name]['image'] = 'rac-dev-' + name + ':local'
+            with self.assertRaises(RuntimeError):
+                validate_model(shared, model['name'], 12345, 12346, staff=True)
+        exposed = copy.deepcopy(model)
+        exposed['services']['backend-user']['ports'] = [{'host_ip': '127.0.0.1', 'published': '8083', 'target': 8083}]
+        with self.assertRaises(RuntimeError):
+            validate_model(exposed, model['name'], 12345, 12346, staff=True)
