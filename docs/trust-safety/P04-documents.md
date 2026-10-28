@@ -943,3 +943,27 @@ compilaron con --network none, usando vendor, con código 0; registros
 .local/p04-assessment-bundle-user-image.log y
 .local/p04-assessment-bundle-admin-image.log. Esto comprueba compilación de los
 binarios; no equivale a una prueba de la imagen runtime ni a un despliegue.
+
+
+### Base cliente de consola staff (local, todavía sin pantalla)
+
+Frontend 4acea65 agrega EditorialApi con origen fijo, sesión staff inyectada,
+rutas cerradas y comandos serializados una sola vez en memoria. Un resultado
+incierto conserva evento/cuerpo para reintento explícito; no hay retry, refresh
+MFA automático ni persistencia del contenido en preferencias. Respuestas se
+limitan a 1 MiB, ocho segundos y sin redirecciones. Solo errores definidos de
+rechazo se consideran definitivos; respuestas inesperadas de escritura siguen
+siendo inciertas. Cinco pruebas cubren estos límites y el reintento estable.
+
+Frontend b31187e prepara OidcAuthSession.staff con cliente rac-staff, manager
+rac-staff-console y callback /staff/redirect.html, sin tocar Session.auth ni
+provisionar /api/user/me. Solicita prompt=login y max_age=0 en el acceso
+interactivo; la validación de AMR, antigüedad y permisos sigue en servidor.
+Las doce pruebas de auth/editorial pasan en
+.local/p04-staff-session-tests.log. Todavía no existe el callback/pantalla
+conectado ni se declara probado este nuevo login en un navegador real.
+
+El primer análisis global detectó package_config local desactualizado (intl y
+flutter_localizations ausentes). flutter pub get --offline resolvió dependencias
+sin cambiar el lockfile; la nueva ejecución de análisis continúa, sin declararla
+aprobada antes de su resultado. Ningún flag de stack o cliente Keycloak activado.
