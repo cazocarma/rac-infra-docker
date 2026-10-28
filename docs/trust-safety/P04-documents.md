@@ -1130,3 +1130,32 @@ abierto, sin push, flags nuevos ni cambios en DEV persistente.
 Resultado final de 04a96f4: 108 pruebas completas aprobadas y análisis sin
 incidencias (13,3 s), código 0 en .local/p04-assessment-editor-snapshot.log.
 La copia fija terminó; no hay proceso de esta verificación pendiente.
+
+
+### Lectura de cabecera para confirmar activación
+
+V037 agrega read_editorial_registry(text), SECURITY DEFINER con search_path
+cerrado y PUBLIC revocado. No crea login ni grants de runtime. El perfil de
+ingreso ahora requiere once funciones mínimas, sin SELECT de documents.head.
+User fe71687 ofrece GET /internal/documents/registry/{locale}: solo es/en,
+DocumentsRead, audiencia del dueño, MFA, sin query y no-store. Devuelve únicamente
+registry_version; lectura y activación son operaciones distintas y el CAS del
+conjunto sigue impidiendo usar una versión obsoleta.
+
+Admin 33a3344 expone la misma lectura por proxy fijo. Valida respuesta plana
+única, int64 no negativo, rechazando duplicados/extra/fracciones/strings/overflow.
+Contratos a1ad086 documentan ambos saltos; quince tests y OpenAPI pasan.
+Frontend 880ad2c obtiene la cabecera por idioma y rechaza valores fuera de rango
+exacto de JavaScript para expected y expected+1, sin redondear el CAS.
+Seis tests de EditorialApi pasan en .local/p04-registry-reader-flutter.log.
+
+Go vet/race de user y admin pasan (.local/p04-registry-reader-user.log y
+.local/p04-registry-reader-admin.log). La matriz de guard de user verifica sin
+BD: ausencia de token, rol business_admin, audiencia exclusiva de admin, idioma
+y query inválidos (.local/p04-registry-reader-guards.log). PostgreSQL completo
+continúa con handle 38151 en .local/p04-registry-reader-postgres.log; no se
+reinició por ausencia de salida. Análisis Flutter de copia fija en curso con
+handle 15525. Todavía no se declara probado este nuevo endpoint sobre PG.
+
+La pantalla de activación y el ensayo conectado siguen pendientes; no hay push,
+provisión automática de credenciales ni modificación de DEV persistente.

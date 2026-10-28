@@ -91,8 +91,8 @@ def check(sql, rejected):
 
     # No commercial runtime, backup reader or PUBLIC can forge an editorial
     # transition or delegated actor assertion through these functions.
-    signatures = sql("SELECT oid::regprocedure FROM pg_proc WHERE pronamespace='documents'::regnamespace AND proname IN('draft_document','review_document','publish_document','editorial_record','editorial_replay','read_editorial_document','editorial_ready','draft_assessment','review_assessment','publish_assessment','read_editorial_assessment','activate_editorial_bundle') ORDER BY proname;").splitlines()
-    assert len(signatures) == 12
+    signatures = sql("SELECT oid::regprocedure FROM pg_proc WHERE pronamespace='documents'::regnamespace AND proname IN('draft_document','review_document','publish_document','editorial_record','editorial_replay','read_editorial_document','editorial_ready','draft_assessment','review_assessment','publish_assessment','read_editorial_assessment','activate_editorial_bundle','read_editorial_registry') ORDER BY proname;").splitlines()
+    assert len(signatures) == 13
     for role in ('rac_user', 'rac_match', 'rac_chat', 'rac_alert', 'rac_backup', 'rac_seed'):
         for signature in signatures:
             assert sql(f"SELECT has_function_privilege('{role}',{quote(signature)},'EXECUTE');") == 'f'
