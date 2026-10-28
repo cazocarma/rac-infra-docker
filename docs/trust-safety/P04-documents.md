@@ -1021,3 +1021,29 @@ pasan en .local/p04-editorial-decision-tests.log. Queda conectar confirmación y
 acciones, además de resolver conservación segura durante reautenticación con
 navegación completa: el modelo actual es solo en memoria y no debe presentarse
 como recuperación duradera. Borradores y activación también pendientes en UI.
+
+
+### Recuperación de comandos antes de navegar a MFA
+
+Frontend c8dca48 agrega EditorialJournal sobre OidcStore.secureTokens, con
+manager separado rac-editorial-recovery-v1. En web reutiliza el adaptador con
+cifrado required y en nativo el almacén endurecido; no introduce criptografía
+propia. Entradas por evento evitan que eventos distintos se sobrescriban. El
+sobre enlaza sujeto, issuer y origen; otras identidades/entornos no recuperan
+ni eliminan el comando. La restauración exige cuerpo canónico y ruta permitida.
+No representa evidencia jurídica ni sustituye el registro del dueño.
+
+EditorialDecisionAttempt.durable guarda antes de enviar y elimina solo tras
+comprobante exacto. Un intento recuperado parte incierto; errores posteriores
+no descartan esa incertidumbre. No hay reintentos automáticos ni caducidad que
+borre silenciosamente comandos sin resolver. El borrado manual de datos del
+navegador sigue requiriendo reconciliación operativa del evento en servidor.
+
+Ocho pruebas recuperación/decisiones pasan en
+.local/p04-editorial-recovery-tests.log: persistencia previa al envío, fallo de
+contexto con cero llamadas, recreación sobre el mismo almacén, aislamiento de
+contexto, eventos separados, colisión de payload y resolución exacta. Usan
+OidcMemoryStore; todavía falta demostrar ciphertext y recarga real en navegador,
+y conectar recuperación/confirmación/acciones en UI antes de activar flags.
+El análisis anterior del lector finalizó sin incidencias; no se atribuye ese
+resultado a este incremento nuevo. P04 y el plan completo siguen abiertos.
