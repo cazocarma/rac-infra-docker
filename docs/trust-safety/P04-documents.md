@@ -1266,3 +1266,35 @@ mensajes arbitrarios del upstream. Refresh de frontend del laboratorio en curso
 (handle 25721, .local/p04-editorial-stepup-refresh.log); aún falta verificar este
 ajuste en navegador y completar el conjunto/cuestionario/activación/recuperación.
 P04 sigue abierto. Laboratorio retenido; sin push ni cambios en DEV persistente.
+
+
+### Recuperación real tras vencimiento, recarga y MFA
+
+Se preparó privacidad en navegador, se esperó más de 300 s reales desde la
+verificación y se confirmó. El servidor rechazó el intento por MFA vencido y la
+UI conservó su referencia, sin generar otro comando. Se recreó el frontend del
+laboratorio con 3f3b768 y se recargó completamente la app. Antes de autenticar,
+la puerta no reveló pendientes; después de contraseña+OTP de la misma persona
+reapareció el mismo evento dff9264e-8e39-4653-b0a9-34119f0892cc. La BD seguía sin
+el borrador (events=5): no hubo envío automático al volver del proveedor.
+
+Tras pulsar Reintentar el mismo comando, apareció comprobante y se retiró el
+pendiente. mfa-recovery-database.json verifica exactamente un evento con ese ID,
+recurso a540f1f8-c8b6-42df-9192-ebc8112a47fe, actor de la cuenta revisora y hash
+UTF-8 del texto preparado antes de vencer MFA. Estado: documents=4, published=1,
+head_es=0, events=audit_records=6. Capturas mfa-rejected-command-retained.png,
+mfa-recovered-command.png y mfa-retry-confirmed.png en el directorio de prueba.
+
+La autorización renovada se inspeccionó solo como metadatos: rac-staff, PKCE S256
+y sin id_token_hint, guardado en staff-authorize-privacy.json. Nunca se volcaron
+contraseñas, secretos OTP o valores de almacenamiento. La API de lectura del
+navegador no expone localStorage en su scope; un intento de obtener únicamente
+estadísticas de envelopes no estuvo disponible. Por tanto, esta evidencia prueba
+persistencia/recuperación real con el adaptador encryption.required configurado,
+pero no afirma observación directa de ciphertext ni protección frente a XSS.
+
+La compilación release y las siete pruebas de auth/análisis del ajuste de
+privacidad terminaron correctamente. Refresh del laboratorio terminó y no queda
+proceso pendiente de esa actualización. Restan documento de seguridad,
+cuestionario, revisión/publicación de los restantes, activación y verificación
+de cierre/provisión/rollout coordinado. P04 permanece abierto, sin push/DEV.
