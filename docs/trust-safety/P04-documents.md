@@ -1097,3 +1097,9 @@ de generar traducciones y no es evidencia de esta revisión final.
 
 Siguen pendientes edición estructurada del cuestionario, activación del conjunto,
 prueba de navegador/cifrado/MFA/DB, provisión operativa y rollout. Sin push/DEV.
+
+Resultado de la copia fija: 104 pruebas completas aprobadas. El análisis detectó
+una única advertencia de llaves en el guard de cambio material, corregida en
+frontend 6fe853d. La segunda copia fija terminó con código 0 y No issues found
+en .local/p04-editorial-draft-final-analysis.log (13,1 s). No quedan procesos
+pendientes de esta verificación. Estos resultados no incluyen navegador real.
