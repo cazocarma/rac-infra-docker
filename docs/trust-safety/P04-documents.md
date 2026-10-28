@@ -1194,3 +1194,10 @@ backup/restore V037 siguen corriendo con handle 76135 en
 Quedan pruebas reales de navegador/callbacks/cifrado/MFA/proxy/BD, provisión
 operativa y rollout coordinado; no se declara P04 cerrado. No hay push ni flags
 nuevos en overlays ni cambios sobre DEV persistente.
+
+Resultados finales: 113 pruebas completas aprobadas y análisis sin incidencias
+(14,2 s), código 0 en .local/p04-activation-ui-snapshot.log. Permisos V037 también
+terminaron con código 0: fresh/upgrade V018, migrador no superusuario, roles
+independientes, denegaciones y backup/restauración sin contraseñas de roles.
+No quedan procesos de estas verificaciones; Docker solo conserva RustFS original
+saludable. Estos ensayos no sustituyen el recorrido conectado de navegador/MFA.
