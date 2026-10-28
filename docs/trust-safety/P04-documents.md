@@ -1201,3 +1201,33 @@ terminaron con código 0: fresh/upgrade V018, migrador no superusuario, roles
 independientes, denegaciones y backup/restauración sin contraseñas de roles.
 No quedan procesos de estas verificaciones; Docker solo conserva RustFS original
 saludable. Estos ensayos no sustituyen el recorrido conectado de navegador/MFA.
+
+
+### Primer recorrido conectado de consola (parcial)
+
+El laboratorio rac-documents-e2e-90bd007550a7 quedó listo en loopback
+http://localhost:50631 con Keycloak en 50632 y servicios reales saludables
+(user/auth/match/chat/admin/frontend/PostgreSQL). Estado propio en
+.local/rac-documents-e2e-90bd007550a7/state.json; se conserva para continuar el
+ensayo. No corresponde a DEV ni reutiliza sus datos/imágenes/volúmenes.
+
+En el navegador integrado se completó contraseña y OTP de editor-author, con
+PKCE S256, prompt=login y max_age=0. El callback /staff/redirect.html volvió a
+/#/staff y la consola mostró sesión validada. Evidencia visual:
+.local/p04-editorial-connected-proof/staff-mfa-session.png. No se imprimieron
+contraseñas, secretos OTP ni tokens en evidencias.
+
+Desde la pantalla se creó un borrador de términos de cliente completamente
+sintético, con selección explícita de idioma/materialidad y confirmación de
+contenido/hash. La consola mostró comprobante de éxito, guardado en
+.local/p04-editorial-connected-proof/first-draft-confirmed.png. Verificación
+independiente de BD en first-draft-database.json: drafts=1, published=0,
+head_es=0 y author_matches=true frente al sujeto real de la cuenta de fixture.
+Esto verifica navegador→admin→user→PostgreSQL para autoría, sin publicar ni
+activar nada por inferencia de crear el borrador.
+
+No acredita aún revisión por segunda cuenta, resto de documentos/cuestionario,
+activación, logout, recuperación con MFA/recarga ni observación del ciphertext.
+Provisión operativa/rollout y cierre de P04 continúan pendientes. El mensaje de
+herramientas en construcción todavía aparece junto a herramientas ya operativas;
+ajuste de copy pendiente junto al resto de observaciones de UI.
