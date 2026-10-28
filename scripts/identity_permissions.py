@@ -71,7 +71,9 @@ def configure_staff(admin, origin):
         'protocolMappers': [{'name': 'rac-staff-amr', 'protocol': 'openid-connect',
             'protocolMapper': 'oidc-amr-mapper', 'config': {'access.token.claim': 'true', 'id.token.claim': 'true'}},
             {'name': 'rac-staff-api-audience', 'protocol': 'openid-connect', 'protocolMapper': 'oidc-audience-mapper',
-             'config': {'included.custom.audience': 'rac-admin-staff', 'access.token.claim': 'true', 'id.token.claim': 'false'}}]}
+             'config': {'included.custom.audience': 'rac-admin-staff', 'access.token.claim': 'true', 'id.token.claim': 'false'}},
+            {'name': 'rac-staff-document-owner-audience', 'protocol': 'openid-connect', 'protocolMapper': 'oidc-audience-mapper',
+             'config': {'included.custom.audience': 'rac-user-documents', 'access.token.claim': 'true', 'id.token.claim': 'false'}}]}
     existing = admin('GET', '/clients?clientId=rac-staff')
     if existing:
         admin('PUT', '/clients/' + existing[0]['id'], payload)

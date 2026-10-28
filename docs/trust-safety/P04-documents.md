@@ -808,3 +808,63 @@ y `.local/p04-shared-staff-workflows.log`. Docker Desktop se había detenido;
 se recuperó el motor sin migrar ni levantar el stack DEV. Al final solo quedó
 RustFS original saludable. El tag y los commits son locales, sin push ni
 actualización todavía del manifiesto remoto de CI.
+
+
+## Ingreso editorial propietario de user (verificado en laboratorio)
+
+User agrega el listener interno 8083, apagado por defecto y sin rutas en su API
+pública. Verifica el token staff con la audiencia propietaria rac-user-documents
+y el guard común; rol legal, MFA y permiso se comprueban antes del comando y otra
+vez antes del commit. Actor/política no son campos aceptados del navegador.
+Implementa borrador/revisión/publicación idempotentes y lectura del texto/hash
+exactos. Configuración y rutas detalladas: rac-user-service/README.md.
+
+V035 agrega solo el lector y readiness del principal editorial, con ejecución
+PUBLIC revocada. No crea login, grants de runtime ni contenidos. El listener
+exige una conexión dedicada sin roles heredados, sin lectura/escritura de tablas
+de negocio y sin ejecución de las primitivas audit/activación; requiere que su
+escritor de auditoría ya esté provisionado. La lectura de catálogo/extensiones
+no se confunde con acceso a tablas de negocio. Esperas de comandos tienen tope
+de cinco segundos/fecha de MFA, y el límite de lock es dos segundos.
+
+La configuración staff prepara también audiencia rac-user-documents; el cliente
+sigue apagado y no se asignan roles a personas. El ensayo de Keycloak verifica
+el access token real ante ambas autoridades y mantiene el MFA original tras un
+refresh. El flujo editorial no requiere ni concede un perfil comercial/rol compa.
+
+Las pruebas PostgreSQL usan un login real que solo recibe USAGE y EXECUTE de
+cinco funciones, no SET ROLE desde una sesión superuser. Rechazan credenciales
+amplias, resuelven los tres comandos con JWT firmados, leen la revisión exacta
+aún no publicada y comprueban reintentos sin nueva auditoría. Una secuencia de
+sondeo exclusivamente de la fixture acredita que el INSERT de auditoría sí
+ocurrió antes de simular el vencimiento MFA: se revierten tanto evento como
+borrador. Perder el principal de auditoría hace fallar readiness y el comando,
+sin publicación parcial. Tokens/cuerpos/DSN no se incluyen en errores.
+
+El parser JSON estricto es compartido por el ingreso y los consentimientos de
+user; el wrapper HTTP anterior conserva su firma. Se rechazan también alias de
+mayúsculas duplicados y UTF-8 inválido, sin reemplazarlo silenciosamente. El
+límite y el hash se aplican a bytes UTF-8 del texto ya decodificado.
+
+Siguen pendientes el proxy/consola, provisión aprobada del login editorial y
+staff, cuestionarios revisados y activación atómica del conjunto. No se habilita
+este listener ni se migra DEV persistente mediante estos ensayos. P04 sigue
+abierto.
+
+
+Verificación completada: vet y race de user; once pruebas de contratos y
+OpenAPI 3.1; suite de migraciones completa con nuevo `TestEditorialPostgresHTTP`,
+fresh/legacy/repetibilidad/checksum, rol restringido real y prueba de rollback
+tras INSERT de auditoría; permisos fresh/upgrade desde V018 con migrador no
+superusuario y dump/restore; Keycloak real para la audiencia propietaria y
+refresh sin extender MFA; imagen user construida con red deshabilitada. El caso
+de UTF-8 inválido conserva el resto del cuerpo válido y el hash que coincidiría
+si el decoder reemplazara el byte: prueba que se rechaza, no se repara.
+Evidencias locales: `.local/p04-editorial-ingress-go-final.log`,
+`.local/p04-editorial-ingress-final-input.log`,
+`.local/p04-editorial-ingress-postgres.log`,
+`.local/p04-editorial-ingress-permissions.log`,
+`.local/p04-editorial-ingress-keycloak.log`,
+`.local/p04-editorial-ingress-image.log` y
+`.local/p04-editorial-ingress-vendor.log`. Los recursos de ensayo se limpiaron.
+Este conjunto permanece local y sin activación de DEV.

@@ -301,7 +301,7 @@ def main():
         assert refreshed_claims['auth_time'] == claims['auth_time'], 'refresh extended staff MFA freshness'
         assert set(refreshed_claims['amr']) == {'pwd', 'otp'}
 
-        assert 'rac-admin-staff' in claims['aud']
+        assert 'rac-admin-staff' in claims['aud'] and 'rac-user-documents' in claims['aud']
         assert claims['resource_access']['rac-staff']['roles'] == ['legal']
         assert 'realm-management' not in claims.get('resource_access', {})
         staff_fixture = directory / 'staff-fixture.json'
