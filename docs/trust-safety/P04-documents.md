@@ -967,3 +967,24 @@ El primer análisis global detectó package_config local desactualizado (intl y
 flutter_localizations ausentes). flutter pub get --offline resolvió dependencias
 sin cambiar el lockfile; la nueva ejecución de análisis continúa, sin declararla
 aprobada antes de su resultado. Ningún flag de stack o cliente Keycloak activado.
+
+
+### Entrada staff y callback compartido
+
+Frontend 03c5c15 conecta /staff por navegación directa sin comprobar ni
+aprovisionar Session.auth. La sesión verificada se consulta exclusivamente en
+/api/admin/staff/session; presenta estados ausente/denegado/error/listo y acceso
+interactivo/logout staff. Textos es/en en ARB. Las herramientas editoriales aún
+indican En construcción, sin formularios que simulen aprobar o activar.
+
+El callback /staff/redirect.html y el callback normal comparten oidc_callback.js;
+una respuesta caducada vuelve a la entrada correspondiente. La transacción OIDC
+continúa validada por el paquete y su manager, no se canjea código en JavaScript.
+Falta ensayo de ambos callbacks en navegador tras esta extracción.
+
+Cinco pruebas widget verifican estados y que la entrada directa no consulte la
+sesión ordinaria. Detectaron navegación durante construcción y se corrigió con
+post-frame. La suite completa pasó 89 pruebas en
+.local/p04-staff-entry-full.log; el análisis posterior sigue en ejecución.
+El análisis anterior, tras pub get offline, terminó sin incidencias en
+.local/p04-staff-analysis.log. No se activaron flags ni se alteró DEV.
