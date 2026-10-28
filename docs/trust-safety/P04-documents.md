@@ -935,3 +935,11 @@ Verificación adicional: test_database_permissions.py terminó con código 0 en
 migrador no superusuario, roles independientes, denegaciones y dump/restauración
 sin contraseñas de roles. OpenAPI completo validado junto con sus 14 pruebas.
 Commits locales relacionados: user c3b416d, admin fd78623, contratos de03bf2.
+
+Verificación de los commits: vet y go test -race ./... de user finalizaron con
+código 0 (.local/p04-assessment-bundle-go-complete.log), incluyendo la validación
+pura de contenido sin atribuir aprobación. Los targets builder de user y admin
+compilaron con --network none, usando vendor, con código 0; registros
+.local/p04-assessment-bundle-user-image.log y
+.local/p04-assessment-bundle-admin-image.log. Esto comprueba compilación de los
+binarios; no equivale a una prueba de la imagen runtime ni a un despliegue.
