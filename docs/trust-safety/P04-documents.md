@@ -988,3 +988,19 @@ post-frame. La suite completa pasó 89 pruebas en
 .local/p04-staff-entry-full.log; el análisis posterior sigue en ejecución.
 El análisis anterior, tras pub get offline, terminó sin incidencias en
 .local/p04-staff-analysis.log. No se activaron flags ni se alteró DEV.
+
+
+### Lectura editorial desde consola
+
+Frontend 8f9c4f0 agrega consulta de documentos/cuestionarios privados por UUID,
+solo cuando /staff/session incluye documents.read. Muestra contenido como texto
+seleccionable, versión/idioma y SHA-256; no interpreta HTML. Cambiar referencia o
+tipo elimina la revisión y una generación de solicitud impide que una respuesta
+tardía restaure contenido anterior. No guarda contenido en preferencias ni logs.
+
+Pasaron siete pruebas lector/entrada en .local/p04-editorial-reader-tests.log,
+incluida carrera de cambio de referencia y representación literal de markup.
+La autorización sigue en cada API; ocultar el widget no sustituye esos guards.
+Pendientes formularios de borrador/revisión/publicación/activación, provisión,
+recorrido real de ambos callbacks y conjunto completo, y rollout coordinado.
+P04 permanece abierto; no hay push ni activación sobre DEV.
