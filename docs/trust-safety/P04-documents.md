@@ -4,7 +4,7 @@
 
 Registro y linaje inmutables, consentimiento exacto y control transaccional
 implementados en user, reservas/agendas y envíos nuevos de chat. Los servicios
-usan platform v0.12.0; match/chat leen datos documentales por la autoridad HTTP
+usan platform v0.13.0 en las ramas locales (aún sin push de este conjunto); match/chat leen datos documentales por la autoridad HTTP
 con credencial técnica y solo bloquean metadata de coordinación en PostgreSQL.
 La garantía de confirmación depende de la base compartida actual, descrita en
 [ADR-010](ADR-010-document-coordination.md).
@@ -764,3 +764,47 @@ y `.local/p04-editorial-platform.log`. El primer intento reveló la codificació
 implícita de subprocess en Windows; el ejecutor usa UTF-8 explícito y el caso
 con texto español se conserva. Los recursos desechables se limpiaron; DEV no
 se migró. No hay versión nueva del SDK publicada ni rollout editorial activado.
+
+
+## Guard staff compartido y dependencia generada
+
+La autenticación deja de estar duplicada en admin: `rac-platform/staff`
+verifica firma, issuer, audiencia explícita por dueño, cliente, roles, MFA y
+frescura; su middleware HTTP guarda la sesión verificada en contexto. Admin
+conserva solo la configuración y el adaptador Gin. `Session.Check` comprueba otra
+vez permiso y vencimiento antes de commit; renovar el token no renueva MFA.
+`documents.publish` se distingue de la activación del registro. Hay pruebas de
+que un token destinado solo a admin no sirve para la audiencia propietaria
+`rac-user-documents`, y de vencimiento mientras se espera el almacenamiento.
+
+El tag local inmutable v0.13.0 fija el guard y las acciones editoriales. Vendor
+se genera con Go para user, match, chat, alert y ahora admin; el verificador de
+fuentes incluye los cinco consumidores. El generador ejecuta tidy antes de
+vendor para resolver las dependencias declaradas del módulo, sin modificar a
+mano el árbol generado. Admin compila y ejecuta CI con vendor y proxy/sumdb
+apagados; su imagen incorpora vendor y no descarga el módulo privado.
+La prueba real de identidad también compila admin offline antes de obtener el
+token corto. No se retaggeó v0.12.0 ni se publicó este conjunto todavía.
+
+Este incremento no conecta por sí solo el listener editorial de user. Quedan
+el ingreso propietario, la credencial de BD acotada, el proxy de consola y la
+activación aprobada del conjunto/cuestionario. Staff y escrituras editoriales
+siguen deshabilitados en DEV persistente.
+
+
+Verificación del guard compartido: vet/race de los cinco consumidores con
+GOPROXY/GOSUMDB apagados y contenedor sin red; guard de platform probado con
+JWT RSA firmados, audiencias por dueño y vencimiento antes de commit; diez tests
+de contratos y OpenAPI 3.1; integridad/tampering del vendor incluyendo admin;
+actionlint de admin y `make test-workflows` de infra. La imagen de admin se
+construyó con `--network=none`. El ensayo Keycloak real validó también un refresh:
+el issuer conserva auth_time/AMR y el middleware verifica ambos access tokens
+con el mismo límite MFA. ID/service tokens siguen denegados y el cliente staff
+queda deshabilitado al terminar. Evidencias locales:
+`.local/p04-shared-staff-platform.log`, `.local/p04-shared-staff-consumers.log`,
+`.local/p04-shared-staff-keycloak-refresh.log`,
+`.local/p04-shared-staff-admin-image.log`, `.local/p04-shared-staff-vendor.log`
+y `.local/p04-shared-staff-workflows.log`. Docker Desktop se había detenido;
+se recuperó el motor sin migrar ni levantar el stack DEV. Al final solo quedó
+RustFS original saludable. El tag y los commits son locales, sin push ni
+actualización todavía del manifiesto remoto de CI.

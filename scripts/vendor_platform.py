@@ -11,7 +11,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE = 'github.com/cazocarma/rac-platform'
-CONSUMERS = ('rac-user-service','rac-match-service','rac-chat-service','rac-alert-service')
+from check_go_vendor import CONSUMERS
 
 def run(*args, **kwargs):
     return subprocess.run(args, check=True, capture_output=True, **kwargs).stdout
@@ -41,7 +41,7 @@ def main():
         (versions/(args.version+'.info')).write_text(json.dumps({'Version':args.version,'Time':git('show','-s','--format=%cI',revision)}),encoding='utf-8')
         (versions/(args.version+'.zip')).write_bytes(run('git','-C',str(platform),'archive','--format=zip','--prefix='+MODULE+'@'+args.version+'/',revision))
         for name in CONSUMERS:
-            command = 'go mod edit -require='+MODULE+'@'+args.version+' && go mod download '+MODULE+' && go mod vendor'
+            command = 'go mod edit -require='+MODULE+'@'+args.version+' && go mod download '+MODULE+' && go mod tidy && go mod vendor'
             result = subprocess.run(['docker','run','--rm','--mount',f'type=bind,source={proxy},target=/proxy,readonly',
                 '--mount',f'type=bind,source={ROOT/name},target=/src','-w','/src',
                 '-v','rac-quota-go-cache:/go/pkg/mod','-e','GONOPROXY=none',
