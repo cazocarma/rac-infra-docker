@@ -154,6 +154,19 @@ try:
         def editorial_rejected(statement):
             return run('docker', 'exec', '-i', NAME, 'psql', '-X', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', 'document_editorial', '-At', input=statement, ok=False).returncode != 0
         check_document_editorial(lambda statement: sql('document_editorial', statement), editorial_rejected)
+    if (migration_dir / 'V036__assessment_editorial_bundle.sql').exists():
+        sql('fresh', 'CREATE DATABASE editorial_upgrade;')
+        from editorial_upgrade_checks import check as check_editorial_upgrade
+        def migrate_editorial_checkpoint(maximum):
+            if maximum is None:
+                flyway('editorial_upgrade', migration_dir)
+            else:
+                with tempfile.TemporaryDirectory(prefix=NAME) as checkpoint:
+                    for source in migration_dir.glob('V*.sql'):
+                        if int(source.name.split('__')[0][1:]) <= maximum:
+                            shutil.copy2(source, Path(checkpoint) / source.name)
+                    flyway('editorial_upgrade', Path(checkpoint))
+        check_editorial_upgrade(lambda statement: sql('editorial_upgrade', statement), migrate_editorial_checkpoint)
     sql("legacy", (ROOT / "db/migrations/V001__initial_schema.sql").read_text())
     sql("legacy", "INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('00000000-0000-0000-0000-000000000001','Preservar','legacy@example.test','cliente','kc-legacy');")
     sql("legacy", "INSERT INTO compa_availability(compa_id,disponibilidad_json) VALUES('00000000-0000-0000-0000-000000000001','{\"lunes\":[\"18:00-20:00\"]}');")

@@ -906,3 +906,32 @@ Siguen pendientes consola web/login staff, provisión revisada de credenciales,
 flujo editorial del cuestionario y activación atómica revisada del conjunto,
 además del recorrido conjunto y rollout coordinado. Flags, cliente staff y DEV
 persistente no se activaron ni migraron. Este incremento queda local, sin push.
+
+
+### Incremento local V036: cuestionarios y conjunto editorial atómico
+
+El catálogo tipado conserva los eventos y revisiones de documentos de V035 y
+agrega cuestionarios al mismo flujo de autoría, revisión independiente y
+publicación. User calcula el hash canónico del cuestionario y mantiene su clave
+fuera del contrato público. Admin proporciona las rutas de proxy con las mismas
+verificaciones independientes de sesión y audiencia.
+
+La función activate_editorial_bundle confirma los cinco documentos, el vínculo
+del cuestionario y la auditoría bajo una única transacción con versión esperada.
+Se verificaron en PostgreSQL real: rechazo por tipo incluso con UUID/hash
+coincidentes, vencimiento de MFA después de insertar auditoría con rollback
+completo, reintento idéntico, un solo ganador concurrente, repetición histórica
+sin retroceso y rechazo de adopción de un evento antiguo creado por SQL.
+El ensayo de upgrade V035 conserva contenido, tiempos, eventos, revisiones y
+cabecera de auditoría. Las 14 pruebas de contratos pasan, incluida la exclusión
+de claves de respuesta públicas. Las pruebas Go de admin con race pasan.
+
+No se ha aplicado V036 a DEV ni habilitado el cliente staff o sus flags. P04
+permanece abierto: faltan consola web, provisión operativa, ensayo conectado y
+publicación coordinada con manifiesto de revisiones y gates locales/remotos.
+
+Verificación adicional: test_database_permissions.py terminó con código 0 en
+.local/p04-assessment-bundle-permissions.log. Incluye bases fresh y upgrade V018,
+migrador no superusuario, roles independientes, denegaciones y dump/restauración
+sin contraseñas de roles. OpenAPI completo validado junto con sus 14 pruebas.
+Commits locales relacionados: user c3b416d, admin fd78623, contratos de03bf2.
