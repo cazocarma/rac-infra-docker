@@ -1159,3 +1159,38 @@ handle 15525. Todavía no se declara probado este nuevo endpoint sobre PG.
 
 La pantalla de activación y el ensayo conectado siguen pendientes; no hay push,
 provisión automática de credenciales ni modificación de DEV persistente.
+
+
+### Activación del conjunto desde consola
+
+Frontend 563a2ca conecta formulario con idioma y seis UUID (cinco tipos de
+comprobantes documentales y cuestionario), resumen opcional de hasta tres líneas.
+Antes de confirmar consulta cabecera de idioma y carga cada revisión exacta.
+Exige publicación aprobada, autor/revisor distintos, tipo/idioma/hash y referencias
+coherentes; no permite imponer SHA ni número de versión desde campos editables.
+La confirmación muestra ID/versión/hash, cabecera esperada y siguiente versión.
+User vuelve a validar todo y realiza el CAS atómico con vínculo de cuestionario.
+
+El comando usa el mismo journal y recuperación, sin envío automático. El recibo
+de activación solo resuelve si contiene registry_version entero igual a
+expected_version+1, sin campos adicionales; una respuesta histórica de su evento
+sigue siendo válida sin afirmar que esa sea la cabecera actual. Un 409 exige
+revisar/preparar de nuevo; no se cambia la versión y reintenta a escondidas.
+
+Cuatro pruebas pasan en .local/p04-activation-ui-tests.log: conjunto completo,
+rechazo de incompletos/tipos/idioma/autorrevisión/no publicados, recibos y widget
+que hace siete GET y cero mutaciones hasta confirmación. Suite completa/análisis
+de copia fija en .local/p04-activation-ui-snapshot.log, handle 89774, en curso.
+El formulario requiere documents.activate; backend sigue siendo autoridad.
+
+La prueba completa de migraciones V037 terminó con código 0 en
+.local/p04-registry-reader-postgres.log, incluida cabecera inicial por idioma y
+lectura de versión 4 tras activaciones usando el ingreso de permisos mínimos.
+El análisis del cliente de cabecera terminó sin incidencias en
+.local/p04-registry-reader-analysis.log. Permisos/migrador no superusuario y
+backup/restore V037 siguen corriendo con handle 76135 en
+.local/p04-registry-reader-permissions.log.
+
+Quedan pruebas reales de navegador/callbacks/cifrado/MFA/proxy/BD, provisión
+operativa y rollout coordinado; no se declara P04 cerrado. No hay push ni flags
+nuevos en overlays ni cambios sobre DEV persistente.
