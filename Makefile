@@ -216,6 +216,10 @@ test-database-permissions:
 test-identity-permissions:
 	$(PYTHON) scripts/test_identity_permissions.py
 
+.PHONY: test-oidc-callbacks
+test-oidc-callbacks:
+	$(PYTHON) scripts/test_oidc_callback_privacy.py
+
 .PHONY: test-standing-authority
 test-standing-authority:
 	$(PYTHON) scripts/test_standing_authority.py

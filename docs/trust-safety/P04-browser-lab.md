@@ -128,3 +128,27 @@ el harness captura diagnósticos de user/admin/match/chat redactados antes de
 retirar el proyecto, en startup-diagnostic.log; no preserva el cluster fallido.
 Los dos tests de aislamiento siguen pasando. El nuevo arranque se está validando;
 aún no se declara prueba conectada exitosa ni ensayo de MFA en navegador.
+
+
+### Privacidad de callbacks y reautenticación
+
+Frontend 3f3b768 evita id_token_hint opcional en la autorización staff; mantiene
+PKCE, prompt=login, max_age=0 y verificaciones servidor. El hint no es necesario
+para renovar MFA y no debe transportar un ID token en la URL de ese acceso.
+El logout conserva su protocolo OIDC (no se ha cambiado ese intercambio).
+
+El gateway y el servidor estático del frontend desactivan access_log únicamente
+para /redirect.html y /staff/redirect.html y aplican no-store/no-referrer.
+`make test-oidc-callbacks` ensaya dos Nginx reales, sin puertos de host, con
+sentinelas sintéticos en code/state: ambos callbacks responden 200 con headers,
+no aparecen en logs de ninguno de los saltos y /index.html sí queda registrado.
+Prueba aprobada en .local/p04-oidc-callback-privacy.log. No se está afirmando que
+el resto de M17/logs/observabilidad esté completo ni que este target ya esté
+incorporado al workflow remoto con los pins coordinados pendientes.
+
+Siete pruebas de autenticación y análisis sin incidencias de copia fija pasan
+en .local/p04-oidc-privacy-flutter.log. Imagen frontend release construida en
+.local/p04-oidc-privacy-image.log, todavía sin recrear el servicio en el ensayo
+mientras el navegador mantiene una confirmación pendiente. Se está esperando
+el vencimiento real de MFA para probar persistencia y retorno con el mismo
+comando; no se alteran relojes, tokens ni límites del servidor.
