@@ -1071,3 +1071,29 @@ sin envío automático, cuerpo idéntico al reintentar y retiro tras recibo vál
 Usa MockClient y OidcMemoryStore: no demuestra aún Keycloak/BD/cifrado conectados.
 El análisis de este incremento sigue ejecutándose. Faltan borradores y activación
 en UI, ensayos conectados, provisión y rollout. Todo local, sin flags/DEV/push.
+
+
+### Creación de borradores documentales en consola
+
+Frontend 3056e1b agrega formulario de los cinco tipos documentales, versión,
+idioma y selección explícita de cambio material, sin valores premarcados.
+Previsualiza texto completo y SHA-256 antes de confirmar. El hash cubre bytes
+UTF-8 exactos, sin recortar espacios o normalizar saltos. Usa crypto 3.0.7 ya
+presente en lock, ahora dependencia directa sin cambiar versión/digest.
+
+El comando recibe dos UUIDv4 distintos para recurso/evento y pasa por el mismo
+journal/envío/comprobante. La consola muestra ID/hash tras éxito para entregar
+la referencia al revisor independiente; crear no revisa, publica ni activa.
+Permiso documents.draft limita el formulario; servidor vuelve a autorizar.
+El helper común genera referencias solo al preparar una acción, no al renderizar.
+
+Pasaron pruebas del hash Unicode conocido y preservación de espacios, límites
+en bytes multibyte, metadatos inválidos y formulario incompleto sin dispatch ni
+selecciones premarcadas (.local/p04-editorial-draft-tests.log y
+.local/p04-editorial-draft-ui.log). La suite completa/análisis corren sobre copia
+fija de 3056e1b en .local/p04-editorial-draft-snapshot.log para evitar que cambios
+en curso contaminen el resultado. El análisis anterior leyó el formulario antes
+de generar traducciones y no es evidencia de esta revisión final.
+
+Siguen pendientes edición estructurada del cuestionario, activación del conjunto,
+prueba de navegador/cifrado/MFA/DB, provisión operativa y rollout. Sin push/DEV.
