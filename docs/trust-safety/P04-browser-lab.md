@@ -111,3 +111,20 @@ registradas y Nginx aplica no-store a ambos callbacks mediante la misma regla.
 La sintaxis Nginx pasa y los dos tests de aislamiento incluyen las imágenes
 extra y el rechazo de publicar 8083. Esto prepara el ensayo; todavía no acredita
 un recorrido conectado ni la persistencia cifrada observada en navegador.
+
+
+### Correcciones verificadas al preparar el arranque editorial
+
+El bootstrap real revoca CONNECT/TEMP a PUBLIC. La fixture inicial solo otorgaba
+USAGE/EXECUTE y el ingreso de user no arrancaba. Se agregó CONNECT exclusivamente
+sobre rac_documents_e2e y una preflight que abre una conexión como
+rac_editorial_lab y exige editorial_ready(), antes de iniciar las APIs. El
+siguiente arranque pasó user: el registro vacío no era la causa de ese fallo.
+
+La variante ahora configura DOCUMENTS_AUTHORITY_URL explícita para match/chat al
+habilitar el gate documental. Omitirla causaba rechazo de arranque de chat, como
+corresponde al diseño fail-closed. No se deshabilitó el control. Ante un fallo,
+el harness captura diagnósticos de user/admin/match/chat redactados antes de
+retirar el proyecto, en startup-diagnostic.log; no preserva el cluster fallido.
+Los dos tests de aislamiento siguen pasando. El nuevo arranque se está validando;
+aún no se declara prueba conectada exitosa ni ensayo de MFA en navegador.

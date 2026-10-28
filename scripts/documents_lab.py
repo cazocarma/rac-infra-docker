@@ -158,6 +158,14 @@ def main():
             save()
             print('READY: ' + state['web_url'] + ' state=' + str(state_path), flush=True)
         except Exception:
+            diagnostic = run('logs', '--no-color', '--tail', '60', 'backend-user', 'backend-admin', 'backend-chat', 'backend-match', check=False)
+            diagnostic_text = diagnostic.stdout + diagnostic.stderr
+            for value in values.values():
+                if len(value) >= 12:
+                    diagnostic_text = diagnostic_text.replace(value, '[redacted]')
+            diagnostic_path = state_path.parent / 'startup-diagnostic.log'
+            diagnostic_path.write_text(diagnostic_text, encoding='utf-8')
+            print('DIAGNOSTIC: ' + str(diagnostic_path), flush=True)
             run('down', '--volumes', '--remove-orphans', check=False)
             state['state'] = 'failed'
             save()

@@ -18,11 +18,13 @@ services:
     build: ../rac-match-service
     environment:
       DOCUMENTS_ENFORCEMENT_ENABLED: "true"
+      DOCUMENTS_AUTHORITY_URL: http://backend-user:8082/internal/documents
   backend-chat:
     image: ${DOCUMENTS_TEST_PROJECT}-chat
     build: ../rac-chat-service
     environment:
       DOCUMENTS_ENFORCEMENT_ENABLED: "true"
+      DOCUMENTS_AUTHORITY_URL: http://backend-user:8082/internal/documents
   staff-fixture:
     profiles: [tests]
     image: ${DOCUMENTS_TEST_PROJECT}-tools

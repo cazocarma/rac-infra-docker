@@ -28,6 +28,7 @@ def main():
         if db.execute('SELECT sum(version) FROM documents.head').fetchone()[0] != 0:
             raise RuntimeError('Empty editorial lab required')
         db.execute(sql.SQL('CREATE ROLE rac_editorial_lab LOGIN PASSWORD {}').format(sql.Literal(urllib.parse.unquote(credential.password))))
+        db.execute('GRANT CONNECT ON DATABASE rac_documents_e2e TO rac_editorial_lab')
         db.execute('GRANT USAGE ON SCHEMA public,documents,audit TO rac_editorial_lab')
         signatures = db.execute("SELECT oid::regprocedure::text FROM pg_proc WHERE pronamespace='documents'::regnamespace AND proname=ANY(%s)", (list(functions),)).fetchall()
         if len(signatures) != 11:
@@ -38,6 +39,12 @@ def main():
         chain, service = uuid.uuid4(), uuid.uuid4()
         db.execute('INSERT INTO audit.chain_heads(chain_id) VALUES(%s)', (chain,))
         db.execute("INSERT INTO audit.writer_principals VALUES('rac_editorial_lab',%s,%s)", (service, chain))
+
+    # Production-style database bootstrap revokes PUBLIC CONNECT. Exercise the
+    # actual dedicated connection, not just function grants from a superuser.
+    with psycopg.connect(os.environ['DOCUMENT_EDITORIAL_DATABASE_URL']) as editorial:
+        if editorial.execute('SELECT current_user, documents.editorial_ready()').fetchone() != ('rac_editorial_lab', True):
+            raise RuntimeError('Dedicated editorial connection not ready')
 
     def request(method, path, data=None, token=None, form=False):
         headers = {'Content-Type': 'application/x-www-form-urlencoded' if form else 'application/json'}
