@@ -1047,3 +1047,27 @@ OidcMemoryStore; todavía falta demostrar ciphertext y recarga real en navegador
 y conectar recuperación/confirmación/acciones en UI antes de activar flags.
 El análisis anterior del lector finalizó sin incidencias; no se atribuye ese
 resultado a este incremento nuevo. P04 y el plan completo siguen abiertos.
+
+
+### Decisiones y recuperación conectadas a la pantalla
+
+Frontend eafc919 conecta EditorialWorkspace al lector: consentimiento de lectura
+sin premarcar, confirmación con ID/hash/acción y botones aprobar/rechazar/publicar
+según sesión, autor y estado. La revisión pasa del lector por callback, sin
+reutilizar contenido tras cambiar referencia. La condición de habilitación es
+pura: generar el evento ocurre únicamente al preparar la decisión.
+
+Antes del envío se conserva el comando en el journal. La consola descubre
+pendientes del mismo sujeto/issuer/origen sin enviarlos automáticamente, permite
+reintento explícito y acceso MFA. Un resultado incierto bloquea nuevas decisiones
+hasta resolverse. Un rechazo definitivo solo puede retirar el comando si nunca
+hubo incertidumbre; fallos de limpieza conservan recuperación visible. Cambiar
+sujeto, entorno o permisos recrea el workspace mediante key de contexto.
+
+Pasaron 16 pruebas de lector/entrada/decisiones/journal/workspace en
+.local/p04-editorial-workspace-final.log. La prueba widget confirma lectura,
+casilla requerida, diálogo previo a POST, 503, recreación de consola, recuperación
+sin envío automático, cuerpo idéntico al reintentar y retiro tras recibo válido.
+Usa MockClient y OidcMemoryStore: no demuestra aún Keycloak/BD/cifrado conectados.
+El análisis de este incremento sigue ejecutándose. Faltan borradores y activación
+en UI, ensayos conectados, provisión y rollout. Todo local, sin flags/DEV/push.
