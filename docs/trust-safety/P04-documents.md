@@ -24,8 +24,11 @@ de tema y control de visibilidad de administración; el mensaje lateral sobre
 reservas gratis se sustituye por ayuda neutral sobre perfil/disponibilidad.
 Seis pruebas widget más la de metadata pasan en `.local/p04-shell-localization.log`:
 persistencia del tema y navegación a documentos en es/en a 360/1200, destinos
-del menú y visibilidad admin según la sesión de fixture. La suite completa,
-análisis y build de copia fija 11aad57 siguen en `.local/p04-shell-localization-full.log`.
+del menú y visibilidad admin según la sesión de fixture. El análisis de copia
+fija 11aad57 detectó diez avisos prefer_const_constructors y terminó en fallo en
+`.local/p04-shell-localization-full.log`, antes de la suite/build. Se corrigieron
+en e4e4364; la verificación completa de esa revisión está en curso en
+`.local/p04-shell-localization-final.log`. No se trata el intento anterior como aprobado.
 No se cambia el manifiesto remoto mientras esa validación está pendiente. Queda
 texto visible fuera de ARB en otras pantallas: esta cobertura no cierra P04.
 
