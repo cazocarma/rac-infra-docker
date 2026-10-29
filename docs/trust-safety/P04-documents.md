@@ -2,6 +2,26 @@
 
 ## Estado actual
 
+Actualización de cierre 2026-10-29: el ensayo editorial conectado y el consumo
+autenticado del conjunto versión 1 están documentados en
+[P04-browser-lab](P04-browser-lab.md). Esa evidencia completa autoría,
+revisión independiente, publicación, activación, cuestionario y aceptaciones
+del laboratorio; no equivale a un despliegue operativo ni aprobación jurídica.
+
+La auditoría detectó metadata de revisión ausente en los ARB. Las 104 claves
+de es y las 104 de en ahora declaran `legal_review: pending`, sin alterar texto
+ni placeholders. `test/localization_review_test.dart` exige metadata válida,
+paridad de claves y ausencia de metadata huérfana. Generación y prueba pasan en
+`.local/p04-localization-review.log`; los archivos Dart generados no cambian.
+Pending registra ausencia de aprobación: no activa flags ni certifica textos.
+
+Brechas aún abiertas: plantillas backend versionadas y revisión del texto
+visible fuera de ARB; provisión operativa de la identidad/credencial editorial
+fuera del fixture desechable; revisión integral de cobertura y permisos,
+manifiesto/pins y rollout coordinado. No confundir pruebas locales previas con
+validación de una combinación todavía no publicada. Los requisitos humanos
+D08/D10 del plan permanecen separados y sin aprobación inferida.
+
 Registro y linaje inmutables, consentimiento exacto y control transaccional
 implementados en user, reservas/agendas y envíos nuevos de chat. Los servicios
 usan platform v0.13.0 en las ramas locales (aún sin push de este conjunto); match/chat leen datos documentales por la autoridad HTTP
