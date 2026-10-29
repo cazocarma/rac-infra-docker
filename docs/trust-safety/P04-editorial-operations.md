@@ -21,6 +21,32 @@ y compara sus secretos decodificados con el editorial antes de conectar.
 También rechaza coincidencia con los secretos de operador/Keycloak presentes
 en el entorno. No descubre ni afirma verificar secretos externos no provistos.
 
+## Overlay de activación explícita
+
+`compose.editorial.yaml` se selecciona únicamente con EDITORIAL_PREVIEW=1,
+ENV=dev y STANDING_PREVIEW=1. Por defecto no se incorpora. Make rechaza QA/PRD,
+valores ambiguos y activación sin standing. El overlay activa juntos el gate
+documental de user/match/chat, el lector técnico configurado por identity-config
+y los endpoints editoriales de user/admin. Mantiene privados 8082/8083 y fija
+el destino del proxy en backend-user:8083. No agrega usuarios o servicios fixture.
+
+Primero provisionar la BD con el preview editorial apagado; después preparar
+DOCUMENT_EDITORIAL_POLICY_VERSION como UUID de la política revisada y la misma
+credencial editorial por el canal de secretos acordado. El overlay exige ambos
+valores al componer. Un registro vacío no se rellena: las acciones comerciales
+quedan cerradas hasta una publicación/activación aprobada. Los derechos deben
+permanecer accesibles según los controles ya implementados.
+
+Esto no es una orden de aplicar up: falta identidad humana y activación
+controlada del cliente rac-staff, que identity-config sigue dejando deshabilitado.
+El despliegue coherente de revisiones y la aplicación sobre DEV persistente
+siguen pendientes. QA/PRD no utilizan este transporte interno sin TLS.
+
+Dos pruebas de test_editorial_compose.py pasan: condiciones reales de Make en
+dry-run y merge de Docker Compose con valores sintéticos. Verifican defaults,
+dependencias, destinos fijos y ausencia de publicación de puertos internos.
+No arrancan contenedores ni leen el archivo privado de ambiente DEV.
+
 Invocación explícita desde infra: `make editorial-db-config ENV=dev`.
 El target construye la imagen de herramientas y hereda la variable por nombre;
 no se ejecuta como parte de up ni de la migración general. Después de crear la
@@ -58,7 +84,6 @@ configura la identidad humana/MFA ni aprueba QA/PRD.
 
 El endurecimiento adicional de funciones/columnas/CREATE pasa las pruebas Go
 focalizadas con race en .local/p04-editorial-capability-unit.log. Su verificación
-PostgreSQL conectada está en curso en .local/p04-editorial-capability-permissions.log
-y .local/p04-editorial-capability-migrations.log; los resultados anteriores no
-acreditan todavía estos casos nuevos. Se inyectan permisos adicionales en bases
+PostgreSQL conectada terminó con salida 0 en .local/p04-editorial-capability-permissions.log
+y .local/p04-editorial-capability-migrations.log. Se inyectan permisos adicionales en bases
 desechables, se exige rechazo y se comprueba después la identidad mínima válida.

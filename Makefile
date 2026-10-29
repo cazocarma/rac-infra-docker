@@ -31,6 +31,22 @@ $(error STANDING_PREVIEW solo admite DEV; QA/PRD requieren transporte TLS y roll
 endif
 COMPOSE_FILES += -f compose.standing.yaml
 endif
+EDITORIAL_PREVIEW ?= 0
+ifneq ($(words $(EDITORIAL_PREVIEW)),1)
+$(error EDITORIAL_PREVIEW debe ser 0 o 1)
+endif
+ifeq ($(filter $(EDITORIAL_PREVIEW),0 1),)
+$(error EDITORIAL_PREVIEW debe ser 0 o 1)
+endif
+ifeq ($(EDITORIAL_PREVIEW),1)
+ifneq ($(ENV),dev)
+$(error EDITORIAL_PREVIEW solo admite DEV)
+endif
+ifneq ($(STANDING_PREVIEW),1)
+$(error EDITORIAL_PREVIEW requiere STANDING_PREVIEW=1)
+endif
+COMPOSE_FILES += -f compose.editorial.yaml
+endif
 ifeq ($(ENV),dev)
 ifneq ($(wildcard envs/.env.photos-s3),)
 COMPOSE_FILES += -f compose.photos-s3.yaml

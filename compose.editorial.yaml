@@ -1,0 +1,25 @@
+# Explicit DEV preview after migration, DB provisioning and operator review.
+# Does not create staff users, enable the Keycloak client or seed legal texts.
+services:
+  identity-config:
+    environment:
+      DOCUMENTS_ENFORCEMENT_ENABLED: "true"
+  backend-user:
+    environment:
+      DOCUMENTS_ENFORCEMENT_ENABLED: "true"
+      DOCUMENT_EDITORIAL_ENABLED: "true"
+      DOCUMENT_EDITORIAL_DATABASE_URL: ${DOCUMENT_EDITORIAL_DATABASE_URL:?Provisionar identidad editorial separada}
+      DOCUMENT_EDITORIAL_POLICY_VERSION: ${DOCUMENT_EDITORIAL_POLICY_VERSION:?Seleccionar politica editorial revisada}
+  backend-admin:
+    environment:
+      STAFF_ACCESS_ENABLED: "true"
+      EDITORIAL_PROXY_ENABLED: "true"
+      DOCUMENT_EDITORIAL_URL: http://backend-user:8083
+  backend-match:
+    environment:
+      DOCUMENTS_ENFORCEMENT_ENABLED: "true"
+      DOCUMENTS_AUTHORITY_URL: http://backend-user:8082/internal/documents
+  backend-chat:
+    environment:
+      DOCUMENTS_ENFORCEMENT_ENABLED: "true"
+      DOCUMENTS_AUTHORITY_URL: http://backend-user:8082/internal/documents

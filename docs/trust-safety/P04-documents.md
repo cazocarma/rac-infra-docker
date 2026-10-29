@@ -42,10 +42,18 @@ explícitas fuera de los once OID previstos; user incorpora también la negativa
 de permisos por columna y creación de schemas que ya comprobaba el operador.
 La prueba PostgreSQL de user inyecta cada permiso antes de New; el ensayo de
 operador inyecta una función externa y exige rechazo. Go focalizado con race
-pasó en `.local/p04-editorial-capability-unit.log`; suites conectadas en curso
+pasó en `.local/p04-editorial-capability-unit.log`; suites conectadas aprobadas con salida 0
 en `.local/p04-editorial-capability-permissions.log` y
 `.local/p04-editorial-capability-migrations.log`. Este cambio no está desplegado
 en el laboratorio existente ni en DEV persistente.
+
+Overlay DEV preparado en compose.editorial.yaml, opt-in con EDITORIAL_PREVIEW=1
+y STANDING_PREVIEW=1. No se incorpora por defecto. Dos pruebas pasan para gates
+de Make y merge real de Compose con ejemplos sintéticos: no se publican 8082/8083
+ni se agregan fixtures, se habilitan juntos los escritores documentales previstos
+y se mantienen los destinos internos fijos. Identidad humana, activación del
+cliente rac-staff y despliegue coordinado real permanecen pendientes; no se ha
+ejecutado up sobre DEV persistente.
 
 Registro y linaje inmutables, consentimiento exacto y control transaccional
 implementados en user, reservas/agendas y envíos nuevos de chat. Los servicios
