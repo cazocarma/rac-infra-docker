@@ -1,5 +1,23 @@
 # P04 — Documentos y aceptaciones (en desarrollo)
 
+## Localización pendiente del onboarding Compa
+
+Frontend 898188a migra el texto visible de Sé Compa a ARB es/en con revisión
+pending, manteniendo los días de la API en español y los valores del borrador.
+Una dependencia UserApi opcional permite verificar la pantalla con respuestas
+reales del cliente HTTP, sin alterar el servicio global. Cuatro pruebas widget
+(es/en × 360/1200) comprueban guardado intentado con clave lunes, rechazo 428,
+mensaje localizado y conservación de texto. Metadata y paridad de idiomas pasan.
+
+La copia fija de 898188a pasó análisis, 121 pruebas y build web release en
+`.local/p04-compa-localization-full.log`. Después se sustituyeron afirmaciones
+de «sin aprobación» y plan gratuito por instrucciones/confirmaciones neutrales
+en 6ba4fde,
+sin modificar reglas backend: cinco pruebas focalizadas pasan en
+`.local/p04-compa-neutral-copy.log`. Build web de la revisión neutral en curso en
+`.local/p04-compa-neutral-web.log`. No se publicó este nuevo incremento de front;
+la CI 40933374690 sigue comprobando el conjunto anterior fijado en 86eee6e.
+
 ## Estado actual
 
 Actualización de cierre 2026-10-29: el ensayo editorial conectado y el consumo
