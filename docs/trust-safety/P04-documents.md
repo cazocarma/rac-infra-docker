@@ -27,10 +27,20 @@ persistencia del tema y navegación a documentos en es/en a 360/1200, destinos
 del menú y visibilidad admin según la sesión de fixture. El análisis de copia
 fija 11aad57 detectó diez avisos prefer_const_constructors y terminó en fallo en
 `.local/p04-shell-localization-full.log`, antes de la suite/build. Se corrigieron
-en e4e4364; la verificación completa de esa revisión está en curso en
+en e4e4364; su análisis, 127 tests y build web terminaron con salida 0 en
 `.local/p04-shell-localization-final.log`. No se trata el intento anterior como aprobado.
 No se cambia el manifiesto remoto mientras esa validación está pendiente. Queda
 texto visible fuera de ARB en otras pantallas: esta cobertura no cierra P04.
+
+Frontend 6cfbbf7 localiza el acceso OIDC es/en y registra revisión pending.
+Mantiene ausencia de formulario de contraseña de RAC, retorno a /home y error
+de cancelación sin dar por iniciada la sesión. La ayuda deja de afirmar «acceso
+seguro» de manera genérica y describe el retorno al producto. Se preservan los
+saltos de línea de la composición. Dieciséis pruebas focalizadas pasan en
+`.local/p04-access-localization.log`, incluidas ocho combinaciones idioma/ancho/
+cancelación y las regresiones previas de autenticación. La copia fija completa
+está en curso en `.local/p04-access-localization-full.log`. Este incremento sigue
+local y la CI 40933374690 continúa validando 86eee6e, sin nuevos pushes que la cancelen.
 
 ## Estado actual
 
