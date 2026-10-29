@@ -123,6 +123,8 @@ def main():
                 ('rac_relay', 'SELECT correo FROM usuario;'),
                 ('rac_alert', 'INSERT INTO notificacion(usuario_id,sesion_id,tipo,titulo) VALUES(NULL,NULL,\'x\',\'x\');'),
                 ('rac_alert_consumer', 'UPDATE usuario SET nombre=nombre;'),
+                ('rac_standing_alert', 'UPDATE notificacion SET template_version=template_version;'),
+                ('rac_alert', 'UPDATE notificacion SET template_key=template_key;'),
                 ('rac_chat', 'SELECT telefono,correo FROM usuario;'),
                 ('rac_seed', 'SELECT contenido FROM mensaje;'),
             ]:

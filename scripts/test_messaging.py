@@ -71,8 +71,22 @@ try:
         UPDATE notificacion SET leido_en=now();""")
         before = sql('SELECT jsonb_agg(to_jsonb(n) ORDER BY id) FROM notificacion n')
         migrate(ROOT / 'db/migrations')
-        after = sql("SELECT jsonb_agg(to_jsonb(n)-'evento_id' ORDER BY id) FROM notificacion n")
+        after = sql("SELECT jsonb_agg(to_jsonb(n)-'evento_id'-'template_key'-'template_version'-'template_locale'-'template_legal_review' ORDER BY id) FROM notificacion n")
         assert before == after, 'Cutover changed historical notifications'
+        assert sql('SELECT count(*) FROM notificacion WHERE num_nonnulls(template_key,template_version,template_locale,template_legal_review)<>0') == '0', 'Historical provenance was invented'
+        for assignment in (
+            "template_key='account.updated'",
+            "template_key='account.updated',template_version='1',template_locale='fr',template_legal_review='pending'",
+            "template_key='account.updated',template_version='1',template_locale='es',template_legal_review='unknown'",
+            "template_key='INVALID KEY',template_version='1',template_locale='es',template_legal_review='pending'",
+        ):
+            try:
+                sql('UPDATE notificacion SET ' + assignment)
+            except RuntimeError as error:
+                if 'notification_template_provenance_complete' not in str(error):
+                    raise
+            else:
+                raise RuntimeError('Invalid notification template provenance was accepted')
         assert sql('SELECT count(*) FROM booking_outbox') == '0', 'Historical events were backfilled'
     print('PASS: V012 to V013 preserves notifications, read timestamps and creates no historical events', flush=True)
     for service in ('match', 'alert'):

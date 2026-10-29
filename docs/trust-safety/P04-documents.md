@@ -51,17 +51,42 @@ notificaciones no cambian. El aviso de cuenta mantiene su redacción neutral:
 un evento histórico posterior a una reversión no afirma una sanción vigente.
 
 No se reescriben notificaciones históricas. La versión vive en el artefacto;
-este incremento no persiste todavía su referencia por notificación ni convierte
-en plantillas el resto del texto backend. Las versiones publicadas del catálogo
+V038 agrega su referencia por notificación nueva, sin convertir en plantillas
+el resto del texto backend. Las versiones publicadas del catálogo
 deben conservarse inmutables y cambiarse mediante versión nueva y promoción
 coordinada. P04 permanece abierto.
 
 Pruebas: suite completa de alertas con race aprobada en
 `.local/p04-alert-message-catalog.log`; catálogo final con race y go vet de
 todo el servicio aprobados en `.local/p04-alert-message-catalog-final.log`.
-La suite de PostgreSQL/RabbitMQ reales sigue en curso en
-`.local/p04-alert-catalog-messaging.log`; no se declara finalizada por esos
-resultados unitarios. No hay push ni modificación de DEV persistente.
+La suite anterior de PostgreSQL/RabbitMQ reales terminó con salida 0 en
+`.local/p04-alert-catalog-messaging.log`: rollback transaccional, relay ordenado,
+confirms, deduplicación durable, ACK y avisos de standing aprobados.
+
+V038 amplía notificacion con template_key, template_version, template_locale
+y template_legal_review. La restricción exige los cuatro campos presentes y
+válidos o los cuatro nulos. Históricos quedan nulos, sin atribuirles una revisión
+que no se conoce. Los dos consumidores insertan título/procedencia en la misma
+transacción que el inbox; replay conserva el aviso existente. El contrato público
+permanece igual. Migrar antes de desplegar consumidores nuevos; los antiguos
+siguen funcionando sobre el esquema ampliado. No retirar columnas en un rollback.
+
+Suite Go completa con race aprobada en
+`.local/p04-alert-template-provenance-unit.log`. El primer ensayo de integración
+`.local/p04-alert-template-provenance-messaging.log` comprobó históricos y
+restricciones, pero falló en avisos de standing: rac_standing_alert tenía INSERT
+por columna y faltaban las cuatro columnas nuevas. V038 añade exclusivamente
+INSERT para ellas; no agrega SELECT, UPDATE ni acceso a sesion_id. Las pruebas
+negativas ahora exigen que rac_standing_alert y rac_alert no puedan modificar
+procedencia de avisos existentes.
+
+La primera suite de migrador sin superusuario/permisos/restore pasó en
+`.local/p04-alert-template-provenance-permissions.log`; no detectaba la escritura
+de standing, cubierta por la integración que sí falló. Tras corregir el grant,
+ambas suites se repiten en `.local/p04-alert-template-provenance-messaging-final.log`
+y `.local/p04-alert-template-provenance-permissions-final.log`. Continúan en
+curso; no se consideran aprobadas por el resultado anterior.
+No hay push ni modificación de DEV persistente.
 
 ## Primer incremento
 
