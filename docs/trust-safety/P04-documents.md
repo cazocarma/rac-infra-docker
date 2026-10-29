@@ -1,5 +1,27 @@
 # P04 — Documentos y aceptaciones (en desarrollo)
 
+## Último incremento local: planes y cupos
+
+Frontend 22a9b02 migra planes y el componente compartido de cupos a ARB es/en,
+con revisión pending. El contador conserva los valores y el estado de
+suscripción de la API; el selector sigue enviando `fecha=YYYY-MM-DD` al mismo
+endpoint del compa autenticado. Dependencias opcionales UserApi/MatchApi
+permiten probar HTTP sin reemplazar el contenedor global de servicios.
+El reintento y actualización de cupos dejan de devolver un Future desde
+setState y comparten un callback síncrono. No se activan cobros ni se cambia
+el cálculo de cupos en el servidor.
+
+Trece pruebas focalizadas pasan en `.local/p04-plans-localization.log`:
+planes sin botón que simule pago, error/reintento y actualización, contador
+con valores deliberadamente distintos de tres, suscripción activa/inactiva
+y selección real de día en el calendario (es/en × 360/1200), más metadata.
+La copia Git fija pasó análisis, 162 pruebas y build web release con salida 0
+en `.local/p04-plans-localization-full.log`.
+No se publica este incremento mientras CI 40939775713 verifica infra 86d1d78
+con frontend 1604d17 y user 1cc239d. Los apartados siguientes conservan la
+secuencia de evidencia de incrementos anteriores, que ya están publicados
+hasta las revisiones fijadas por ese conjunto.
+
 ## Localización pendiente del onboarding Compa
 
 Frontend 898188a migra el texto visible de Sé Compa a ARB es/en con revisión
