@@ -35,6 +35,34 @@ otros dueños y rollout coordinado. El recorrido desktop de documentos,
 cuestionario e historial se probó conectado en el laboratorio descrito abajo. El historial siguiente conserva
 los avances y los pendientes que existían en cada incremento.
 
+## Catálogo inicial de avisos backend (2026-10-29)
+
+Alert-service incorpora `internal/messages/catalog_v1.json`, embebido en el
+artefacto y propiedad del servicio. Contiene seis títulos existentes en es/en:
+cinco estados de reserva y la actualización neutral de cuenta. Cada entrada
+tiene legal_review=pending y clasificación explícita de dependencia jurídica.
+Una entrada dependiente de aprobación no puede entregarse mientras siga pending;
+no se inventó aprobación para los avisos existentes ni se habilitó correo/push.
+
+Lookup exige versión, idioma y clave exactos; no elige un idioma alternativo,
+no evalúa HTML ni expresiones del usuario y devuelve copias de valores. El
+runtime sigue usando es explícitamente. Los títulos españoles y el contrato de
+notificaciones no cambian. El aviso de cuenta mantiene su redacción neutral:
+un evento histórico posterior a una reversión no afirma una sanción vigente.
+
+No se reescriben notificaciones históricas. La versión vive en el artefacto;
+este incremento no persiste todavía su referencia por notificación ni convierte
+en plantillas el resto del texto backend. Las versiones publicadas del catálogo
+deben conservarse inmutables y cambiarse mediante versión nueva y promoción
+coordinada. P04 permanece abierto.
+
+Pruebas: suite completa de alertas con race aprobada en
+`.local/p04-alert-message-catalog.log`; catálogo final con race y go vet de
+todo el servicio aprobados en `.local/p04-alert-message-catalog-final.log`.
+La suite de PostgreSQL/RabbitMQ reales sigue en curso en
+`.local/p04-alert-catalog-messaging.log`; no se declara finalizada por esos
+resultados unitarios. No hay push ni modificación de DEV persistente.
+
 ## Primer incremento
 
 Rama independiente `feat/versioned-documents`, posterior al cierre de código de
