@@ -43,6 +43,8 @@ Tres pruebas de validación pasan en test_editorial_database.py. Ensayo real
 fresh/upgrade, repetición, rechazo de permiso por columna y conservación de
 actor/cadena aprobado en .local/p04-editorial-operator-permissions-final.log.
 La ampliación de separación de secretos se verifica ahora en
-.local/p04-editorial-operator-separated-secrets.log; sigue en curso y no se
-declara aprobada por los resultados de la versión anterior. Este documento no
+.local/p04-editorial-operator-separated-secrets.log; terminó con salida 0,
+incluidas las conexiones reales con configuración completa y los permisos
+negativos del ensayo. No quedan procesos pendientes de esta verificación.
+Este documento no
 configura la identidad humana/MFA ni aprueba QA/PRD.

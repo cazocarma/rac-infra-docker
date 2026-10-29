@@ -31,7 +31,7 @@ primer ensayo fresh/upgrade y repetición pasó en
 permiso por columna y conservación del actor/cadena pasó con salida 0 en
 `.local/p04-editorial-operator-permissions-final.log`. Tres pruebas puras de
 destino/capacidades/separación de secretos pasan; el nuevo ensayo integrado con
-configuración completa sigue en `.local/p04-editorial-operator-separated-secrets.log`.
+configuración completa terminó con salida 0 en `.local/p04-editorial-operator-separated-secrets.log`.
 La CLI ahora rechaza reutilizar secretos configurados de otras identidades antes
 de abrir conexión. El dry-run de Make rechaza QA y muestra para DEV solo
 la herencia por nombre de la variable secreta, sin imprimir su valor. Detalle y
