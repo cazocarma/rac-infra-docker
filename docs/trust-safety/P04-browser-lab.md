@@ -222,3 +222,32 @@ P04 permanece abierto: faltan revisar todos sus gates, verificación del
 consumidor sobre este conjunto y publicación coordinada. El estado pendiente
 que requirió reintento en algunas operaciones aún merece diagnóstico; no se
 considera explicado por confirmar que el replay es idempotente.
+
+### Lectura pública y estado de envío
+
+Verificación HTTP de solo lectura posterior a la activación: el listado público
+devuelve registro es versión 1 y exactamente los cinco documentos del
+manifiesto. Los cinco endpoints de revisión exacta devuelven el texto esperado
+y su SHA-256 UTF-8; no incluyen author_id, reviewer_id, correct_option ni
+accepted_at. Resultado local:
+`.local/p04-editorial-connected-proof/new-lab-public-documents.json`.
+No sustituye el flujo autenticado de aceptación/cuestionario pendiente sobre
+este conjunto concreto.
+
+La regresión widget de StaffScreen con contenido largo, desplazamiento y una
+respuesta POST demorada conservó estado y recibo sin necesitar cambios al
+contenedor. Por tanto, no prueba la hipótesis de desmontaje como causa del
+estado pendiente observado en navegador. Sí detectó que durante el envío se
+mostraba ya la invitación a reintentar, sin progreso visual. El workspace ahora
+muestra progreso mientras está ocupado y ofrece recuperación solo al terminar
+ese intento. La prueba exige una sola escritura y confirmación automática al
+completar la respuesta. No se afirma resuelta la causa de todas las apariciones
+del pendiente: los logs reales registran dos POST idempotentes en aquellos
+recorridos y se conserva su evidencia.
+
+Validación del ajuste: análisis Flutter sin incidencias y 116 pruebas completas
+aprobadas, log `.local/p04-staff-progress-full.log` (salida 0). Antes del ajuste,
+la nueva comprobación de progreso fallaba; después exige indicador durante
+respuesta demorada, ausencia de reintento simultáneo, una sola escritura y
+recibo visible sin intervención adicional. La imagen del laboratorio todavía
+no contiene este último ajuste de interfaz.
