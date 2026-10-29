@@ -251,3 +251,30 @@ la nueva comprobación de progreso fallaba; después exige indicador durante
 respuesta demorada, ausencia de reintento simultáneo, una sola escritura y
 recibo visible sin intervención adicional. La imagen del laboratorio todavía
 no contiene este último ajuste de interfaz.
+
+### Consumidor autenticado del conjunto editorial activo
+
+Desde /#/home se inició sesión mediante rac-web, separado de rac-staff,
+con la cuenta sintética editor-author. En Sé Compa → Revisar reglas y
+cuestionario se recibió connected-synthetic-1: cinco declaraciones sin marcar,
+tres preguntas sin respuesta y confirmación deshabilitada inicialmente.
+Se marcaron las cinco declaraciones y se respondió incorrectamente la primera
+pregunta. El servidor rechazó el intento; la UI explicó que todas deben ser
+correctas y una consulta independiente confirmó cero compa_attestations.
+Al corregir esa respuesta, la UI mostró la versión completada.
+
+Configuración → Documentos y acuerdos mostró cinco versiones sin aceptar.
+Cada texto sintético se abrió individualmente; la casilla comenzaba vacía y
+Confirmar aceptación estaba deshabilitado. Tras marcar y confirmar, cada
+elemento cambió a Aceptada. El historial mostró las cinco versiones con fecha
+y contexto Cuenta. No se aceptaron textos jurídicos reales ni se publicó perfil.
+
+Verificación SQL de solo lectura para el sujeto autenticado: cinco aceptaciones,
+las cinco pertenecientes al registro es versión 1, un cuestionario aprobado
+para a76a11b3-8485-447e-ad72-043857319bfe/versión 1 y cero perfiles Compa.
+Evidencia: new-lab-consumer-database.json y capturas
+new-lab-consumer-assessment-passed.png, new-lab-consumer-documents-accepted.png,
+new-lab-consumer-history.png en .local/p04-editorial-connected-proof/.
+Esto prueba la conexión publicación editorial → consumo autenticado → registros
+propios, sin sustituir la auditoría integral de P04, sus gates de despliegue ni
+la revisión jurídica pendiente.
