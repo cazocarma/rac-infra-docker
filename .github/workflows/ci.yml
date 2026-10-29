@@ -112,6 +112,7 @@ jobs:
           python -m unittest discover -s scripts -p "test_staff_activation.py"
           python -m unittest discover -s scripts -p "test_editorial_compose.py"
           python -m unittest discover -s scripts -p "test_documents_lab.py"
+          python -m unittest discover -s scripts -p "test_local_revisions.py"
       - run: python scripts/check_configuration.py
       - name: Validate Prometheus configuration and alert expressions
         run: |

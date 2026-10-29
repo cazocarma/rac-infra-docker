@@ -237,6 +237,10 @@ test-oidc-callbacks:
 	$(PYTHON) scripts/test_oidc_callback_privacy.py
 
 .PHONY: test-editorial-api
+.PHONY: check-p04-candidate
+check-p04-candidate:
+	$(PYTHON) scripts/check_local_revisions.py --manifest ci/p04-companion-candidate.json
+
 test-editorial-api:
 ifeq ($(strip $(LAB_STATE)),)
 	$(error LAB_STATE debe apuntar al state.json de un laboratorio editorial desechable)

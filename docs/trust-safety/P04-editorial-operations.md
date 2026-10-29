@@ -100,6 +100,28 @@ negativos del ensayo. No quedan procesos pendientes de esta verificación.
 Este documento no
 configura la identidad humana/MFA ni aprueba QA/PRD.
 
+## Candidato de revisiones coordinadas
+
+`ci/p04-companion-candidate.json` registra ocho commits completos de los
+compañeros. Es separado de `ci/companion-revisions.json`, que sigue siendo la
+entrada activa de CI; crear el candidato no publica fuentes ni cambia checkouts
+remotos. Contratos permanece en a1ad086a8569ea1bba68c94679026111c42045d5 y las
+migraciones hasta V038 pertenecen al commit de infra que contiene el candidato.
+
+`make check-p04-candidate` es de solo lectura y sin red. Exige HEAD exacto y
+checkout limpio por compañero, una misma versión estable de rac-platform en
+los cinco consumidores, metadata de vendor coincidente y tag que resuelva al
+commit fijado de platform. Rechaza replace local. Pasó sobre los ocho clones
+actuales, todos limpios, con v0.13.0. Su prueba cubre HEAD, dirty, vendor,
+versiones divergentes, reemplazo y tag incorrectos, y está incorporada en CI.
+
+No comprueba todo el contenido de vendor, disponibilidad remota, imágenes ni
+compatibilidad integrada; esos gates siguen separados. Antes de promover el
+candidato a entrada activa hay que publicar las revisiones necesarias, verificar
+su lectura con la App y ensayar ese conjunto. No actualizar pins remotos con
+commits todavía inaccesibles ni usar un CI verde del manifiesto antiguo como
+evidencia del nuevo conjunto.
+
 El endurecimiento adicional de funciones/columnas/CREATE pasa las pruebas Go
 focalizadas con race en .local/p04-editorial-capability-unit.log. Su verificación
 PostgreSQL conectada terminó con salida 0 en .local/p04-editorial-capability-permissions.log
