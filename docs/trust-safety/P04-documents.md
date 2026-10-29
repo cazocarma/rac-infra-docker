@@ -83,9 +83,15 @@ procedencia de avisos existentes.
 La primera suite de migrador sin superusuario/permisos/restore pasó en
 `.local/p04-alert-template-provenance-permissions.log`; no detectaba la escritura
 de standing, cubierta por la integración que sí falló. Tras corregir el grant,
-ambas suites se repiten en `.local/p04-alert-template-provenance-messaging-final.log`
-y `.local/p04-alert-template-provenance-permissions-final.log`. Continúan en
-curso; no se consideran aprobadas por el resultado anterior.
+ambas suites terminaron con salida 0 en
+`.local/p04-alert-template-provenance-messaging-final.log` y
+`.local/p04-alert-template-provenance-permissions-final.log`. La primera prueba
+escrituras reales de standing con su rol limitado, deduplicación concurrente,
+redelivery tras commit, recuperación HTTP y broker. La segunda prueba fresh y
+upgrade desde V018 con migrador no superusuario, permisos negativos añadidos y
+backup/restore sin contraseñas de roles. No quedan procesos pendientes de estas
+dos verificaciones. Esto valida V038 y sus consumidores locales; no demuestra
+provisión editorial operativa, pins remotos coherentes ni despliegue integrado.
 No hay push ni modificación de DEV persistente.
 
 ## Primer incremento
