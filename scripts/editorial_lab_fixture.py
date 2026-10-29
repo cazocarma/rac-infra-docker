@@ -5,11 +5,10 @@ import re
 import secrets
 import urllib.parse
 import urllib.request
-import uuid
 
 import psycopg
-from psycopg import sql
 from oauth_token import TokenLease
+from editorial_database import provision
 
 
 def main():
@@ -21,24 +20,10 @@ def main():
     if (credential.hostname != 'postgres' or credential.path != '/rac_documents_e2e' or
             credential.username != 'rac_editorial_lab' or not credential.password or len(credential.password) < 24):
         raise RuntimeError('Separate synthetic editorial credential required')
-    functions = ('draft_document', 'review_document', 'publish_document', 'read_editorial_document',
-                 'editorial_ready', 'draft_assessment', 'review_assessment', 'publish_assessment',
-                 'read_editorial_assessment', 'activate_editorial_bundle', 'read_editorial_registry')
     with psycopg.connect() as db:
         if db.execute('SELECT sum(version) FROM documents.head').fetchone()[0] != 0:
             raise RuntimeError('Empty editorial lab required')
-        db.execute(sql.SQL('CREATE ROLE rac_editorial_lab LOGIN PASSWORD {}').format(sql.Literal(urllib.parse.unquote(credential.password))))
-        db.execute('GRANT CONNECT ON DATABASE rac_documents_e2e TO rac_editorial_lab')
-        db.execute('GRANT USAGE ON SCHEMA public,documents,audit TO rac_editorial_lab')
-        signatures = db.execute("SELECT oid::regprocedure::text FROM pg_proc WHERE pronamespace='documents'::regnamespace AND proname=ANY(%s)", (list(functions),)).fetchall()
-        if len(signatures) != 11:
-            raise RuntimeError('Reviewed editorial function set required')
-        for (signature,) in signatures:
-            # regprocedure text comes from the owned schema, not user input.
-            db.execute(sql.SQL('GRANT EXECUTE ON FUNCTION {} TO rac_editorial_lab').format(sql.SQL(signature)))
-        chain, service = uuid.uuid4(), uuid.uuid4()
-        db.execute('INSERT INTO audit.chain_heads(chain_id) VALUES(%s)', (chain,))
-        db.execute("INSERT INTO audit.writer_principals VALUES('rac_editorial_lab',%s,%s)", (service, chain))
+        provision(db, os.environ['DOCUMENT_EDITORIAL_DATABASE_URL'], 'rac_documents_e2e', 'rac_editorial_lab')
 
     # Production-style database bootstrap revokes PUBLIC CONNECT. Exercise the
     # actual dedicated connection, not just function grants from a superuser.

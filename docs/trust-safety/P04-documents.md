@@ -15,12 +15,24 @@ paridad de claves y ausencia de metadata huérfana. Generación y prueba pasan e
 `.local/p04-localization-review.log`; los archivos Dart generados no cambian.
 Pending registra ausencia de aprobación: no activa flags ni certifica textos.
 
-Brechas aún abiertas: plantillas backend versionadas y revisión del texto
-visible fuera de ARB; provisión operativa de la identidad/credencial editorial
-fuera del fixture desechable; revisión integral de cobertura y permisos,
+Brechas aún abiertas: cobertura de plantillas/texto backend más allá de los
+seis avisos ya versionados y revisión del texto visible fuera de ARB; ensayo y
+aplicación operativa de la provisión editorial DEV, identidades humanas y
+adaptadores QA/PRD; revisión integral de cobertura y permisos,
 manifiesto/pins y rollout coordinado. No confundir pruebas locales previas con
 validación de una combinación todavía no publicada. Los requisitos humanos
 D08/D10 del plan permanecen separados y sin aprobación inferida.
+
+La provisión de base editorial DEV tiene implementación separada en
+`scripts/editorial_database.py`, reutilizada por el fixture, y target explícito
+`make editorial-db-config ENV=dev`. No se ejecutó sobre DEV persistente. El
+primer ensayo fresh/upgrade y repetición pasó en
+`.local/p04-editorial-operator-permissions.log`. La ampliación final de rechazo
+de permiso por columna y conservación del actor/cadena está en curso en
+`.local/p04-editorial-operator-permissions-final.log`. Dos pruebas puras de
+destino/capacidades pasan. El dry-run de Make rechaza QA y muestra para DEV solo
+la herencia por nombre de la variable secreta, sin imprimir su valor. Detalle y
+límites en [operación editorial](P04-editorial-operations.md).
 
 Registro y linaje inmutables, consentimiento exacto y control transaccional
 implementados en user, reservas/agendas y envíos nuevos de chat. Los servicios

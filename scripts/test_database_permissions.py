@@ -68,6 +68,28 @@ def main():
             bootstrap(database)
             migrate(database, ROOT / 'db/migrations')
             bootstrap(database)  # Reconcile again with the standing schema present.
+            editorial_flags = [
+                '-e', 'RAC_ENV=dev', '-e', 'PGHOST=postgres', '-e', 'PGUSER=postgres',
+                '-e', 'PGPASSWORD=test-only', '-e', 'PGDATABASE=' + database,
+                '-e', 'POSTGRES_DB=' + database,
+                '-e', 'DOCUMENT_EDITORIAL_DATABASE_URL=postgresql://rac_documents_editorial:synthetic-editorial-password-123456@postgres:5432/' + database + '?sslmode=disable',
+            ]
+            for _ in range(2):
+                run('docker', 'run', '--rm', '--network', name, *editorial_flags, tools, 'python', 'editorial_database.py')
+            identity = sql(database, "SELECT actor_id::text||':'||chain_id::text FROM audit.writer_principals WHERE database_role='rac_documents_editorial';").stdout.strip()
+            sql(database, 'GRANT SELECT(content) ON legal_documents TO rac_documents_editorial;')
+            refused = run('docker', 'run', '--rm', '--network', name, *editorial_flags, tools, 'python', 'editorial_database.py', ok=False)
+            assert refused.returncode != 0, 'Provisioning accepted unexpected column authority'
+            assert 'synthetic-editorial-password' not in refused.stdout + refused.stderr
+            sql(database, 'REVOKE SELECT(content) ON legal_documents FROM rac_documents_editorial;')
+            run('docker', 'run', '--rm', '--network', name, *editorial_flags, tools, 'python', 'editorial_database.py')
+            assert sql(database, "SELECT actor_id::text||':'||chain_id::text FROM audit.writer_principals WHERE database_role='rac_documents_editorial';").stdout.strip() == identity
+            assert sql(database, 'SELECT documents.editorial_ready();', 'rac_documents_editorial').stdout.strip() == 't'
+            assert sql(database, "SELECT count(*) FROM audit.writer_principals WHERE database_role='rac_documents_editorial';").stdout.strip() == '1'
+            for forbidden in ('SELECT * FROM legal_documents;', 'SELECT content FROM legal_documents;',
+                              'UPDATE notificacion SET titulo=titulo;',
+                              "SELECT documents.editorial_record(gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),'document.drafted','{}');"):
+                assert sql(database, forbidden, 'rac_documents_editorial', ok=False).returncode != 0
             assert sql(database, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname='standing';").stdout.strip() == 'rac_migrator'
             if (ROOT / 'db/migrations/V029__document_registry.sql').exists():
                 from document_registry_checks import check as check_document_registry

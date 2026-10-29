@@ -228,6 +228,14 @@ else
 	$(PYTHON) scripts/editorial_fixture_api.py --state "$(LAB_STATE)"
 endif
 
+.PHONY: editorial-db-config
+editorial-db-config:
+ifneq ($(ENV),dev)
+	$(error La provision editorial disponible es solo DEV; QA/PRD requieren su adaptador revisado)
+else
+	$(COMPOSE) run --rm --no-deps --build -e RAC_ENV=dev -e DOCUMENT_EDITORIAL_DATABASE_URL database-config python editorial_database.py
+endif
+
 .PHONY: test-standing-authority
 test-standing-authority:
 	$(PYTHON) scripts/test_standing_authority.py
