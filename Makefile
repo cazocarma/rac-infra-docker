@@ -220,6 +220,14 @@ test-identity-permissions:
 test-oidc-callbacks:
 	$(PYTHON) scripts/test_oidc_callback_privacy.py
 
+.PHONY: test-editorial-api
+test-editorial-api:
+ifeq ($(strip $(LAB_STATE)),)
+	$(error LAB_STATE debe apuntar al state.json de un laboratorio editorial desechable)
+else
+	$(PYTHON) scripts/editorial_fixture_api.py --state "$(LAB_STATE)"
+endif
+
 .PHONY: test-standing-authority
 test-standing-authority:
 	$(PYTHON) scripts/test_standing_authority.py

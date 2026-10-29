@@ -152,3 +152,33 @@ en .local/p04-oidc-privacy-flutter.log. Imagen frontend release construida en
 mientras el navegador mantiene una confirmación pendiente. Se está esperando
 el vencimiento real de MFA para probar persistencia y retorno con el mismo
 comando; no se alteran relojes, tokens ni límites del servidor.
+
+
+### Preparación reproducible por API autenticada (2026-10-29)
+
+El laboratorio desechable `rac-documents-e2e-3144e30ffce4` se recreó tras
+perderse el cluster tmpfs anterior. No se reutilizan sus datos ni sus puertos.
+`scripts/editorial_fixture_api.py` permite preparar exclusivamente cinco
+textos sintéticos fijos mediante PKCE, contraseña y OTP reales, proxy admin
+y API dueña. Una cuenta crea; otra revisa y publica. No escribe SQL ni activa
+el registro. Rechaza estados ajenos a `.local/rac-documents-e2e-*`, contenedores
+sin el proyecto esperado y manifiestos alterados; conserva UUID para replay.
+
+Ejecutar `make test-editorial-api LAB_STATE=<ruta absoluta al state.json>`.
+Las credenciales generadas y los tokens no se imprimen ni se guardan en el
+manifiesto. El cliente no utiliza proxies de entorno. La excepción de cookies
+Secure sobre HTTP se limita al puerto localhost exacto del laboratorio para
+reproducir el comportamiento del navegador; no cambia Keycloak ni sus cookies.
+
+Primera ejecución y repetición aprobadas en
+`.local/p04-reproducible-document-api.log` y
+`.local/p04-reproducible-document-api-replay.log`. Consulta independiente tras
+repetir: 15 eventos, cinco revisiones y registro es todavía en cero: no se
+duplicaron los eventos ni se activó contenido. Cuatro pruebas de seguridad del
+harness pasan también con Python `-O`; las comprobaciones de protocolo usan
+excepciones explícitas, no assert removibles.
+
+Esta preparación por API no prueba la creación del cuestionario ni la
+activación por navegador. Ambas siguen pendientes, junto con la publicación
+coordinada y los demás gates de P04. Los textos son fixtures, sin aprobación
+jurídica ni aplicación sobre la base persistente DEV.
