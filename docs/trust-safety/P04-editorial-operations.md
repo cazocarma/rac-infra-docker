@@ -175,6 +175,16 @@ limpios, metadatos vendor, versión común y tag inmutable. Estas nuevas
 revisiones aún no se publicaron: no enviar infra antes de publicar sus
 dependencias y no confundir los pins locales con los usados por el CI anterior.
 
+La medición posterior de 40777a3 terminó con salida 0 y reporte `complete`,
+`lab_completed=true`, 100 transiciones y `hot_acquisition.gate_passed=true`:
+`.local/p04-standing-race-measured.json` y `.local/p04-standing-race-measured.log`.
+El reporte fija los cinco SHA backend realmente construidos, incluido user
+1cc239d. El gate no prueba pantallas ni los cambios posteriores de frontend.
+`make test-workflows` también pasa en `.local/p04-profile-lock-workflows.log`.
+Frontend avanza después a 1604d17, con análisis/150 pruebas/build web propios
+en `.local/p04-notifications-localization-full.log`; los pins locales se
+actualizan antes de publicar, sin repetir la medición de backend sin cambios.
+
 Frontend 4671ce4 pasó `flutter analyze`, 146 pruebas y compilación web release
 desde un archivo Git de esa revisión. Evidencia local:
 `.local/p04-document-localization-full.log`. Incluye localización es/en del

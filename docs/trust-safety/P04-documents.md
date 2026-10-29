@@ -54,6 +54,19 @@ pending y estos cambios no se han publicado ni desplegado en DEV.
 
 ## Estado actual
 
+Incremento local 1604d17: la bandeja de notificaciones migra etiquetas,
+errores, contador y paginación a ARB es/en con revisión pending. Los títulos
+históricos del servidor no se traducen ni se reescriben. Cuatro pruebas
+adicionales (idioma × 360/1200) recorren fallo/reintento, marcado individual
+fallido y exitoso, navegación y páginas de 20. Detectaron un fallo previo:
+`setState(() => data = load())` devolvía un Future y rompía el reintento en
+debug. Un único `reload` síncrono actualiza la referencia al Future sin
+devolverlo al callback. Nueve pruebas focalizadas pasan en
+`.local/p04-notifications-localization-fixed.log`; el intento previo falló y
+se conserva como evidencia en `.local/p04-notifications-localization.log`.
+La copia Git fija pasa análisis, 150 pruebas y build web release en
+`.local/p04-notifications-localization-full.log`. Correo/push siguen sin activar.
+
 Actualización de cierre 2026-10-29: el ensayo editorial conectado y el consumo
 autenticado del conjunto versión 1 están documentados en
 [P04-browser-lab](P04-browser-lab.md). Esa evidencia completa autoría,
