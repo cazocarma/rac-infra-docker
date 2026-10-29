@@ -199,3 +199,26 @@ un único recurso de cuestionario y registro es aún en cero. Captura local:
 `.local/p04-editorial-connected-proof/new-lab-assessment-confirmed.png`.
 Faltan revisión independiente, publicación y activación del conjunto; crear
 el borrador no satisface esos gates ni cierra P04.
+
+### Revisión, publicación y activación conectadas (2026-10-29)
+
+Continuación del mismo laboratorio: se cerró la sesión del autor del
+cuestionario y editor-author inició otra sesión con contraseña y OTP. El lector
+privado mostró el contenido exacto y el hash; tras reconocer lectura se aprobó
+la revisión. Antes de aprobar, publicar estaba deshabilitado; después, aprobar
+y rechazar quedaron deshabilitados y publicar se habilitó. Publicación confirmada.
+Consulta SQL de solo lectura: autor distinto del revisor, decisión approved y
+exactamente un evento drafted, reviewed y published para ese cuestionario.
+
+La consola consultó las seis revisiones publicadas y preparó versión 0 a 1,
+locale es. Confirmación y reintento del mismo comando produjeron recibo de
+versión 1. Verificación independiente: head es=1, una sola activación con
+registry_version=1 y binding de cuestionario a la revisión indicada arriba.
+La publicación y activación se probaron mediante navegador y APIs reales;
+no se escribieron tablas para simular esas decisiones.
+
+Captura: `.local/p04-editorial-connected-proof/new-lab-bundle-activated.png`.
+P04 permanece abierto: faltan revisar todos sus gates, verificación del
+consumidor sobre este conjunto y publicación coordinada. El estado pendiente
+que requirió reintento en algunas operaciones aún merece diagnóstico; no se
+considera explicado por confirmar que el replay es idempotente.
