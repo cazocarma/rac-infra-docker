@@ -5,6 +5,7 @@ Does not enable a listener, configure Keycloak, publish text or activate policy.
 from urllib.parse import urlsplit, unquote, parse_qs
 import re
 import uuid
+from database_roles import validate_credentials
 
 
 SIGNATURES = (
@@ -38,6 +39,19 @@ def validate_target(dsn, database, role):
     if not valid:
         raise RuntimeError('Exact internal DEV editorial connection required')
     return unquote(parsed.password)
+
+
+def validate_environment(values):
+    """Validate all configured identities before opening an operator connection."""
+    if values.get('RAC_ENV') != 'dev':
+        raise RuntimeError('Explicit DEV provisioning only')
+    dsn, database = values.get('DOCUMENT_EDITORIAL_DATABASE_URL', ''), values.get('POSTGRES_DB', '')
+    password = validate_target(dsn, database, 'rac_documents_editorial')
+    existing = set(validate_credentials(values).values())
+    existing.update(values[key] for key in ('PGPASSWORD', 'POSTGRES_PASSWORD', 'KEYCLOAK_DB_PASSWORD') if values.get(key))
+    if password in existing:
+        raise RuntimeError('Independent editorial secret required')
+    return dsn, database
 
 
 def provision(db, dsn, database, role='rac_documents_editorial'):
@@ -95,10 +109,7 @@ if __name__ == '__main__':
     import os
     import psycopg
     try:
-        if os.environ.get('RAC_ENV') != 'dev':
-            raise RuntimeError('Explicit DEV provisioning only')
-        dsn, database = os.environ['DOCUMENT_EDITORIAL_DATABASE_URL'], os.environ['POSTGRES_DB']
-        validate_target(dsn, database, 'rac_documents_editorial')
+        dsn, database = validate_environment(os.environ)
         with psycopg.connect() as operator:
             provision(operator, dsn, database)
         with psycopg.connect(dsn) as editorial:

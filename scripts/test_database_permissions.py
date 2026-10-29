@@ -72,8 +72,11 @@ def main():
                 '-e', 'RAC_ENV=dev', '-e', 'PGHOST=postgres', '-e', 'PGUSER=postgres',
                 '-e', 'PGPASSWORD=test-only', '-e', 'PGDATABASE=' + database,
                 '-e', 'POSTGRES_DB=' + database,
+                '-e', 'MIGRATION_DB_USER=rac_migrator', '-e', 'MIGRATION_DB_PASSWORD=' + password,
                 '-e', 'DOCUMENT_EDITORIAL_DATABASE_URL=postgresql://rac_documents_editorial:synthetic-editorial-password-123456@postgres:5432/' + database + '?sslmode=disable',
             ]
+            for key, role in ROLES.items():
+                editorial_flags += ['-e', key + '=postgresql://' + role + ':synthetic-independent-' + role + '-123456@postgres:5432/' + database + '?sslmode=disable']
             for _ in range(2):
                 run('docker', 'run', '--rm', '--network', name, *editorial_flags, tools, 'python', 'editorial_database.py')
             identity = sql(database, "SELECT actor_id::text||':'||chain_id::text FROM audit.writer_principals WHERE database_role='rac_documents_editorial';").stdout.strip()

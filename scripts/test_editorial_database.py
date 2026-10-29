@@ -1,8 +1,31 @@
 import unittest
-from editorial_database import SIGNATURES, validate_target
+from editorial_database import SIGNATURES, validate_target, validate_environment
+from database_roles import ROLES
+from urllib.parse import quote
 
 
 class EditorialDatabaseTarget(unittest.TestCase):
+    def test_environment_requires_complete_independent_credentials_before_connection(self):
+        values = {'RAC_ENV':'dev', 'POSTGRES_DB':'rac_test', 'MIGRATION_DB_USER':'rac_migrator',
+                  'MIGRATION_DB_PASSWORD':'migration-secret-' + 'm' * 24, 'PGPASSWORD':'operator-secret-' + 'p' * 24}
+        for key, role in ROLES.items():
+            values[key] = 'postgresql://' + role + ':' + role + '-secret-' + 'x' * 24 + '@postgres/rac_test?sslmode=disable'
+        prefix = 'postgresql://rac_documents_editorial:'
+        suffix = '@postgres/rac_test?sslmode=disable'
+        values['DOCUMENT_EDITORIAL_DATABASE_URL'] = prefix + 'editorial-' + 'y' * 32 + suffix
+        self.assertEqual(validate_environment(values), (values['DOCUMENT_EDITORIAL_DATABASE_URL'], 'rac_test'))
+        for secret in (values['MIGRATION_DB_PASSWORD'], values['PGPASSWORD'], 'rac_user-secret-' + 'x' * 24):
+            with self.assertRaises(RuntimeError):
+                validate_environment({**values, 'DOCUMENT_EDITORIAL_DATABASE_URL':prefix + quote(secret, safe='') + suffix})
+        for change in ({'RAC_ENV':'prd'}, {'USER_DB_URL':''}):
+            with self.assertRaises(RuntimeError):
+                validate_environment({**values, **change})
+        special = quote('private:special@value/with space0123456789', safe='')
+        with self.assertRaises(RuntimeError):
+            validate_environment({**values,
+                'USER_DB_URL':'postgresql://rac_user:' + special + '@postgres/rac_test?sslmode=disable',
+                'DOCUMENT_EDITORIAL_DATABASE_URL':prefix + special + suffix})
+
     def test_only_exact_separate_dev_target_is_accepted(self):
         dsn = 'postgresql://rac_documents_editorial:' + 'x' * 32 + '@postgres:5432/rac_test?sslmode=disable'
         self.assertEqual(validate_target(dsn, 'rac_test', 'rac_documents_editorial'), 'x' * 32)

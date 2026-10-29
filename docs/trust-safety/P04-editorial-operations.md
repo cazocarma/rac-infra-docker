@@ -1,4 +1,4 @@
-# Provisión editorial DEV — pendiente de ensayo final
+# Provisión editorial DEV — validación local
 
 La provisión de base de datos está separada de `editorial_lab_fixture.py`.
 `scripts/editorial_database.py` no crea usuarios de Keycloak, no asigna roles
@@ -16,6 +16,10 @@ El destino debe ser la base RAC seleccionada, host interno postgres, puerto
 en un ambiente productivo ni modificar la validación para aceptar URLs ajenas.
 La variable se entrega por el entorno del proceso; no escribir su valor como
 argumento, salida de consola o ejemplo versionado.
+La CLI exige la configuración completa de las identidades normales, la valida
+y compara sus secretos decodificados con el editorial antes de conectar.
+También rechaza coincidencia con los secretos de operador/Keycloak presentes
+en el entorno. No descubre ni afirma verificar secretos externos no provistos.
 
 Invocación explícita desde infra: `make editorial-db-config ENV=dev`.
 El target construye la imagen de herramientas y hereda la variable por nombre;
@@ -35,7 +39,10 @@ requiere coordinar la nueva credencial con el listener y probar reconexión; no
 cambiarla unilateralmente mientras un servicio dependa de la anterior. Los
 errores de CLI son genéricos y no imprimen DSN, secreto ni diagnóstico servidor.
 
-Pruebas de validación: test_editorial_database.py. Ensayo real fresh/upgrade,
-repetición y permisos negativos en test_database_permissions.py, resultado en
-.local/p04-editorial-operator-permissions.log. Está en curso: este documento
-no declara aprobado todavía ese ensayo ni configura la identidad humana/MFA.
+Tres pruebas de validación pasan en test_editorial_database.py. Ensayo real
+fresh/upgrade, repetición, rechazo de permiso por columna y conservación de
+actor/cadena aprobado en .local/p04-editorial-operator-permissions-final.log.
+La ampliación de separación de secretos se verifica ahora en
+.local/p04-editorial-operator-separated-secrets.log; sigue en curso y no se
+declara aprobada por los resultados de la versión anterior. Este documento no
+configura la identidad humana/MFA ni aprueba QA/PRD.
