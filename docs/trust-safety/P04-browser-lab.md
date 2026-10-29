@@ -182,3 +182,20 @@ Esta preparación por API no prueba la creación del cuestionario ni la
 activación por navegador. Ambas siguen pendientes, junto con la publicación
 coordinada y los demás gates de P04. Los textos son fixtures, sin aprobación
 jurídica ni aplicación sobre la base persistente DEV.
+
+### Cuestionario creado desde navegador en el laboratorio nuevo
+
+La cuenta sintética editor-reviewer completó contraseña y OTP en Keycloak,
+cinco compromisos, tres preguntas de dos alternativas y selección explícita
+de las respuestas correctas. Confirmó el borrador privado desde la interfaz.
+La pantalla dejó inicialmente el comando pendiente; el reintento mediante el
+botón semántico mostró «Operación confirmada» y el recibo del servidor.
+No se atribuye todavía una causa a ese estado inicial.
+
+Revisión: `a76a11b3-8485-447e-ad72-043857319bfe`.
+SHA-256: `fb187ee3dccaa4640df2271194e0d75245970e2452194129d9e79d32621efcc2`.
+Consulta independiente después del reintento: 16 eventos editoriales totales,
+un único recurso de cuestionario y registro es aún en cero. Captura local:
+`.local/p04-editorial-connected-proof/new-lab-assessment-confirmed.png`.
+Faltan revisión independiente, publicación y activación del conjunto; crear
+el borrador no satisface esos gates ni cierra P04.
