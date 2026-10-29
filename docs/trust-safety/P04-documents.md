@@ -14,9 +14,20 @@ La copia fija de 898188a pasó análisis, 121 pruebas y build web release en
 de «sin aprobación» y plan gratuito por instrucciones/confirmaciones neutrales
 en 6ba4fde,
 sin modificar reglas backend: cinco pruebas focalizadas pasan en
-`.local/p04-compa-neutral-copy.log`. Build web de la revisión neutral en curso en
-`.local/p04-compa-neutral-web.log`. No se publicó este nuevo incremento de front;
+`.local/p04-compa-neutral-copy.log`. Build web de la revisión neutral terminó con
+salida 0 en `.local/p04-compa-neutral-web.log`. No se publicó este incremento de front;
 la CI 40933374690 sigue comprobando el conjunto anterior fijado en 86eee6e.
+
+Frontend 11aad57 extiende ARB/revisión pendiente a Configuración y al menú
+compartido, incluidas etiquetas de navegación compacta. Conserva rutas, acciones
+de tema y control de visibilidad de administración; el mensaje lateral sobre
+reservas gratis se sustituye por ayuda neutral sobre perfil/disponibilidad.
+Seis pruebas widget más la de metadata pasan en `.local/p04-shell-localization.log`:
+persistencia del tema y navegación a documentos en es/en a 360/1200, destinos
+del menú y visibilidad admin según la sesión de fixture. La suite completa,
+análisis y build de copia fija 11aad57 siguen en `.local/p04-shell-localization-full.log`.
+No se cambia el manifiesto remoto mientras esa validación está pendiente. Queda
+texto visible fuera de ARB en otras pantallas: esta cobertura no cierra P04.
 
 ## Estado actual
 
