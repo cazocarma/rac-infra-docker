@@ -42,7 +42,7 @@ class EditorialCompose(unittest.TestCase):
                       DOCUMENT_EDITORIAL_POLICY_VERSION='11111111-1111-4111-8111-111111111111')
         values.update({key:'postgresql://' + role + ':synthetic-' + role + '-123456@postgres/' + values['POSTGRES_DB'] + '?sslmode=disable'
                        for key, role in ROLES.items()})
-        values.update(MIGRATION_DB_USER='rac_migrator', MIGRATION_DB_PASSWORD='synthetic-migration-only-123456')
+        values.update(MIGRATION_DB_USER='rac_migrator', MIGRATION_DB_PASSWORD='synthetic-migration-only-123456', STAFF_CLIENT_ENABLED='false')
         environment = {**os.environ, **values}
         command = ['docker', 'compose', '--env-file', 'envs/.env.dev.example', '-p', 'rac-editorial-config-test', '--profile', 'tools',
                    '-f', 'compose.yaml', '-f', 'docker-compose.dev.yaml', '-f', 'compose.standing.yaml']
@@ -61,8 +61,13 @@ class EditorialCompose(unittest.TestCase):
         for name in ('identity-config', 'backend-user', 'backend-match', 'backend-chat'):
             self.assertEqual(services[name]['environment']['DOCUMENTS_ENFORCEMENT_ENABLED'], 'true')
         self.assertEqual(services['backend-admin']['environment']['DOCUMENT_EDITORIAL_URL'], 'http://backend-user:8083')
+        self.assertEqual(services['identity-config']['environment']['STAFF_CLIENT_ENABLED'], 'false')
         for name in ('backend-match', 'backend-chat'):
             self.assertEqual(services[name]['environment']['DOCUMENTS_AUTHORITY_URL'], 'http://backend-user:8082/internal/documents')
         for name in services:
             for port in services[name].get('ports', []):
                 self.assertNotIn(port['target'], (8082, 8083), 'Internal authority/editorial port published')
+        environment['STAFF_CLIENT_ENABLED'] = 'true'
+        opted_in = render(['-f', 'compose.editorial.yaml'])
+        self.assertEqual(opted_in['identity-config']['environment']['STAFF_CLIENT_ENABLED'], 'true')
+        self.assertEqual(set(opted_in), set(baseline))

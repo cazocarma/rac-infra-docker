@@ -224,7 +224,11 @@ def main():
         assert len(admin('GET', '/clients/' + staff['id'] + '/roles')) == 5
         # Prove the required OTP execution is effective, not just a config flag.
         # Enable only in this disposable realm and restore disabled state below.
-        admin('PUT', '/clients/' + staff['id'], {'enabled': True})
+        for _ in range(2):
+            configure_staff(admin, 'http://localhost', enabled=True)
+        enabled_staff = admin('GET', '/clients?clientId=rac-staff')[0]
+        assert enabled_staff['enabled'] and not enabled_staff['directAccessGrantsEnabled'] and not enabled_staff['fullScopeAllowed']
+        assert admin('GET', '/authentication/flows/rac-staff-mfa/executions') == executions
         otp_secret = secrets.token_hex(20)
         admin('POST', '/users', {'username': 'staff-fixture', 'enabled': True,
             'firstName': 'Synthetic', 'lastName': 'Fixture', 'email': 'staff@example.test', 'emailVerified': True,
@@ -324,7 +328,8 @@ def main():
         # Exercise renewal even on a fast local runner, without lengthening or
         # changing Keycloak's actual token lifetime or retrying a denied action.
         clock_offset[0] += operator.lifetime + 1
-        admin('PUT', '/clients/' + staff['id'], {'enabled': False})
+        configure_staff(admin, 'http://localhost', enabled=False)
+        assert not admin('GET', '/clients?clientId=rac-staff')[0]['enabled']
         assert operator.acquisitions >= 2
         print(f'PASS: operator token renewal uses advertised expiry; issuer TTL={operator.lifetime}s unchanged, acquisitions={operator.acquisitions}')
         print('PASS: real FGAP v2, compa-only grant, privilege denials, password-only cannot enter staff, OTP/PKCE succeeds with actual AMR proof; staff client disabled')

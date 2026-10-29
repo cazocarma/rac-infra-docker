@@ -7,7 +7,7 @@ import urllib.parse
 import urllib.request
 import psycopg
 from pathlib import Path
-from identity_permissions import configure_provisioner, configure_staff
+from identity_permissions import configure_provisioner, configure_staff, staff_client_enabled
 from identity_standing import configure_standing
 from identity_sessions import configure_sessions
 from oauth_token import TokenLease
@@ -15,6 +15,7 @@ from oauth_token import TokenLease
 BASE = os.environ.get("KEYCLOAK_INTERNAL_URL", "http://keycloak:8080")
 REALM = "rentacompa"
 ENV = os.environ["RAC_ENV"]
+STAFF_ENABLED = staff_client_enabled(os.environ)
 DOCUMENTS = os.environ.get('DOCUMENTS_ENFORCEMENT_ENABLED', 'false')
 if DOCUMENTS not in ('true', 'false'):
     raise RuntimeError('Invalid document rollout configuration')
@@ -96,7 +97,7 @@ role_file = role_directory / 'role-id.tmp'
 role_file.write_text(admin('GET', '/roles/compa')['id'] + '\n', encoding='ascii')
 os.chmod(role_file, 0o644)
 os.replace(role_file, role_directory / 'role-id')
-configure_staff(admin, origin)
+configure_staff(admin, origin, enabled=STAFF_ENABLED)
 if os.environ.get('STANDING_ENFORCEMENT_ENABLED', 'false') == 'true':
     configure_standing(admin, '/credentials/standing', documents=DOCUMENTS == 'true')
     session_directory = Path('/credentials/standing/sessions')

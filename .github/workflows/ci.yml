@@ -105,6 +105,13 @@ jobs:
       - run: python -m unittest discover -s scripts -p "test_backup_identity.py"
       - run: python -m unittest discover -s scripts -p "test_ci_access.py"
       - run: python -m unittest discover -s scripts -p "test_oauth_token.py"
+      - name: Editorial provisioning, activation and private preview guards
+        run: |
+          python -m unittest discover -s scripts -p "test_editorial_database.py"
+          python -m unittest discover -s scripts -p "test_editorial_fixture_api.py"
+          python -m unittest discover -s scripts -p "test_staff_activation.py"
+          python -m unittest discover -s scripts -p "test_editorial_compose.py"
+          python -m unittest discover -s scripts -p "test_documents_lab.py"
       - run: python scripts/check_configuration.py
       - name: Validate Prometheus configuration and alert expressions
         run: |

@@ -37,8 +37,18 @@ valores al componer. Un registro vacío no se rellena: las acciones comerciales
 quedan cerradas hasta una publicación/activación aprobada. Los derechos deben
 permanecer accesibles según los controles ya implementados.
 
-Esto no es una orden de aplicar up: falta identidad humana y activación
-controlada del cliente rac-staff, que identity-config sigue dejando deshabilitado.
+Esto no es una orden de aplicar up: falta preparar la identidad humana y aplicar
+la activación controlada del cliente rac-staff. identity-config lo deja apagado
+por defecto. STAFF_CLIENT_ENABLED=true es una opción separada y explícita,
+aceptada únicamente en DEV con standing y documentos habilitados. Reconciliar
+repetidamente conserva ese estado deseado sin quitar OTP, PKCE, audiencia
+limitada ni límites de sesión; tampoco asigna roles a personas.
+
+Volver a false deshabilita el cliente para nuevos accesos/renovaciones. No
+equivale a revocar inmediatamente JWT ya emitidos: conservan su vencimiento
+original. Para retirar acceso de inmediato hay que cerrar también las rutas
+staff/editorial y aplicar el procedimiento de sesiones/revocación revisado,
+sin anunciar que cambiar una opción de cliente invalida por sí solo todo token.
 El despliegue coherente de revisiones y la aplicación sobre DEV persistente
 siguen pendientes. QA/PRD no utilizan este transporte interno sin TLS.
 
@@ -46,6 +56,14 @@ Dos pruebas de test_editorial_compose.py pasan: condiciones reales de Make en
 dry-run y merge de Docker Compose con valores sintéticos. Verifican defaults,
 dependencias, destinos fijos y ausencia de publicación de puertos internos.
 No arrancan contenedores ni leen el archivo privado de ambiente DEV.
+
+Dos pruebas de test_staff_activation.py comprueban defaults, opciones estrictas
+y rechazo antes de llamadas admin si enabled no es booleano. Los trece tests
+de provisión/fixture/activación/Compose/aislamiento se incorporaron al workflow
+de CI y pasan localmente. El ensayo Keycloak real terminó con salida 0 en
+.local/p04-staff-client-reconciliation.log: se reconcilia encendido dos veces,
+se conserva el flujo obligatorio de contraseña/OTP, se prueba el token staff y
+se vuelve a apagar el cliente al terminar. No se modificó el realm DEV.
 
 Invocación explícita desde infra: `make editorial-db-config ENV=dev`.
 El target construye la imagen de herramientas y hereda la variable por nombre;

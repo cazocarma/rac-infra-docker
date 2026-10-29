@@ -55,6 +55,13 @@ y se mantienen los destinos internos fijos. Identidad humana, activación del
 cliente rac-staff y despliegue coordinado real permanecen pendientes; no se ha
 ejecutado up sobre DEV persistente.
 
+La activación deseada de rac-staff ya tiene opción separada STAFF_CLIENT_ENABLED,
+false por defecto y true solo con rollout DEV documental/standing. La
+reconciliación no concede roles humanos. Trece pruebas de guards pasan y ahora
+están incluidas en CI; el ensayo real de Keycloak para activación repetida,
+OTP/PKCE y retorno a disabled pasó con salida 0 en `.local/p04-staff-client-reconciliation.log`.
+La aplicación operativa y elección de responsables humanos siguen pendientes.
+
 Registro y linaje inmutables, consentimiento exacto y control transaccional
 implementados en user, reservas/agendas y envíos nuevos de chat. Los servicios
 usan platform v0.13.0 en las ramas locales (aún sin push de este conjunto); match/chat leen datos documentales por la autoridad HTTP

@@ -4,6 +4,7 @@ services:
   identity-config:
     environment:
       DOCUMENTS_ENFORCEMENT_ENABLED: "true"
+      STAFF_CLIENT_ENABLED: ${STAFF_CLIENT_ENABLED:-false}
   backend-user:
     environment:
       DOCUMENTS_ENFORCEMENT_ENABLED: "true"
