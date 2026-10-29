@@ -34,6 +34,13 @@ autoridad inesperada en vez de intentar corregirla silenciosamente. Concede
 CONNECT, USAGE y EXECUTE solo para el flujo editorial tipado. Repetir conserva
 actor/cadena de auditoría; no crea otra cadena ni cambia decisiones históricas.
 
+El provisionador verifica además los grants explícitos de funciones en los
+esquemas de aplicación: sus OID deben pertenecer a las once firmas previstas.
+Incluye autoridad por propiedad de función. La API editorial aplica la misma
+condición al arrancar y comprueba permisos por columna y CREATE en schemas,
+además de las restricciones anteriores. No se afirma vigilancia continua de
+cambios de ACL tras el arranque ni se sustituye la revisión de grants PUBLIC.
+
 El proceso usa el secreto recibido para reconciliar la credencial. Una rotación
 requiere coordinar la nueva credencial con el listener y probar reconexión; no
 cambiarla unilateralmente mientras un servicio dependa de la anterior. Los
@@ -48,3 +55,10 @@ incluidas las conexiones reales con configuración completa y los permisos
 negativos del ensayo. No quedan procesos pendientes de esta verificación.
 Este documento no
 configura la identidad humana/MFA ni aprueba QA/PRD.
+
+El endurecimiento adicional de funciones/columnas/CREATE pasa las pruebas Go
+focalizadas con race en .local/p04-editorial-capability-unit.log. Su verificación
+PostgreSQL conectada está en curso en .local/p04-editorial-capability-permissions.log
+y .local/p04-editorial-capability-migrations.log; los resultados anteriores no
+acreditan todavía estos casos nuevos. Se inyectan permisos adicionales en bases
+desechables, se exige rechazo y se comprueba después la identidad mínima válida.

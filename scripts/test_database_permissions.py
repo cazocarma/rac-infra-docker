@@ -85,6 +85,10 @@ def main():
             assert refused.returncode != 0, 'Provisioning accepted unexpected column authority'
             assert 'synthetic-editorial-password' not in refused.stdout + refused.stderr
             sql(database, 'REVOKE SELECT(content) ON legal_documents FROM rac_documents_editorial;')
+            sql(database, "CREATE FUNCTION public.editorial_unexpected_fixture() RETURNS boolean LANGUAGE sql AS 'SELECT true'; GRANT EXECUTE ON FUNCTION public.editorial_unexpected_fixture() TO rac_documents_editorial;")
+            refused = run('docker', 'run', '--rm', '--network', name, *editorial_flags, tools, 'python', 'editorial_database.py', ok=False)
+            assert refused.returncode != 0, 'Provisioning accepted unexpected function authority'
+            sql(database, 'DROP FUNCTION public.editorial_unexpected_fixture();')
             run('docker', 'run', '--rm', '--network', name, *editorial_flags, tools, 'python', 'editorial_database.py')
             assert sql(database, "SELECT actor_id::text||':'||chain_id::text FROM audit.writer_principals WHERE database_role='rac_documents_editorial';").stdout.strip() == identity
             assert sql(database, 'SELECT documents.editorial_ready();', 'rac_documents_editorial').stdout.strip() == 't'

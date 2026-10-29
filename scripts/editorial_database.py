@@ -68,15 +68,25 @@ def provision(db, dsn, database, role='rac_documents_editorial'):
     db.execute("SET LOCAL lock_timeout='2s'")
     db.execute("SET LOCAL statement_timeout='5s'")
     db.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", ('rac-editorial-provision:' + role,))
+    capabilities = []
     for signature in SIGNATURES:
-        if db.execute('SELECT to_regprocedure(%s)', (signature,)).fetchone()[0] is None:
+        capability = db.execute('SELECT to_regprocedure(%s)::oid', (signature,)).fetchone()[0]
+        if capability is None:
             raise RuntimeError('Editorial schema capabilities are incomplete')
+        capabilities.append(capability)
     existing = db.execute('SELECT rolsuper,rolcreaterole,rolcreatedb,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=%s', (role,)).fetchone()
     if existing and any(existing):
         raise RuntimeError('Refusing privileged editorial identity')
     if db.execute('SELECT 1 FROM pg_auth_members m JOIN pg_roles r ON r.oid=m.member WHERE r.rolname=%s', (role,)).fetchone():
         raise RuntimeError('Refusing inherited editorial authority')
     if existing:
+        unexpected = db.execute("""SELECT EXISTS(SELECT FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+          CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) acl
+          JOIN pg_roles principal ON principal.oid=acl.grantee
+          WHERE principal.rolname=%s AND n.nspname IN('public','documents','audit','standing')
+          AND acl.privilege_type='EXECUTE' AND NOT(p.oid=ANY(%s::oid[])))""", (role, capabilities)).fetchone()[0]
+        if unexpected:
+            raise RuntimeError('Refusing unexpected editorial function authority')
         excessive = db.execute("""SELECT EXISTS(SELECT FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
           WHERE n.nspname IN('public','documents','audit','standing') AND c.relkind IN('r','p','v','m','f')
           AND NOT EXISTS(SELECT FROM pg_depend d WHERE d.classid='pg_class'::regclass AND d.objid=c.oid AND d.deptype='e')

@@ -37,6 +37,16 @@ de abrir conexión. El dry-run de Make rechaza QA y muestra para DEV solo
 la herencia por nombre de la variable secreta, sin imprimir su valor. Detalle y
 límites en [operación editorial](P04-editorial-operations.md).
 
+Revisión adicional: provisionador y arranque de user ahora rechazan funciones
+explícitas fuera de los once OID previstos; user incorpora también la negativa
+de permisos por columna y creación de schemas que ya comprobaba el operador.
+La prueba PostgreSQL de user inyecta cada permiso antes de New; el ensayo de
+operador inyecta una función externa y exige rechazo. Go focalizado con race
+pasó en `.local/p04-editorial-capability-unit.log`; suites conectadas en curso
+en `.local/p04-editorial-capability-permissions.log` y
+`.local/p04-editorial-capability-migrations.log`. Este cambio no está desplegado
+en el laboratorio existente ni en DEV persistente.
+
 Registro y linaje inmutables, consentimiento exacto y control transaccional
 implementados en user, reservas/agendas y envíos nuevos de chat. Los servicios
 usan platform v0.13.0 en las ramas locales (aún sin push de este conjunto); match/chat leen datos documentales por la autoridad HTTP
