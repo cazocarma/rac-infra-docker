@@ -103,7 +103,7 @@ configura la identidad humana/MFA ni aprueba QA/PRD.
 ## Candidato de revisiones coordinadas
 
 `ci/p04-companion-candidate.json` registra ocho commits completos de los
-compañeros. Es separado de `ci/companion-revisions.json`, que sigue siendo la
+compañeros. Es separado de `ci/companion-revisions.json`, la
 entrada activa de CI; crear el candidato no publica fuentes ni cambia checkouts
 remotos. Contratos permanece en a1ad086a8569ea1bba68c94679026111c42045d5 y las
 migraciones hasta V038 pertenecen al commit de infra que contiene el candidato.
@@ -121,6 +121,21 @@ candidato a entrada activa hay que publicar las revisiones necesarias, verificar
 su lectura con la App y ensayar ese conjunto. No actualizar pins remotos con
 commits todavía inaccesibles ni usar un CI verde del manifiesto antiguo como
 evidencia del nuevo conjunto.
+
+### Publicación coordinada de ramas (2026-10-29)
+
+Tras fetch de los diez repositorios se confirmó PR infra #9 en draft, remoto
+752e9b1, con cambios locales posteriores. Solo auth del candidato estaba contenido
+en una rama remota. Se publicaron primero platform 535006e y su tag inmutable
+v0.13.0; después las ramas de user, match, chat, alert, admin, Flutter y contratos.
+Todos los pushes fueron fast-forward, sin force, merge ni despliegue.
+
+El manifiesto activo se actualizó al candidato ya publicado. El verificador de
+HEAD/módulo/vendor/tag y check_go_vendor.py pasaron sobre esas revisiones.
+make test-workflows también pasó localmente antes de publicar. La publicación de
+infra y el CI integrado nuevo deben comprobar todavía la lectura con la App y
+el resultado del conjunto; SSH del operador no demuestra permisos de la App.
+Los resultados anteriores de GitHub corresponden al manifiesto antiguo.
 
 El endurecimiento adicional de funciones/columnas/CREATE pasa las pruebas Go
 focalizadas con race en .local/p04-editorial-capability-unit.log. Su verificación
