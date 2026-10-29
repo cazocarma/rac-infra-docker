@@ -39,8 +39,18 @@ seguro» de manera genérica y describe el retorno al producto. Se preservan los
 saltos de línea de la composición. Dieciséis pruebas focalizadas pasan en
 `.local/p04-access-localization.log`, incluidas ocho combinaciones idioma/ancho/
 cancelación y las regresiones previas de autenticación. La copia fija completa
-está en curso en `.local/p04-access-localization-full.log`. Este incremento sigue
-local y la CI 40933374690 continúa validando 86eee6e, sin nuevos pushes que la cancelen.
+pasó análisis, 135 pruebas y build web en `.local/p04-access-localization-full.log`.
+Este incremento sigue local. La CI 40933374690 de 86eee6e terminó en fallo
+en la carrera de edición personal/sanción; no valida estos cambios posteriores.
+
+Frontend 4671ce4 localiza el lector y listado de documentos, sus estados y
+errores, y reutiliza títulos localizados en historial/intersticial. Conserva
+el texto servido y la casilla inicialmente desmarcada. Once pruebas nuevas
+cubren es/en, anchos 360/1200, conflicto de aceptación y rechazo de tipo,
+versión o idioma distintos aunque ID/hash coincidan. La copia Git fija pasó
+análisis, 146 pruebas y build web release en
+`.local/p04-document-localization-full.log`. Las cadenas siguen con revisión
+pending y estos cambios no se han publicado ni desplegado en DEV.
 
 ## Estado actual
 

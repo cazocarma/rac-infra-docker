@@ -142,3 +142,43 @@ focalizadas con race en .local/p04-editorial-capability-unit.log. Su verificaci�
 PostgreSQL conectada terminó con salida 0 en .local/p04-editorial-capability-permissions.log
 y .local/p04-editorial-capability-migrations.log. Se inyectan permisos adicionales en bases
 desechables, se exige rechazo y se comprueba después la identidad mínima válida.
+
+### Verificación posterior y regresión de concurrencia (2026-10-29)
+
+El CI integrado 40933374690 del commit infra 86eee6e verificó acceso a los
+repositorios mediante la App, políticas de workflows, almacenamiento y migraciones.
+La integración falló en `commit_races`: guardar el perfil devolvió 503
+`profile_unavailable` donde la carrera de sanción exige 403 y rollback.
+No constituye validación del conjunto ni cierre de P04.
+
+La consulta que serializa la edición personal usa ahora `FOR NO KEY UPDATE` en
+la copia local de user: mantiene exclusión entre editores sin impedir el
+`KEY SHARE` de la FK al registrar el efecto de revocación de sesiones de una
+sanción concurrente. El bloqueo anterior `FOR UPDATE` podía impedir ese registro
+hasta agotar el permiso temporal del editor. La reproducción del conjunto previo
+y la verificación del cambio se ejecutan en laboratorios desechables; no se
+amplió el plazo del permiso ni se relajó el 403 esperado. Pendiente registrar
+los resultados antes de publicar esta corrección. La reproducción local del
+conjunto anterior terminó con el mismo 503 en
+`.local/p04-standing-race-reproduction.log`. También se cambió el bloqueo de
+onboarding y sustitución/eliminación de fotos: ninguno modifica la clave
+referenciada. La matriz de carreras agrega publicación Compa y sustitución de
+foto a las ediciones personales, agenda y chat en ambas instancias; conserva
+el 403 y comprueba rollback de los valores originales. La ejecución corregida
+terminó con salida 0 en `.local/p04-standing-race-fixed.log`, incluyendo
+caídas de broker/autoridad, recuperación, tokens originales y deduplicación.
+User 1cc239d contiene la corrección. Esto no sustituye la medición adicional
+de 100 revocaciones concurrentes ni el CI del conjunto publicado.
+Los manifiestos locales avanzan a user 1cc239d y frontend 4671ce4 para
+verificar ese candidato. `check_local_revisions.py` pasa con los ocho HEAD
+limpios, metadatos vendor, versión común y tag inmutable. Estas nuevas
+revisiones aún no se publicaron: no enviar infra antes de publicar sus
+dependencias y no confundir los pins locales con los usados por el CI anterior.
+
+Frontend 4671ce4 pasó `flutter analyze`, 146 pruebas y compilación web release
+desde un archivo Git de esa revisión. Evidencia local:
+`.local/p04-document-localization-full.log`. Incluye localización es/en del
+lector de documentos y rechazo de tipo, versión o idioma inconsistentes con
+los metadatos, incluso si coinciden ID y hash. Conserva el contenido legal
+servido y la aceptación explícita. Las nuevas cadenas siguen pendientes de
+revisión editorial; las pruebas técnicas no aprueban textos jurídicos.
