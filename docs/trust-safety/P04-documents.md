@@ -1,5 +1,29 @@
 # P04 — Documentos y aceptaciones (en desarrollo)
 
+## Último incremento local: días libres
+
+Frontend 074eb40 migra la pantalla de ausencias a ARB es/en con metadata de
+revisión pending: diálogos de borrado, calendario, zona, errores, carga y vacío.
+Los errores se conservan como estados tipados y se traducen al renderizar.
+El contrato de fechas `desde`/`hasta`, IDs, endpoint y rango máximo no cambia.
+
+La revisión detectó un estado engañoso: load vaciaba los ítems pero conservaba
+zona y límites anteriores; una actualización fallida podía mostrar agenda
+vacía y mantener el botón de agregar. Ahora invalida esa ventana al comenzar
+la carga, prepara los campos de respuesta antes de publicarlos y rechaza una
+zona vacía o límites invertidos. Una carga fallida ofrece reintento, sin afirmar
+que no existen bloqueos ni habilitar el calendario con metadatos anteriores.
+
+Nueve pruebas focalizadas pasan en `.local/p04-time-off-localization.log`:
+es/en × 360/1200, cancelación explícita del diálogo, DELETE confirmado,
+conservación del bloqueo cuando falla el borrado, refresh fallido tras una
+carga válida, reintento y respuesta 403/límites inválidos. El análisis, suite
+completa y build web del archivo Git fijo terminaron con salida 0: análisis
+sin incidencias y 180 pruebas, en `.local/p04-time-off-localization-full.log`.
+Este incremento sigue local y no
+está cubierto por los cuatro recorridos de ed28b58 ni por CI 40980902654,
+que comprueba infra 88760a1. No se interrumpe esa ejecución.
+
 ## Laboratorio local para recorridos completos de navegador
 
 `scripts/browser_lab.py start` prepara un proyecto `rac-browser-e2e-<nonce>`
