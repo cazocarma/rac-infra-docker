@@ -1,6 +1,27 @@
 # P04 — Documentos y aceptaciones (en desarrollo)
 
-## Último incremento local: días libres
+## Último incremento local: avisos de cuenta y pantalla en construcción
+
+Frontend 48f6f4b migra a ARB es/en, con metadata de revisión pending, los avisos
+de suspensión, restricción y fallo al consultar el estado de la cuenta, junto
+con su reintento. También migra `ConstructionScreen`: su descripción por defecto
+ya no promete disponibilidad futura y el mensaje propio pasa a ser opcional. El
+contrato de `/api/user/me/standing`, el sondeo cada 5 s y la navegación
+protectora no cambian. El aviso sigue siendo informativo y el servidor vuelve a
+autorizar cada escritura.
+
+Las pruebas cubren es/en × 360/1200 para suspendida, restringida, baneada,
+enforcement desactivado y fallo de consulta sin exponer el error interno. Un
+reintento fallido conserva el aviso y otro exitoso lo retira. Durante el fallo,
+los accesos a reservas y seguridad siguen operativos y el temporizador se detiene
+al desmontar. La pantalla en construcción se prueba en ambos idiomas y anchos:
+descripción neutral, mensaje propio y retorno. Análisis, suite completa y build
+web del archivo Git fijo terminaron con salida 0: análisis sin incidencias y 186
+pruebas, en `.local/p04-standing-notice-localization-full.log`. Sigue local: no
+lo cubren los recorridos de ed28b58 ni CI 40980902654, cuya integración seguía
+en curso a las 00:52 UTC del 30-10 con todos los pasos previos aprobados.
+
+## Incremento local: días libres
 
 Frontend 074eb40 migra la pantalla de ausencias a ARB es/en con metadata de
 revisión pending: diálogos de borrado, calendario, zona, errores, carga y vacío.
