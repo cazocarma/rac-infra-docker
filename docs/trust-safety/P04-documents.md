@@ -39,8 +39,9 @@ de pruebas busca Chromium en la ruta por defecto. Con `PLAYWRIGHT_BROWSERS_PATH`
 apuntando a `.local/browsers` pasaron todos. `stop` validado retiró
 contenedores, volúmenes y redes; quedan `state.json`, la salida en
 `.local/p04-browser-640ab9f-all.log` y `artifacts/<suite>/result.log`.
-Sigue local: estos commits no están publicados ni fijados en el manifiesto
-activo.
+Frontend 640ab9f se publicó en su rama y el manifiesto activo
+`ci/companion-revisions.json` avanza al candidato verificado; ambos quedan
+iguales. El resultado local no sustituye el nuevo CI remoto.
 
 Quedan fuera de ARB chat, seguridad del chat, moderación, reservas
 (`match_screen`), reseñas, administración y textos de error de las capas API
