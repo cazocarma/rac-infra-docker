@@ -95,7 +95,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('start', 'stop', 'status', 'test'))
     parser.add_argument('--state', type=Path)
-    parser.add_argument('--suite', choices=('chat', 'booking', 'onboarding', 'reviews', 'all'), default='chat')
+    parser.add_argument('--suite', choices=('chat', 'booking', 'onboarding', 'reviews', 'notifications', 'admin', 'schedule', 'all'), default='chat')
     args = parser.parse_args()
     if args.action == 'start':
         project = 'rac-browser-e2e-' + uuid.uuid4().hex[:12]
@@ -196,8 +196,11 @@ def main():
             raise RuntimeError('Browser lab must be ready before testing')
         # The fixture resolver validates this state against its frozen source root.
         environment.update(RAC_ENV='dev', RAC_BROWSER_LAB_STATE=str(state_path), RAC_BROWSER_URL=state['web_url'])
+        # Same browser scripts as the CI integration job, resolved against this lab.
         suites = {'chat': 'test_chat_browser.py', 'booking': 'test_browser.py',
-                  'onboarding': 'test_browser_onboarding.py', 'reviews': 'test_reviews_browser.py'}
+                  'onboarding': 'test_browser_onboarding.py', 'reviews': 'test_reviews_browser.py',
+                  'notifications': 'test_notifications_browser.py', 'admin': 'test_admin_browser.py',
+                  'schedule': 'test_schedule_browser.py'}
         for name in (suites if args.suite == 'all' else (args.suite,)):
             artifacts = directory / 'artifacts' / name
             artifacts.mkdir(parents=True, exist_ok=True)
