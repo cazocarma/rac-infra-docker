@@ -1,5 +1,37 @@
 # P04 — Documentos y aceptaciones (en desarrollo)
 
+## Último incremento local: perfil y errores de foto
+
+Frontend 6085bfb migra perfil, validaciones, diálogos y presentación pública
+a ARB es/en con revisión pending, incluida la etiqueta accesible de la foto.
+ProfilePhotoException transporta un enum de fallo; la capa HTTP ya no contiene
+los mensajes de foto que muestra la pantalla. Un adaptador de presentación
+elige la clave localizada. Los errores persistidos de carga/guardado/foto son
+estados, no traducciones almacenadas. Cambiar de idioma actualiza un error
+ya mostrado sin repetir la petición ni necesitar contexto de localización en
+initState. No cambia los endpoints, el payload editable ni el flujo de publicación.
+
+Quince pruebas focalizadas pasan en `.local/p04-profile-localization-final.log`:
+cinco respuestas HTTP de foto se convierten a fallos tipados sin usar el
+diagnóstico remoto; cuatro recorridos es/en × 360/1200 verifican carga/reintento,
+error de foto, borrador retenido, guardado sin identidad/rol y vista previa sin
+correo/teléfono/país privados. Se comprueba también el cambio de idioma de un
+error existente. El primer recorrido español falló por `tester.pageBack`, que
+buscaba el tooltip inglés; el test usa ahora el BackButton real. El análisis
+de ese intento pasó, pero su suite fallida no se cuenta como validación.
+La copia Git fija pasó análisis, 172 pruebas y build web release con salida 0
+en `.local/p04-profile-localization-full.log`. El incremento sigue local y no
+reemplaza la revisión que está comprobando CI 40939775713.
+
+CI 40939775713 terminó en fallo en el navegador de chat: el selector exige
+`2000 characters remaining` aunque el contexto es es-CL y la aplicación ya
+registra las localizaciones Material. El SDK Flutter 3.44.0 fijado devuelve
+`Quedan 2000 caracteres` y `Atrás` para español. Los scripts de reservas,
+onboarding y reseñas también contienen expectativas Material en inglés.
+Se debe corregir la coherencia de idioma del harness y ensayarlo en navegador
+local antes de otra publicación. Esto no constituye evidencia de que falle
+la entrega de mensajes ni validación del conjunto; no se reintentó el CI.
+
 ## Último incremento local: planes y cupos
 
 Frontend 22a9b02 migra planes y el componente compartido de cupos a ARB es/en,
