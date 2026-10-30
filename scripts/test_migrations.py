@@ -112,6 +112,8 @@ try:
         flyway('editorial_http', migration_dir)
         sql("fresh", "CREATE DATABASE attestations;")
         flyway("attestations", migration_dir)
+        sql("fresh", "CREATE DATABASE identity_verification;")
+        flyway("identity_verification", migration_dir)
         from document_writer_fixture import seed as seed_attestations
         seed_attestations(lambda statement: sql('attestations', statement))
         user_tests = run("docker", "run", "--rm", "--network", NAME,
@@ -124,8 +126,12 @@ try:
             "-e", f"RAC_SESSION_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/session_effects?sslmode=disable",
             "-e", "RAC_SESSION_TEST_ISOLATED=1",
             "-e", f"RAC_DOCUMENT_WRITES_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/document_writes?sslmode=disable",
-            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol ./internal/editorial ./internal/strictjson")
+            "-e", f"RAC_IDENTITY_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/identity_verification?sslmode=disable",
+            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol ./internal/editorial ./internal/strictjson" + (" ./internal/identity/..." if (onboarding_source / 'internal/identity').exists() else ""))
         assert '--- PASS: TestEditorialPostgresHTTP' in user_tests.stdout
+        if (onboarding_source / 'internal/identity/store_test.go').exists():
+            assert '--- PASS: TestIdentityVerificationPostgres' in user_tests.stdout
+            print('PASS: identity results as rac_user, email not identity, replay/conflict, minor/undetermined/duplicate/banned review, concurrent identity race and no stored identity key')
         print('PASS: authenticated editorial owner ingress, real scoped login, no public route, audit idempotence and MFA expiry rollback')
         if (onboarding_source / 'internal/http/attestations_test.go').exists():
             assert '--- PASS: TestCompaAttestationsPostgres' in user_tests.stdout
@@ -141,6 +147,31 @@ try:
         assert '--- PASS: TestVerifiedReviews' in user_tests.stdout
         assert '--- PASS: TestProfileStandingProvisioning' in user_tests.stdout
         print("PASS: scoped user writes, standing guards, concurrent rollback, public visibility, reviews and protected reads")
+    if (migration_dir / 'V039__identity_verification.sql').exists():
+        def identity_rejected(statement):
+            result = run("docker", "exec", "-i", NAME, "psql", "-X", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "fresh", "-At", input=statement, ok=False)
+            return result.returncode != 0
+        assert sql("fresh", "SELECT string_agg(column_name,',') FROM information_schema.columns WHERE table_schema='public' AND table_name='usuario' AND column_name IN ('verificado','email_verified');") == 'email_verified'
+        user = "(SELECT id FROM usuario LIMIT 1)"
+        sql("fresh", "INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES(gen_random_uuid(),'Synthetic','identity-check@example.test','cliente','identity-check') ON CONFLICT DO NOTHING;")
+        base = "INSERT INTO identity_verifications(user_id,provider,provider_ref,purpose,status,is_adult,document_country,document_fingerprint,fingerprint_key_id,decided_at) VALUES"
+        fp = "decode(repeat('ab',32),'hex')"
+        for name, values in {
+            'approval without adult': f"({user},'fake','fake_check_0001','client_booking','approved',NULL,'CL',{fp},'k1',now())",
+            'approval of a minor': f"({user},'fake','fake_check_0002','client_booking','approved',false,'CL',{fp},'k1',now())",
+            'approval without fingerprint': f"({user},'fake','fake_check_0003','client_booking','approved',true,'CL',NULL,NULL,now())",
+            'fingerprint without key id': f"({user},'fake','fake_check_0004','client_booking','rejected',false,'CL',{fp},NULL,now())",
+            'decided without time': f"({user},'fake','fake_check_0005','client_booking','rejected',false,NULL,NULL,NULL,NULL)",
+            'pending with decision time': f"({user},'fake','fake_check_0006','client_booking','pending',NULL,NULL,NULL,NULL,now())",
+            'short fingerprint': f"({user},'fake','fake_check_0007','client_booking','rejected',false,'CL',decode('ab','hex'),'k1',now())",
+            'unknown purpose': f"({user},'fake','fake_check_0008','admin','rejected',false,NULL,NULL,NULL,now())",
+        }.items():
+            assert identity_rejected(base + values + ";"), name
+        sql("fresh", base + f"({user},'fake','fake_check_0009','client_booking','pending',NULL,NULL,NULL,NULL,NULL);")
+        assert identity_rejected(base + f"({user},'fake','fake_check_0010','client_booking','pending',NULL,NULL,NULL,NULL,NULL);"), 'second pending attempt'
+        assert identity_rejected(base + f"({user},'fake','fake_check_0009','compa_onboarding','pending',NULL,NULL,NULL,NULL,NULL);"), 'reused provider reference'
+        sql("fresh", f"DELETE FROM identity_verifications WHERE user_id={user}; DELETE FROM usuario WHERE keycloak_id='identity-check';")
+        print('PASS: email_verified rename without alias; identity approvals require adult, fingerprint and key id; one pending attempt per purpose')
     if (migration_dir / 'V029__document_registry.sql').exists():
         from document_registry_checks import check as check_document_registry
         def registry_rejected(statement):

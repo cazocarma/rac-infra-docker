@@ -141,9 +141,9 @@ if ENV == "dev":
                 ident, old_sub = existing[0]
                 if old_sub != user["id"] and not old_sub.startswith("kc-"):
                     raise RuntimeError("Refusing to rebind an existing identity")
-                db.execute("UPDATE usuario SET keycloak_id=%s,rol=%s,verificado=true WHERE id=%s", (user["id"], role, ident))
+                db.execute("UPDATE usuario SET keycloak_id=%s,rol=%s,email_verified=true WHERE id=%s", (user["id"], role, ident))
             else:
-                ident = db.execute("INSERT INTO usuario(id,nombre,correo,rol,keycloak_id,verificado) VALUES(gen_random_uuid(),%s,%s,%s,%s,true) RETURNING id", (username, user["email"], role, user["id"])).fetchone()[0]
+                ident = db.execute("INSERT INTO usuario(id,nombre,correo,rol,keycloak_id,email_verified) VALUES(gen_random_uuid(),%s,%s,%s,%s,true) RETURNING id", (username, user["email"], role, user["id"])).fetchone()[0]
             if role == "compa":
                 db.execute("INSERT INTO compa_perfil(id,usuario_id,descripcion,tarifa_hora) VALUES(gen_random_uuid(),%s,'Compa de demostración',12000) ON CONFLICT(usuario_id) DO NOTHING", (ident,))
                 db.execute("INSERT INTO compa_availability(compa_id,disponibilidad_json) VALUES(%s,%s::jsonb) ON CONFLICT(compa_id) DO NOTHING", (ident, json.dumps({d: ["00:00-23:59"] for d in ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]})))
