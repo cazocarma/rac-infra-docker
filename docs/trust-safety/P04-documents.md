@@ -1,6 +1,42 @@
 # P04 — Documentos y aceptaciones (en desarrollo)
 
-## Último incremento local: avisos de cuenta y pantalla en construcción
+## Último incremento local: descubrimiento, perfil público y reserva
+
+Frontend 640ab9f migra a ARB es/en las pantallas de exploración, perfil público
+del compa y solicitud de reserva: 60 claves con revisión pending y plurales ICU
+para cantidad de compas, reseñas verificadas y horas. El texto español no
+cambia, por lo que los recorridos de navegador que buscan `Encuentra tu compa`,
+`Conoce a tu compa`, `Reservar`, `Solicitar reserva` y `Ver perfil de` siguen
+aplicando. Los importes conservan `money()` y CLP en ambos idiomas.
+
+La reserva guardaba como texto el error mostrado y lo deducía buscando
+`colision`, `409` o `disponibilidad` en la representación completa de la
+excepción, incluido el cuerpo. Ahora usa estados tipados y clasifica por el
+código exacto que devuelve match (`colision_horaria`; `fuera_de_disponibilidad`
+y `compa_sin_disponibilidad`) o por un estado HTTP 409; cualquier otro cuerpo,
+número o código parecido muestra el error genérico. Un 428 documental sigue
+abriendo S2 mediante el transporte común y la pantalla mantiene su error
+genérico, sin reenvío. Las pruebas detectaron además que reintentar en el perfil
+devolvía un Future dentro de `setState`: en debug lanzaba una aserción y no
+reconstruía la pantalla. Quedó corregido. El mismo patrón persiste en
+`reviews.dart` y `match_screen.dart`, que se tratarán al migrar esas pantallas.
+
+Doce pruebas nuevas cubren es/en × 360/1200: conteo singular, plural y `12+`,
+etiqueta accesible de la tarjeta, vacío, fallo sin detalle interno, reintento y
+apertura del perfil; calificación plural, perfil sin descripción y reintento;
+horas en plural, agenda sin publicar, sin horarios, fallo de carga, siete
+respuestas de envío clasificadas y éxito con navegación a reservas. Análisis,
+suite completa y build web del archivo Git fijo terminaron con salida 0:
+análisis sin incidencias y 198 pruebas, en
+`.local/p04-discovery-booking-localization-full.log`. Sigue local y sin
+recorrido de navegador. CI 40980902654 (infra 88760a1, frontend ed28b58)
+terminó con éxito, integración incluida.
+
+Quedan fuera de ARB chat, seguridad del chat, moderación, reservas
+(`match_screen`), reseñas, administración y textos de error de las capas API
+que llegan a pantalla.
+
+## Incremento local: avisos de cuenta y pantalla en construcción
 
 Frontend 48f6f4b migra a ARB es/en, con metadata de revisión pending, los avisos
 de suspensión, restricción y fallo al consultar el estado de la cuenta, junto
