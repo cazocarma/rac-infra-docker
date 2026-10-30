@@ -46,7 +46,18 @@ publicación y controles de datos privados. No se modifica el producto para
 recuperar una promesa de gratuidad anterior. Una tercera prueba pura comprueba
 el catálogo/idioma/metadata del helper. El primer stack se retiró con su comando
 stop validado, conservando evidencias. Falta el recorrido con el ajuste en
-un snapshot nuevo; no se publicaron cambios ni se reintentó CI.
+un snapshot nuevo; no se publicaron cambios ni se reintentó CI en ese punto.
+
+El segundo laboratorio `rac-browser-e2e-9af6f723d3b2`, congelado desde infra
+1fe7dcd y frontend ed28b58, arrancó y completó las cuatro suites con salida 0:
+chat, reservas, onboarding y reseñas. Onboarding confirma guardado/reload y
+reintento del perfil, actualización real del rol compa, agenda/edición posterior,
+subida y propiedad privada/pública de foto, persistencia tras recrear user,
+biografía pública y borrado. Se conserva el rechazo de datos privados en el
+catálogo. `.local/p04-browser-all-local.log` y los cuatro `artifacts/*/result.log`
+del proyecto contienen el resultado; `state.json` fija los nueve SHA ensayados.
+El manifiesto activo local avanza ahora al candidato verificado para preparar
+la publicación coordinada. El resultado local no sustituye el nuevo CI remoto.
 
 ## Corrección local del contrato Material del navegador
 
