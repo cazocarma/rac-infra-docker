@@ -17,14 +17,36 @@ los scripts reales con Playwright 1.55.0 en el intérprete que lo invoca.
 `browser_compose.py` resuelve el comando del fixture contra ese snapshot,
 proyecto y configuración. Una referencia de laboratorio vacía, ajena o
 incompleta falla sin volver a rac-dev. Sin referencia explícita se conserva
-el comando DEV de los tests existentes de CI. `stop --state` valida otra vez
+el comando DEV de los tests existentes de CI. También exige que las URLs
+coincidan con sus puertos loopback, antes de iniciar un navegador. `stop --state` valida otra vez
 el modelo antes de retirar exclusivamente sus contenedores/volúmenes.
 
-Dos pruebas puras inyectan recursos existentes, puertos abiertos, imágenes DEV,
+Las pruebas puras inyectan recursos existentes, puertos abiertos, imágenes DEV,
 host sharing, mounts fuera del snapshot y estado inconsistente. Pasan en
 Windows y dentro de `make test-workflows` (log
 `.local/p04-browser-lab-workflows.log`). La prueba del modelo no sustituye la
-ejecución real; el arranque y los recorridos conectados siguen pendientes.
+ejecución real.
+
+El primer arranque a22729b terminó correctamente: proyecto
+`rac-browser-e2e-764fbbc1a5f0`, web 56505, con frontend ed28b58 y los SHA de
+backend del candidato. Chat pasó OIDC real, envío y recepción, reconexión sin
+duplicados, historial, bloqueo/reporte, acceso justificado de moderación,
+resolución y cancelación. Reservas pasó login/reload, aceptación, cancelación,
+cupo/planes, lista de chat y logout. Reseñas pasó envío/persistencia, rechazo
+de segunda reseña y presentación pública móvil/escritorio. Evidencia bajo
+`.local/<proyecto>/artifacts/<suite>/result.log`, más capturas sintéticas.
+Este laboratorio no activó S3/backup; el resultado de reseñas no se presenta
+como una nueva prueba de restauración o almacenamiento S3.
+
+Onboarding comprobó guardado/reload del perfil personal y recuperación tras
+caída, pero falló en una etiqueta anterior (`Activar mi perfil gratis`). El
+script usa ahora `browser_app_labels.py` para consultar `compaActivateProfile`
+en el ARB del frontend congelado; mantiene respuestas API, disponibilidad,
+publicación y controles de datos privados. No se modifica el producto para
+recuperar una promesa de gratuidad anterior. Una tercera prueba pura comprueba
+el catálogo/idioma/metadata del helper. El primer stack se retiró con su comando
+stop validado, conservando evidencias. Falta el recorrido con el ajuste en
+un snapshot nuevo; no se publicaron cambios ni se reintentó CI.
 
 ## Corrección local del contrato Material del navegador
 

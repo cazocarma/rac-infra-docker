@@ -22,6 +22,10 @@ def command(root, state_file=None):
         state = json.loads(path.read_text(encoding='utf-8'))
         if state.get('project') != path.parent.name or state.get('source_root') != str(root):
             raise RuntimeError('Browser lab identity mismatch')
+        for endpoint in ('web', 'identity'):
+            port = state.get(endpoint + '_port')
+            if type(port) is not int or not 1 <= port <= 65535 or state.get(endpoint + '_url') != f'http://localhost:{port}':
+                raise RuntimeError('Browser lab endpoint must match its owned loopback port')
         if not (path.parent / 'fixture.env').is_file() or not (path.parent / 'compose.json').is_file():
             raise RuntimeError('Browser lab configuration is incomplete')
         return ['docker', 'compose', '--env-file', str(path.parent / 'fixture.env'),

@@ -1,6 +1,7 @@
 """Real free onboarding with an isolated, automatically removed DEV identity."""
 from flutter_material_labels import FlutterMaterialLabels
 from browser_compose import command as browser_compose
+from browser_app_labels import app_label
 from pathlib import Path
 import json
 import os
@@ -161,12 +162,12 @@ try:
             fill(day,'12:00-22:00')
         try:
             with page.expect_response(lambda r:r.url.endswith('/api/user/me/compa') and r.request.method=='PUT') as saved:
-                find('button','Activar mi perfil gratis').click()
+                find('button',app_label(ROOT, 'compaActivateProfile', MATERIAL.locale)).click()
         except Exception:
             (ARTIFACTS/'onboarding-submit-failure.txt').write_text(page.locator('body').aria_snapshot(),encoding='utf-8')
             page.screenshot(path=str(ARTIFACTS/'onboarding-submit-failure.png'))
             raise
-        assert saved.value.status==200, 'Free activation failed'
+        assert saved.value.status==200, 'Compa profile publication failed'
         initial_auth=saved.value.request.headers['authorization']
         initial_profile=context.request.get(BASE+'/api/user/me/compa',headers={'Authorization':initial_auth}).json()
         assert initial_profile['zona_horaria']=='America/Santiago'

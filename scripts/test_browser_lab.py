@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from browser_compose import command
+from browser_app_labels import app_label
 from browser_lab import APIS, SERVICES, TOOLS, WORKERS, validate_model
 
 
@@ -55,7 +56,10 @@ class BrowserLabIsolation(unittest.TestCase):
             root = directory / 'sources' / 'rac-infra-docker'
             root.mkdir(parents=True)
             state = directory / 'state.json'
-            state.write_text(json.dumps({'project': directory.name, 'source_root': str(root.resolve())}))
+            metadata = {'project': directory.name, 'source_root': str(root.resolve()),
+                        'web_port': 51690, 'web_url': 'http://localhost:51690',
+                        'identity_port': 51691, 'identity_url': 'http://localhost:51691'}
+            state.write_text(json.dumps(metadata))
             with self.assertRaises(RuntimeError):
                 command(root, state)
             (directory / 'fixture.env').write_text('RAC_ENV=dev\n')
@@ -63,11 +67,27 @@ class BrowserLabIsolation(unittest.TestCase):
             args = command(root, state)
             self.assertIn(directory.name, args)
             self.assertNotIn('rac-dev', args)
+            metadata['web_url'] = 'https://external.example'
+            state.write_text(json.dumps(metadata))
+            with self.assertRaises(RuntimeError):
+                command(root, state)
             with self.assertRaises(RuntimeError):
                 command(root.parent, state)
             with patch.dict(os.environ, {'RAC_BROWSER_LAB_STATE': ''}):
                 with self.assertRaises(RuntimeError):
                     command(root)
+
+    def test_app_copy_uses_explicit_catalogue_with_review_metadata(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / 'rac-infra-docker'
+            root.mkdir()
+            catalogue = root.parent / 'rac-frontend-flutter/lib/l10n'
+            catalogue.mkdir(parents=True)
+            (catalogue / 'app_es.arb').write_text(json.dumps({'publish': 'Publicar', '@publish': {'legal_review': 'pending'}}))
+            self.assertEqual(app_label(root, 'publish', 'es-CL'), 'Publicar')
+            for key, locale in (('missing', 'es'), ('@publish', 'es'), ('publish', 'es-AR')):
+                with self.assertRaises(ValueError):
+                    app_label(root, key, locale)
 
 
 if __name__ == '__main__':
