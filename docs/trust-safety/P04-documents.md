@@ -1,6 +1,39 @@
 # P04 — Documentos y aceptaciones (en desarrollo)
 
-## Último incremento local: Mis reservas y reseñas
+## Último incremento local: chat, seguridad, moderación y administración
+
+Frontend 1cf2b8e migra a ARB es/en, con revisión pending, la lista de
+conversaciones, la conversación, su pantalla de seguridad y la moderación de
+reportes: 129 claves. `ChatException` deja de llevar mensajes en español. El
+fallo conserva su causa y `chatFailure()` lo traduce por estado HTTP al
+renderizar. El estado de conexión pasa a un enum. Motivos y estados de reporte
+pasan a listas de códigos con funciones de etiqueta: un código desconocido
+muestra "Reporte" o "Reporte recibido" y nunca el código. El límite local de
+2000 runas es un fallo tipado. `ChatListScreen` acepta una API inyectada y solo
+cierra la que crea. El texto español no cambia: el recorrido real de chat
+sigue usando `Mensaje`, `Enviar mensaje`, `Seguridad de la conversación`,
+`Enviar reporte`, `Pendiente de revisión`, `Bloquear conversación`,
+`Confirmar bloqueo`, `Retirar mi bloqueo`, `Solo lectura`,
+`Moderación de reportes`, `Consultar y registrar acceso`, `Marcar atendido`,
+`Confirmar cierre` y `Atendidos`.
+
+Frontend 065eceb migra el panel de administración y los rótulos decorativos de
+la ilustración de actividades: 25 claves. Los contadores de moderación reutilizan
+las etiquetas de filtro. Con esto no queda texto visible fuera de ARB en la capa
+de interfaz. Un barrido final de literales en widgets, mapas e interpolaciones
+solo encontró `SHA-256: …`, que es un identificador técnico. Las excepciones de
+capas de datos que ninguna pantalla muestra conservan sus diagnósticos internos.
+
+Pruebas nuevas: 12 de chat (es/en × 360/1200; fallos 404/401/503, reintento de
+conexión y envío, borrador de 1001 banderas que respeta el límite de grafemas
+del campo pero supera 2000 runas, solo lectura, lista y vacíos, seguridad y
+moderación con 403/500/409) y 6 de administración/ilustración. Las pruebas
+existentes de chat, seguridad, moderación y administración fijan locale es.
+Análisis, suite y build web del archivo Git fijo: salida 0 con 218 pruebas en
+1cf2b8e (`.local/p04-chat-localization-full.log`) y 224 en 065eceb
+(`.local/p04-admin-localization-full.log`).
+
+## Incremento local: Mis reservas y reseñas
 
 Frontend 6bdd3c9 migra a ARB es/en, con revisión pending, Mis reservas, la
 reseña por reserva, el diálogo de reseña y las reseñas públicas: 58 claves. El
