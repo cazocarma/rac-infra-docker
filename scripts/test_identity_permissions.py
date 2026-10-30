@@ -22,6 +22,7 @@ import tempfile
 from pathlib import Path
 from identity_permissions import configure_provisioner, configure_staff
 from identity_standing import configure_standing
+from oauth_token import TokenLease
 
 IMAGE = 'quay.io/keycloak/keycloak:26.8.1@sha256:79c623a22abacf3fe6c00a5fb30f5b7843d717b234033b80995891c06116d244'
 
@@ -77,10 +78,13 @@ def main():
             raw = response.read()
             return json.loads(raw) if raw else None
 
+        clock_offset = [0.0]
+        operator = TokenLease(lambda: request('POST', '/realms/master/protocol/openid-connect/token', {
+            'client_id': 'admin-cli', 'grant_type': 'password', 'username': 'operator', 'password': password}, form=True),
+            clock=lambda: time.monotonic() + clock_offset[0])
         for _ in range(90):
             try:
-                token = request('POST', '/realms/master/protocol/openid-connect/token', {
-                    'client_id': 'admin-cli', 'grant_type': 'password', 'username': 'operator', 'password': password}, form=True)['access_token']
+                token = operator.get()
                 break
             except (OSError, RuntimeError):
                 time.sleep(1)
@@ -89,7 +93,7 @@ def main():
         request('POST', '/admin/realms', {'realm': 'rentacompa', 'enabled': True}, token)
 
         def admin(method, path, data=None):
-            return request(method, '/admin/realms/rentacompa' + path, data, token)
+            return request(method, '/admin/realms/rentacompa' + path, data, operator.get())
 
         for role in ('cliente', 'compa', 'admin'):
             admin('POST', '/roles', {'name': role})
@@ -129,7 +133,22 @@ def main():
         assert 'realm-management' not in alert_claims.get('resource_access', {})
         assert 'refresh_token' not in alert_token and alert_token['expires_in'] <= 300
         request('GET', '/admin/realms/rentacompa/users', token=alert_token['access_token'], expected=403)
-        assert configure_standing(admin, standing_directory) == bindings
+        standing_only_token = request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
+            'client_id': 'rac-match-standing', 'client_secret': standing_secret, 'grant_type': 'client_credentials'}, form=True)['access_token']
+        assert configure_standing(admin, standing_directory, documents=True) == bindings
+        assert configure_standing(admin, standing_directory, documents=True) == bindings
+        chat_document_token = request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
+            'client_id': 'rac-chat-standing', 'client_secret': chat_secret, 'grant_type': 'client_credentials'}, form=True)['access_token']
+        chat_document_claims = json.loads(base64.urlsafe_b64decode(chat_document_token.split('.')[1] + '=='))
+        assert 'rac-documents' in chat_document_claims['aud']
+        assert chat_document_claims['resource_access']['rac-documents']['roles'] == ['documents.read']
+        assert 'realm-management' not in chat_document_claims.get('resource_access', {})
+        # Alert is reconciled too, but receives neither document mapper nor role.
+        alert_after = request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
+            'client_id': 'rac-alert-standing', 'client_secret': alert_secret, 'grant_type': 'client_credentials'}, form=True)['access_token']
+        alert_after_claims = json.loads(base64.urlsafe_b64decode(alert_after.split('.')[1] + '=='))
+        assert 'rac-documents' not in alert_after_claims['aud']
+        assert 'rac-documents' not in alert_after_claims.get('resource_access', {})
         assert (standing_directory / 'match/secret').read_text().strip() == standing_secret
         reader = admin('GET', '/clients?clientId=rac-match-standing')[0]
         assert not reader['fullScopeAllowed'] and not reader['standardFlowEnabled'] and not reader['directAccessGrantsEnabled']
@@ -142,6 +161,8 @@ def main():
         assert reader_claims['sub'] == bindings['rac-match-standing']
         assert 'rac-standing' in reader_claims['aud']
         assert reader_claims['resource_access']['rac-standing']['roles'] == ['standing.read']
+        assert 'rac-documents' in reader_claims['aud']
+        assert reader_claims['resource_access']['rac-documents']['roles'] == ['documents.read']
         assert 'realm-management' not in reader_claims.get('resource_access', {})
         request('GET', '/admin/realms/rentacompa/users', token=reader_token['access_token'], expected=403)
         request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
@@ -153,7 +174,8 @@ def main():
             fixture.write_text(json.dumps({'issuer': base + '/realms/rentacompa',
                 'jwks': 'https://identity-fixture:8443/realms/rentacompa/protocol/openid-connect/certs',
                 'runtimeIssuer': 'https://identity-fixture:8443/realms/rentacompa',
-                'subjects': bindings, 'token': reader_token['access_token']}), encoding='utf-8')
+                'subjects': bindings, 'token': reader_token['access_token'],
+                'standingOnlyToken': standing_only_token, 'alertToken': alert_after, 'chatToken': chat_document_token}), encoding='utf-8')
             os.chmod(fixture, 0o644)
             command('docker', 'run', '--rm', '--network', name,
                 '--mount', f'type=bind,source={directory},target=/fixture,readonly',
@@ -164,7 +186,15 @@ def main():
                 'golang:1.27.2', 'go', 'test', '-race', '-count=1', './internal/platform', '-run', 'TestProvisionedStandingReaderKeycloak')
         else:
             raise RuntimeError('User checkout required for real standing JWT verification')
-        print('PASS: idempotent standing credentials, scoped real client token, no refresh/password/admin access, Go signature verification and real OAuth credentials to authenticated authority HTTP')
+        assert configure_standing(admin, standing_directory, documents=False) == bindings
+        disabled_token = request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
+            'client_id': 'rac-match-standing', 'client_secret': standing_secret, 'grant_type': 'client_credentials'}, form=True)['access_token']
+        disabled_claims = json.loads(base64.urlsafe_b64decode(disabled_token.split('.')[1] + '=='))
+        assert 'rac-documents' not in disabled_claims['aud']
+        assert 'rac-documents' not in disabled_claims.get('resource_access', {})
+        assert disabled_claims['resource_access']['rac-standing']['roles'] == ['standing.read']
+        assert (standing_directory / 'match/secret').read_text().strip() == standing_secret
+        print('PASS: idempotent standing/document credentials, match/chat document scope, alert exclusion, no refresh/password/admin access, Go signature verification and real OAuth to both authority HTTP endpoints')
         assert admin('GET', '/users/' + account['id'] + '/role-mappings/clients/' + management['id']) == []
         assert admin('GET', '/clients/' + client['id'] + '/scope-mappings/clients/' + management['id']) == []
         admin('POST', '/users', {'username': 'subject', 'enabled': True})
@@ -187,19 +217,39 @@ def main():
         request('GET', '/admin/realms/master/users', token=provisioner_token, expected=403)
         request('GET', '/admin/realms/rentacompa/roles/compa', token=provisioner_token, expected=403)
         staff = admin('GET', '/clients?clientId=rac-staff')[0]
-        assert not staff['enabled'] and not staff['directAccessGrantsEnabled']
+        assert not staff['enabled'] and not staff['directAccessGrantsEnabled'] and not staff['fullScopeAllowed']
+        assert staff['attributes'].get('post.logout.redirect.uris') == '+', 'staff logout must return only to registered redirects'
         executions = admin('GET', '/authentication/flows/rac-staff-mfa/executions')
         assert [(e['providerId'], e['requirement']) for e in executions] == [('auth-username-password-form','REQUIRED'), ('auth-otp-form','REQUIRED')]
         assert len(admin('GET', '/clients/' + staff['id'] + '/roles')) == 5
         # Prove the required OTP execution is effective, not just a config flag.
         # Enable only in this disposable realm and restore disabled state below.
-        admin('PUT', '/clients/' + staff['id'], {'enabled': True})
+        for _ in range(2):
+            configure_staff(admin, 'http://localhost', enabled=True)
+        enabled_staff = admin('GET', '/clients?clientId=rac-staff')[0]
+        assert enabled_staff['enabled'] and not enabled_staff['directAccessGrantsEnabled'] and not enabled_staff['fullScopeAllowed']
+        assert admin('GET', '/authentication/flows/rac-staff-mfa/executions') == executions
         otp_secret = secrets.token_hex(20)
         admin('POST', '/users', {'username': 'staff-fixture', 'enabled': True,
             'firstName': 'Synthetic', 'lastName': 'Fixture', 'email': 'staff@example.test', 'emailVerified': True,
             'credentials': [{'type': 'password', 'value': password, 'temporary': False},
                 {'type': 'otp', 'secretData': json.dumps({'value': otp_secret}),
                  'credentialData': json.dumps({'subType': 'totp', 'digits': 6, 'counter': 0, 'period': 30, 'algorithm': 'HmacSHA1'})}]})
+
+        staff_user = admin('GET', '/users?username=staff-fixture&exact=true')[0]
+        legal_role = admin('GET', '/clients/' + staff['id'] + '/roles/legal')
+        admin('POST', '/users/' + staff_user['id'] + '/role-mappings/clients/' + staff['id'], [legal_role])
+
+        # Compile before obtaining the short-lived staff token. Both builds use
+        # generated vendor offline, without private-repository credentials.
+        admin_source = Path(__file__).resolve().parents[2] / 'rac-admin-service'
+        if not admin_source.is_dir():
+            raise RuntimeError('Admin checkout required for staff JWT verification')
+        command('docker', 'run', '--rm',
+            '--mount', f'type=bind,source={admin_source},target=/source,readonly',
+            '-v', 'rac-admin-go-build:/root/.cache/go-build', '-v', 'rac-quota-go-cache:/go/pkg/mod',
+            '-e', 'GOPROXY=off', '-e', 'GOSUMDB=off', '-w', '/source',
+            'golang:1.27.2', 'go', 'test', '-mod=vendor', '-race', '-run', '^$', './internal/staff')
 
         class Form(HTMLParser):
             action = None
@@ -250,7 +300,38 @@ def main():
         claims = json.loads(base64.urlsafe_b64decode(tokens['access_token'].split('.')[1] + '=='))
         assert set(claims['amr']) == {'pwd','otp'} and claims['azp'] == 'rac-staff'
         assert abs(time.time() - claims['auth_time']) < 30
-        admin('PUT', '/clients/' + staff['id'], {'enabled': False})
+        refreshed_staff = request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
+            'client_id': 'rac-staff', 'grant_type': 'refresh_token', 'refresh_token': tokens['refresh_token']}, form=True)
+        refreshed_claims = json.loads(base64.urlsafe_b64decode(refreshed_staff['access_token'].split('.')[1] + '=='))
+        assert refreshed_claims['auth_time'] == claims['auth_time'], 'refresh extended staff MFA freshness'
+        assert set(refreshed_claims['amr']) == {'pwd', 'otp'}
+
+        assert 'rac-admin-staff' in claims['aud'] and 'rac-user-documents' in claims['aud']
+        assert claims['resource_access']['rac-staff']['roles'] == ['legal']
+        assert 'realm-management' not in claims.get('resource_access', {})
+        staff_fixture = directory / 'staff-fixture.json'
+        staff_fixture.write_text(json.dumps({'issuer': base + '/realms/rentacompa',
+            'jwks': 'https://identity-fixture:8443/realms/rentacompa/protocol/openid-connect/certs',
+            'subject': staff_user['id'], 'token': tokens['access_token'],
+            'refreshedAccessToken': refreshed_staff['access_token'],
+            'idToken': tokens['id_token'], 'serviceToken': provisioner_token}), encoding='utf-8')
+        os.chmod(staff_fixture, 0o644)
+        staff_result = command('docker', 'run', '--rm', '--network', name,
+            '--mount', f'type=bind,source={directory},target=/fixture,readonly',
+            '--mount', f'type=bind,source={admin_source},target=/source,readonly',
+            '-v', 'rac-admin-go-build:/root/.cache/go-build', '-v', 'rac-quota-go-cache:/go/pkg/mod',
+            '-e', 'SSL_CERT_FILE=/fixture/cert.pem', '-e', 'RAC_STAFF_IDENTITY_FIXTURE=/fixture/staff-fixture.json',
+            '-e', 'GOPROXY=off', '-e', 'GOSUMDB=off', '-w', '/source',
+            'golang:1.27.2', 'go', 'test', '-mod=vendor', '-race', '-v', '-count=1', './internal/staff', '-run', '^TestProvisionedStaffKeycloak$')
+        assert '--- PASS: TestProvisionedStaffKeycloak' in staff_result, 'staff integration test absent or skipped'
+        print('PASS: real staff token signature/issuer/audience, scoped legal role, original MFA deadline across real refresh and HTTP permissions; ID/service tokens denied')
+        # Exercise renewal even on a fast local runner, without lengthening or
+        # changing Keycloak's actual token lifetime or retrying a denied action.
+        clock_offset[0] += operator.lifetime + 1
+        configure_staff(admin, 'http://localhost', enabled=False)
+        assert not admin('GET', '/clients?clientId=rac-staff')[0]['enabled']
+        assert operator.acquisitions >= 2
+        print(f'PASS: operator token renewal uses advertised expiry; issuer TTL={operator.lifetime}s unchanged, acquisitions={operator.acquisitions}')
         print('PASS: real FGAP v2, compa-only grant, privilege denials, password-only cannot enter staff, OTP/PKCE succeeds with actual AMR proof; staff client disabled')
     finally:
         command('docker', 'rm', '-f', name, ok=False)

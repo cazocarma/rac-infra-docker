@@ -1,4 +1,5 @@
 """Real OIDC time-off view and confirmed deletion using a disposable compa."""
+from browser_compose import command as browser_compose
 from pathlib import Path
 import json
 import os
@@ -7,7 +8,8 @@ from playwright.sync_api import sync_playwright,expect
 ROOT=Path(__file__).resolve().parents[1]
 BASE=os.environ.get('RAC_BROWSER_URL','http://localhost').rstrip('/')
 ARTIFACTS=Path('.local/schedule-ui');ARTIFACTS.mkdir(parents=True,exist_ok=True)
-COMPOSE=['docker','compose','--env-file','envs/.env.dev','-p','rac-dev','-f','compose.yaml','-f','docker-compose.dev.yaml','-f','compose.tests.yaml']
+COMPOSE = browser_compose(ROOT)
+
 def fixture(*args):
  result=subprocess.run(COMPOSE+['run','--rm','--no-deps','test-integration','python',*args],cwd=ROOT,capture_output=True,text=True,timeout=180)
  if result.returncode:raise RuntimeError(result.stdout[-1600:]+result.stderr[-1600:])

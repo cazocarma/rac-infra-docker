@@ -9,6 +9,7 @@ import secrets
 import urllib.error
 
 AUDIENCE = 'rac-standing'
+DOCUMENT_AUDIENCE = 'rac-documents'
 READERS = {'match': 'rac-match-standing', 'chat': 'rac-chat-standing', 'alert': 'rac-alert-standing'}
 
 
@@ -20,7 +21,9 @@ def write_atomic(file, value, mode):
     temporary.replace(file)
 
 
-def configure_standing(admin, directory):
+def configure_standing(admin, directory, documents=False):
+    if not isinstance(documents, bool):
+        raise ValueError("Document rollout must be boolean")
     directory = Path(directory)
     payload = {'clientId': AUDIENCE, 'enabled': True, 'protocol': 'openid-connect',
         'bearerOnly': True, 'publicClient': False, 'standardFlowEnabled': False,
@@ -35,15 +38,35 @@ def configure_standing(admin, directory):
             admin('POST', '/clients', payload)
         return admin('GET', '/clients?clientId=' + payload['clientId'])[0]
 
-    resource = client(payload)
-    base = '/clients/' + resource['id']
-    try:
-        role = admin('GET', base + '/roles/standing.read')
-    except urllib.error.HTTPError as error:
-        if error.code != 404:
-            raise
-        admin('POST', base + '/roles', {'name': 'standing.read'})
-        role = admin('GET', base + '/roles/standing.read')
+    def resource(audience, permission):
+        settings = dict(payload, clientId=audience)
+        target = client(settings)
+        base = '/clients/' + target['id']
+        try:
+            role = admin('GET', base + '/roles/' + permission)
+        except urllib.error.HTTPError as error:
+            if error.code != 404:
+                raise
+            admin('POST', base + '/roles', {'name': permission})
+            role = admin('GET', base + '/roles/' + permission)
+        return audience, target, role
+
+    standing = resource(AUDIENCE, 'standing.read')
+    document = resource(DOCUMENT_AUDIENCE, 'documents.read') if documents else None
+
+    def mappers(resources):
+        result = []
+        for audience, _, role in resources:
+            prefix = "standing" if audience == AUDIENCE else "documents"
+            result.extend([
+                {'name': prefix + '-audience', 'protocol': 'openid-connect', 'protocolMapper': 'oidc-audience-mapper',
+                 'config': {'included.custom.audience': audience, 'access.token.claim': 'true', 'id.token.claim': 'false'}},
+                {'name': prefix + '-role', 'protocol': 'openid-connect', 'protocolMapper': 'oidc-usermodel-client-role-mapper',
+                 'config': {'usermodel.clientRoleMapping.clientId': audience,
+                    'claim.name': 'resource_access.' + audience + '.roles', 'jsonType.label': 'String',
+                    'multivalued': 'true', 'access.token.claim': 'true', 'id.token.claim': 'false'}}])
+        return result
+
     subjects = {}
     for name, client_id in READERS.items():
         file = directory / name / 'secret'
@@ -58,19 +81,14 @@ def configure_standing(admin, directory):
         # can resume with the same secret rather than stranding a new client.
         if not file.exists():
             write_atomic(file, secret + '\n', 0o600)
+        resources = [standing] + ([document] if document and name in ('match', 'chat') else [])
         reader = client({'clientId': client_id, 'enabled': True, 'protocol': 'openid-connect',
             'publicClient': False, 'bearerOnly': False, 'clientAuthenticatorType': 'client-secret',
             'secret': secret, 'serviceAccountsEnabled': True, 'standardFlowEnabled': False,
             'directAccessGrantsEnabled': False, 'implicitFlowEnabled': False,
             'fullScopeAllowed': False, 'redirectUris': [], 'webOrigins': [],
             'attributes': {'access.token.lifespan': '300'},
-            'protocolMappers': [
-                {'name': 'standing-audience', 'protocol': 'openid-connect', 'protocolMapper': 'oidc-audience-mapper',
-                 'config': {'included.custom.audience': AUDIENCE, 'access.token.claim': 'true', 'id.token.claim': 'false'}},
-                {'name': 'standing-role', 'protocol': 'openid-connect', 'protocolMapper': 'oidc-usermodel-client-role-mapper',
-                 'config': {'usermodel.clientRoleMapping.clientId': AUDIENCE,
-                    'claim.name': 'resource_access.' + AUDIENCE + '.roles', 'jsonType.label': 'String',
-                    'multivalued': 'true', 'access.token.claim': 'true', 'id.token.claim': 'false'}}]})
+            'protocolMappers': mappers(resources)})
         account = admin('GET', '/clients/' + reader['id'] + '/service-account-user')
         # Remove existing direct realm/client assignments and client role scopes,
         # including privileges accidentally granted by a previous configuration.
@@ -88,8 +106,9 @@ def configure_standing(admin, directory):
                 assigned = admin('GET', path)
                 if assigned:
                     admin('DELETE', path, assigned)
-        admin('POST', '/users/' + account['id'] + '/role-mappings/clients/' + resource['id'], [role])
-        admin('POST', '/clients/' + reader['id'] + '/scope-mappings/clients/' + resource['id'], [role])
+        for _, target, role in resources:
+            admin('POST', '/users/' + account['id'] + '/role-mappings/clients/' + target['id'], [role])
+            admin('POST', '/clients/' + reader['id'] + '/scope-mappings/clients/' + target['id'], [role])
         write_atomic(file, secret + '\n', 0o600)
         subjects[client_id] = account['id']
     write_atomic(directory / 'readers' / 'subjects.json', json.dumps(subjects, sort_keys=True) + '\n', 0o644)

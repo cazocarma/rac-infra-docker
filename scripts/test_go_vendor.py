@@ -1,7 +1,7 @@
 from pathlib import Path
 import tempfile
 import unittest
-from check_go_vendor import check, MODULE
+from check_go_vendor import check, MODULE, CONSUMERS
 
 
 class VendorIntegrityTests(unittest.TestCase):
@@ -12,14 +12,20 @@ class VendorIntegrityTests(unittest.TestCase):
             (platform / 'standing').mkdir(parents=True)
             (platform / 'go.mod').write_text('module ' + MODULE + '\n')
             (platform / 'standing/rules.go').write_text('package standing\nconst Deny = true\n')
-            for name in ('rac-user-service', 'rac-match-service', 'rac-chat-service', 'rac-alert-service'):
+            for name in CONSUMERS:
                 service = root / name
                 generated = service / 'vendor' / MODULE / 'standing'
                 generated.mkdir(parents=True)
                 (service / 'go.mod').write_text('require (\n' + MODULE + ' v0.3.0\n)\n')
                 (service / 'vendor/modules.txt').write_text('# ' + MODULE + ' v0.3.0\n')
                 (generated / 'rules.go').write_text('package standing\nconst Deny = true\n')
+            self.assertIn('rac-admin-service', CONSUMERS)
             check(root)
+            admin_file = root / 'rac-admin-service/vendor' / MODULE / 'standing/rules.go'
+            admin_file.write_text('package standing\nconst Deny = false\n')
+            with self.assertRaisesRegex(ValueError, 'rac-admin-service:.*differs'):
+                check(root)
+            admin_file.write_text('package standing\nconst Deny = true\n')
             file = root / 'rac-user-service/vendor' / MODULE / 'standing/rules.go'
             file.write_text('package standing\nconst Deny = false\n')
             with self.assertRaisesRegex(ValueError, 'differs'):

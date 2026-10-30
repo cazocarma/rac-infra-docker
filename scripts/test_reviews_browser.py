@@ -1,4 +1,6 @@
 """Real review UI, encrypted backup and restoration; all identities/photos disposable."""
+from flutter_material_labels import FlutterMaterialLabels
+from browser_compose import command as browser_compose
 from pathlib import Path
 import json
 import os
@@ -7,12 +9,11 @@ import subprocess
 import sys
 
 from playwright.sync_api import sync_playwright,expect
+MATERIAL = FlutterMaterialLabels('es-CL')
 ROOT=Path(__file__).resolve().parents[1]
 BASE=os.environ.get("RAC_BROWSER_URL","http://localhost").rstrip("/")
 ARTIFACTS=Path(os.environ.get("RAC_BROWSER_ARTIFACTS",".local/review-ui"));ARTIFACTS.mkdir(parents=True,exist_ok=True)
-COMPOSE=["docker","compose","--env-file","envs/.env.dev","-p","rac-dev","-f","compose.yaml","-f","docker-compose.dev.yaml","-f","compose.observability.yaml","-f","compose.tests.yaml"]
-if (ROOT/"envs/.env.photos-s3").exists():COMPOSE += ["-f","compose.photos-s3.yaml"]
-if (ROOT/"envs/.env.backups").exists():COMPOSE += ["--env-file","envs/.env.backups","-f","compose.backups.yaml"]
+COMPOSE = browser_compose(ROOT)
 
 def fixture(*args):
     result=subprocess.run(COMPOSE+["run","--rm","--no-deps","test-integration","python","test_reviews_fixture.py",*args],cwd=ROOT,capture_output=True,text=True,timeout=90)
@@ -23,7 +24,7 @@ info=json.loads(fixture())
 try:
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True)
-        context=browser.new_context(viewport={"width":390,"height":844},locale="es-CL",timezone_id="America/Santiago")
+        context=browser.new_context(viewport={"width":390,"height":844},locale=MATERIAL.locale,timezone_id="America/Santiago")
         page=context.new_page()
         def semantics():
             locator=page.locator('flt-semantics-placeholder')
@@ -47,7 +48,7 @@ try:
         expect(editor).to_have_value(comment)
         # Live announcements can repeat the counter inside the dialog; the
         # rendered counter is a span, not flt-announcement-polite.
-        expect(dialog.locator('span').filter(has_text=re.compile(f'^{1000-len(comment)} characters remaining$'))).to_be_visible()
+        expect(dialog.locator('span').filter(has_text=re.compile('^' + re.escape(MATERIAL.remaining(1000-len(comment))) + '$'))).to_be_visible()
         with page.expect_response(lambda response:'/api/user/bookings/' in response.url and response.request.method=='POST') as sent:
             page.get_by_role('button',name='Publicar reseña',exact=True).click()
         assert sent.value.status in (200,201), 'Review submission failed: '+sent.value.text()

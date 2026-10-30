@@ -17,7 +17,7 @@ args = parser.parse_args()
 ROOT = Path(__file__).resolve().parent.parent
 NAME = "rac-migration-test-" + uuid.uuid4().hex[:12]
 def run(*args, ok=True, input=None):
-    p = subprocess.run(list(args), input=input, text=True, capture_output=True)
+    p = subprocess.run(list(args), input=input, text=True, encoding='utf-8', capture_output=True)
     if ok and p.returncode:
         failures = "\n".join(line for line in p.stdout.splitlines() if ".go:" in line or "FAIL" in line or "panic:" in line)
         raise RuntimeError(failures + "\n" + p.stdout[-2000:] + p.stderr[-2000:])
@@ -53,12 +53,19 @@ try:
     # Exercise the weekly quota against this disposable DB, including concurrent acceptance.
     quota_source = ROOT.parent / "rac-match-service"
     if quota_source.exists() and "match" in args.services:
+        sql("fresh", "CREATE DATABASE document_match;")
+        flyway("document_match", migration_dir)
+        from document_writer_fixture import seed as seed_document_writer
+        seed_document_writer(lambda statement: sql('document_match', statement))
         quota_tests = run("docker", "run", "--rm", "--network", NAME,
             "--mount", f"type=bind,source={quota_source},target=/sources,readonly",
             "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-match-go-build:/root/.cache/go-build",
             "-e", f"RAC_QUOTA_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
+            "-e", f"RAC_DOCUMENT_MATCH_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/document_match?sslmode=disable",
             "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/repo ./internal/http")
         print("PASS: concurrent weekly allowance, refund, week boundary and subscription entitlement")
+        assert '--- PASS: TestBookingDocumentsPostgres' in quota_tests.stdout
+        print('PASS: booking document preconditions, remote owner authority, commit race rollback, quota and protective cancellation during outage')
         if (quota_source / 'internal/http/standing_test.go').exists():
             assert '--- PASS: TestOldJWTBookingStandingPostgres' in quota_tests.stdout
             assert '--- PASS: TestBookingStandingPostgresHTTP' in quota_tests.stdout
@@ -80,31 +87,86 @@ try:
         print('PASS: original-event recovery without broker, missed sanction followed by reversal, fresh authorization preserved, counterpart quota, outages, claim expiry/fencing and event gaps')
     chat_source = ROOT.parent / "rac-chat-service"
     if (chat_source / "internal/http/router_test.go").exists() and "chat" in args.services:
-        run("docker", "run", "--rm", "--network", NAME,
+        sql("fresh", "CREATE DATABASE document_chat;")
+        flyway("document_chat", migration_dir)
+        from document_writer_fixture import seed as seed_document_writer
+        seed_document_writer(lambda statement: sql('document_chat', statement), active=True)
+        chat_tests = run("docker", "run", "--rm", "--network", NAME,
             "--mount", f"type=bind,source={chat_source},target=/sources,readonly",
             "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-chat-go-build:/root/.cache/go-build",
             "-e", f"RAC_CHAT_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
             "-e", "RAC_CHAT_MIGRATED=1",
+            "-e", f"RAC_DOCUMENT_CHAT_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/document_chat?sslmode=disable",
             "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http")
+        assert '--- PASS: TestChatDocumentsPostgres' in chat_tests.stdout
+        print('PASS: remote document authority, booking-derived persona, commit/outbox rollback on material race, mismatched registry, outage and protective chat reads/retry')
         print("PASS: private booking chat, idempotent concurrent messages, cursor pages and DB cancellation guard")
     sql("fresh", "CREATE DATABASE legacy;")
     onboarding_source = ROOT.parent / "rac-user-service"
     if onboarding_source.exists() and "user" in args.services:
         sql("fresh", "CREATE DATABASE session_effects;")
         flyway("session_effects", migration_dir)
+        sql("fresh", "CREATE DATABASE document_writes;")
+        flyway("document_writes", migration_dir)
+        sql('fresh', 'CREATE DATABASE editorial_http;')
+        flyway('editorial_http', migration_dir)
+        sql("fresh", "CREATE DATABASE attestations;")
+        flyway("attestations", migration_dir)
+        from document_writer_fixture import seed as seed_attestations
+        seed_attestations(lambda statement: sql('attestations', statement))
         user_tests = run("docker", "run", "--rm", "--network", NAME,
             "--mount", f"type=bind,source={onboarding_source},target=/sources,readonly",
             "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-user-go-build:/root/.cache/go-build",
             "-e", f"RAC_ONBOARDING_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
+            "-e", f"RAC_DOCUMENT_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
+            "-e", f"RAC_EDITORIAL_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/editorial_http?sslmode=disable",
+            "-e", f"RAC_ATTESTATIONS_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/attestations?sslmode=disable",
             "-e", f"RAC_SESSION_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/session_effects?sslmode=disable",
             "-e", "RAC_SESSION_TEST_ISOLATED=1",
-            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol")
+            "-e", f"RAC_DOCUMENT_WRITES_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/document_writes?sslmode=disable",
+            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol ./internal/editorial ./internal/strictjson")
+        assert '--- PASS: TestEditorialPostgresHTTP' in user_tests.stdout
+        print('PASS: authenticated editorial owner ingress, real scoped login, no public route, audit idempotence and MFA expiry rollback')
+        if (onboarding_source / 'internal/http/attestations_test.go').exists():
+            assert '--- PASS: TestCompaAttestationsPostgres' in user_tests.stdout
+            print('PASS: reviewed compa assessment, explicit declarations, three correct answers, scoped API, concurrent idempotence and registry lease')
         assert '--- PASS: TestStandingSessionsPostgres' in user_tests.stdout
         print('PASS: durable session captures, ACK loss, reversal races, claim fencing and least-privilege journal')
+        assert '--- PASS: TestDocumentGuardPostgres' in user_tests.stdout
+        print('PASS: document 428, exact consent, real scoped onboarding and material-change race rolls back before external role grant')
         assert '--- PASS: TestCompaOnboardingTransaction' in user_tests.stdout
+        if (onboarding_source / 'internal/http/documents_test.go').exists():
+            assert '--- PASS: TestVersionedDocumentsPostgres' in user_tests.stdout
+            print('PASS: reviewed immutable documents, exact-hash consent, atomic batches, concurrent retries and private acceptance isolation')
         assert '--- PASS: TestVerifiedReviews' in user_tests.stdout
         assert '--- PASS: TestProfileStandingProvisioning' in user_tests.stdout
         print("PASS: scoped user writes, standing guards, concurrent rollback, public visibility, reviews and protected reads")
+    if (migration_dir / 'V029__document_registry.sql').exists():
+        from document_registry_checks import check as check_document_registry
+        def registry_rejected(statement):
+            result = run("docker", "exec", "-i", NAME, "psql", "-X", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "fresh", "-At", input=statement, ok=False)
+            return result.returncode != 0
+        check_document_registry(lambda statement: sql('fresh', statement), registry_rejected)
+    if (migration_dir / 'V034__document_editorial_workflow.sql').exists():
+        sql('fresh', 'CREATE DATABASE document_editorial;')
+        flyway('document_editorial', migration_dir)
+        from document_editorial_checks import check as check_document_editorial
+        def editorial_rejected(statement):
+            return run('docker', 'exec', '-i', NAME, 'psql', '-X', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', 'document_editorial', '-At', input=statement, ok=False).returncode != 0
+        check_document_editorial(lambda statement: sql('document_editorial', statement), editorial_rejected)
+    if (migration_dir / 'V036__assessment_editorial_bundle.sql').exists():
+        sql('fresh', 'CREATE DATABASE editorial_upgrade;')
+        from editorial_upgrade_checks import check as check_editorial_upgrade
+        def migrate_editorial_checkpoint(maximum):
+            if maximum is None:
+                flyway('editorial_upgrade', migration_dir)
+            else:
+                with tempfile.TemporaryDirectory(prefix=NAME) as checkpoint:
+                    for source in migration_dir.glob('V*.sql'):
+                        if int(source.name.split('__')[0][1:]) <= maximum:
+                            shutil.copy2(source, Path(checkpoint) / source.name)
+                    flyway('editorial_upgrade', Path(checkpoint))
+        check_editorial_upgrade(lambda statement: sql('editorial_upgrade', statement), migrate_editorial_checkpoint)
     sql("legacy", (ROOT / "db/migrations/V001__initial_schema.sql").read_text())
     sql("legacy", "INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('00000000-0000-0000-0000-000000000001','Preservar','legacy@example.test','cliente','kc-legacy');")
     sql("legacy", "INSERT INTO compa_availability(compa_id,disponibilidad_json) VALUES('00000000-0000-0000-0000-000000000001','{\"lunes\":[\"18:00-20:00\"]}');")

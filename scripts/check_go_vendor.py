@@ -9,6 +9,7 @@ import re
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE = 'github.com/cazocarma/rac-platform'
+CONSUMERS = ('rac-user-service', 'rac-match-service', 'rac-chat-service', 'rac-alert-service', 'rac-admin-service')
 
 
 def check(workspace):
@@ -16,7 +17,7 @@ def check(workspace):
     if not (platform / 'go.mod').is_file():
         raise ValueError('Pinned platform checkout required')
     versions = set()
-    for name in ('rac-user-service', 'rac-match-service', 'rac-chat-service', 'rac-alert-service'):
+    for name in CONSUMERS:
         service = workspace / name
         match = re.search(r'^\s*' + re.escape(MODULE) + r'\s+(v[0-9]+\.[0-9]+\.[0-9]+)\s*$', (service / 'go.mod').read_text(), re.M)
         if not match:

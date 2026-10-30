@@ -31,6 +31,22 @@ $(error STANDING_PREVIEW solo admite DEV; QA/PRD requieren transporte TLS y roll
 endif
 COMPOSE_FILES += -f compose.standing.yaml
 endif
+EDITORIAL_PREVIEW ?= 0
+ifneq ($(words $(EDITORIAL_PREVIEW)),1)
+$(error EDITORIAL_PREVIEW debe ser 0 o 1)
+endif
+ifeq ($(filter $(EDITORIAL_PREVIEW),0 1),)
+$(error EDITORIAL_PREVIEW debe ser 0 o 1)
+endif
+ifeq ($(EDITORIAL_PREVIEW),1)
+ifneq ($(ENV),dev)
+$(error EDITORIAL_PREVIEW solo admite DEV)
+endif
+ifneq ($(STANDING_PREVIEW),1)
+$(error EDITORIAL_PREVIEW requiere STANDING_PREVIEW=1)
+endif
+COMPOSE_FILES += -f compose.editorial.yaml
+endif
 ifeq ($(ENV),dev)
 ifneq ($(wildcard envs/.env.photos-s3),)
 COMPOSE_FILES += -f compose.photos-s3.yaml
@@ -57,6 +73,8 @@ help:
 	@echo QA y PRD requieren secretos e imagenes publicadas; no se construyen localmente.
 	@echo make migrate / migration-info / migration-validate / identity-config / observe
 	@echo make test / test-go / test-flutter / test-integration
+	@echo make test-workflows - sintaxis, contexto y pruebas rapidas de CI
+	@echo make test-ci-regressions - identidad, documentos y fotos con fixtures locales
 	@echo make storage-up / storage-activate / storage-test / storage-test-persistence / storage-stop
 	@echo make backup-enable / backup-now / backup-status / backup-restore-test
 	@echo make database-init / test-database-permissions / test-identity-permissions
@@ -214,6 +232,30 @@ test-database-permissions:
 test-identity-permissions:
 	$(PYTHON) scripts/test_identity_permissions.py
 
+.PHONY: test-oidc-callbacks
+test-oidc-callbacks:
+	$(PYTHON) scripts/test_oidc_callback_privacy.py
+
+.PHONY: test-editorial-api
+.PHONY: check-p04-candidate
+check-p04-candidate:
+	$(PYTHON) scripts/check_local_revisions.py --manifest ci/p04-companion-candidate.json
+
+test-editorial-api:
+ifeq ($(strip $(LAB_STATE)),)
+	$(error LAB_STATE debe apuntar al state.json de un laboratorio editorial desechable)
+else
+	$(PYTHON) scripts/editorial_fixture_api.py --state "$(LAB_STATE)"
+endif
+
+.PHONY: editorial-db-config
+editorial-db-config:
+ifneq ($(ENV),dev)
+	$(error La provision editorial disponible es solo DEV; QA/PRD requieren su adaptador revisado)
+else
+	$(COMPOSE) run --rm --no-deps --build -e RAC_ENV=dev -e DOCUMENT_EDITORIAL_DATABASE_URL database-config python editorial_database.py
+endif
+
 .PHONY: test-standing-authority
 test-standing-authority:
 	$(PYTHON) scripts/test_standing_authority.py
@@ -235,3 +277,39 @@ ifeq ($(ENV),dev)
 else
 	$(error Restored data upgrade test only supports DEV)
 endif
+
+# Focused reproduction of the failing CI gates; never migrates the DEV database.
+.PHONY: test-ci-regressions
+test-ci-regressions: test-workflows
+ifeq ($(ENV),dev)
+	$(PYTHON) -m unittest discover -s scripts -p "test_oauth_token.py"
+	$(PYTHON) scripts/test_identity_permissions.py
+	$(PYTHON) scripts/test_migrations.py --services user
+	$(PYTHON) scripts/test_photo_storage.py
+else
+	$(error test-ci-regressions solo admite fixtures locales en DEV)
+endif
+
+
+# Same validation locally and in the first CI gate; no App credentials required.
+.PHONY: test-workflows
+test-workflows:
+	docker run --rm --mount "type=bind,source=$(CURDIR),target=/repo,readonly" -w /repo python@sha256:57b29a7c050c4e679e4bea572e14b3965cf4b5839de2da49d55e49ffc4024f39 python -m unittest discover -s scripts -p test_browser_lab.py
+	docker run --rm --mount "type=bind,source=$(CURDIR),target=/repo,readonly" -w /repo python@sha256:57b29a7c050c4e679e4bea572e14b3965cf4b5839de2da49d55e49ffc4024f39 python -m unittest discover -s scripts -p test_flutter_material_labels.py
+	docker run --rm --mount "type=bind,source=$(CURDIR),target=/repo,readonly" -w /repo rhysd/actionlint@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9 -shellcheck= -oneline
+	docker run --rm --mount "type=bind,source=$(CURDIR),target=/repo,readonly" -w /repo python@sha256:57b29a7c050c4e679e4bea572e14b3965cf4b5839de2da49d55e49ffc4024f39 sh -c "pip install --disable-pip-version-check --quiet -r ci/requirements-workflows.txt && python scripts/check_workflow_context.py && python -m unittest discover -s scripts -p test_workflow_context.py && python -m unittest discover -s scripts -p test_ci_access.py && python -m unittest discover -s scripts -p test_oauth_token.py && python -m unittest discover -s scripts -p test_documents_lab.py"
+
+
+.PHONY: documents-lab-start documents-lab-stop documents-lab-status
+documents-lab-start:
+	$(PYTHON) scripts/documents_lab.py start
+documents-lab-stop:
+	$(PYTHON) scripts/documents_lab.py stop --state "$(LAB_STATE)"
+documents-lab-status:
+	$(PYTHON) scripts/documents_lab.py status --state "$(LAB_STATE)"
+
+documents-lab-change:
+	$(PYTHON) scripts/documents_lab.py material-change --state "$(LAB_STATE)"
+documents-lab-refresh:
+	$(PYTHON) scripts/documents_lab.py refresh-web --state "$(LAB_STATE)"
+.PHONY: documents-lab-change documents-lab-refresh

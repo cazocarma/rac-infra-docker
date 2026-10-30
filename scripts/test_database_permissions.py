@@ -68,7 +68,59 @@ def main():
             bootstrap(database)
             migrate(database, ROOT / 'db/migrations')
             bootstrap(database)  # Reconcile again with the standing schema present.
+            editorial_flags = [
+                '-e', 'RAC_ENV=dev', '-e', 'PGHOST=postgres', '-e', 'PGUSER=postgres',
+                '-e', 'PGPASSWORD=test-only', '-e', 'PGDATABASE=' + database,
+                '-e', 'POSTGRES_DB=' + database,
+                '-e', 'MIGRATION_DB_USER=rac_migrator', '-e', 'MIGRATION_DB_PASSWORD=' + password,
+                '-e', 'DOCUMENT_EDITORIAL_DATABASE_URL=postgresql://rac_documents_editorial:synthetic-editorial-password-123456@postgres:5432/' + database + '?sslmode=disable',
+            ]
+            for key, role in ROLES.items():
+                editorial_flags += ['-e', key + '=postgresql://' + role + ':synthetic-independent-' + role + '-123456@postgres:5432/' + database + '?sslmode=disable']
+            for _ in range(2):
+                run('docker', 'run', '--rm', '--network', name, *editorial_flags, tools, 'python', 'editorial_database.py')
+            identity = sql(database, "SELECT actor_id::text||':'||chain_id::text FROM audit.writer_principals WHERE database_role='rac_documents_editorial';").stdout.strip()
+            sql(database, 'GRANT SELECT(content) ON legal_documents TO rac_documents_editorial;')
+            refused = run('docker', 'run', '--rm', '--network', name, *editorial_flags, tools, 'python', 'editorial_database.py', ok=False)
+            assert refused.returncode != 0, 'Provisioning accepted unexpected column authority'
+            assert 'synthetic-editorial-password' not in refused.stdout + refused.stderr
+            sql(database, 'REVOKE SELECT(content) ON legal_documents FROM rac_documents_editorial;')
+            sql(database, "CREATE FUNCTION public.editorial_unexpected_fixture() RETURNS boolean LANGUAGE sql AS 'SELECT true'; GRANT EXECUTE ON FUNCTION public.editorial_unexpected_fixture() TO rac_documents_editorial;")
+            refused = run('docker', 'run', '--rm', '--network', name, *editorial_flags, tools, 'python', 'editorial_database.py', ok=False)
+            assert refused.returncode != 0, 'Provisioning accepted unexpected function authority'
+            sql(database, 'DROP FUNCTION public.editorial_unexpected_fixture();')
+            run('docker', 'run', '--rm', '--network', name, *editorial_flags, tools, 'python', 'editorial_database.py')
+            assert sql(database, "SELECT actor_id::text||':'||chain_id::text FROM audit.writer_principals WHERE database_role='rac_documents_editorial';").stdout.strip() == identity
+            assert sql(database, 'SELECT documents.editorial_ready();', 'rac_documents_editorial').stdout.strip() == 't'
+            assert sql(database, "SELECT count(*) FROM audit.writer_principals WHERE database_role='rac_documents_editorial';").stdout.strip() == '1'
+            for forbidden in ('SELECT * FROM legal_documents;', 'SELECT content FROM legal_documents;',
+                              'UPDATE notificacion SET titulo=titulo;',
+                              "SELECT documents.editorial_record(gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),'document.drafted','{}');"):
+                assert sql(database, forbidden, 'rac_documents_editorial', ok=False).returncode != 0
             assert sql(database, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname='standing';").stdout.strip() == 'rac_migrator'
+            if (ROOT / 'db/migrations/V029__document_registry.sql').exists():
+                from document_registry_checks import check as check_document_registry
+                assert sql(database, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname='documents';").stdout.strip() == 'rac_migrator'
+                check_document_registry(lambda statement: sql(database, statement).stdout.strip(),
+                                        lambda statement: sql(database, statement, ok=False).returncode != 0,
+                                        role='registry_fixture_' + database)
+                if (ROOT / 'db/migrations/V030__document_commit_fence.sql').exists():
+                    assert sql(database, "BEGIN; SET ROLE rac_user; SELECT documents.lock_head('es'); ROLLBACK;").returncode == 0
+                    for denied_role in ('rac_match', 'rac_chat', 'rac_alert', 'rac_backup'):
+                        assert sql(database, "SELECT documents.lock_head('es');", denied_role, ok=False).returncode != 0
+                    assert sql(database, "SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE oid='documents.lock_head(text)'::regprocedure;").stdout.strip() == 'rac_migrator'
+                if (ROOT / 'db/migrations/V031__document_reader_commit_fence.sql').exists():
+                    for reader_role in ('rac_user', 'rac_match', 'rac_chat'):
+                        assert sql(database, "BEGIN; SELECT * FROM documents.lock_registry('es'); ROLLBACK;", reader_role).returncode == 0
+                    for reader_role in ('rac_match', 'rac_chat'):
+                        for private_table in ('public.legal_documents', 'public.document_acceptances', 'documents.registry'):
+                            assert sql(database, 'SELECT * FROM ' + private_table + ';', reader_role, ok=False).returncode != 0
+                    for denied_role in ('rac_alert', 'rac_backup'):
+                        assert sql(database, "SELECT * FROM documents.lock_registry('es');", denied_role, ok=False).returncode != 0
+                    assert sql(database, "SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE oid='documents.lock_registry(text)'::regprocedure;").stdout.strip() == 'rac_migrator'
+
+
+
             assert sql(database, "SELECT count(*) FROM standing.account;", 'rac_user').returncode == 0
             assert sql(database, "UPDATE standing.account SET status='active';", 'rac_user', ok=False).returncode != 0
             assert sql(database, "SELECT count(*) FROM standing.account;", 'rac_match', ok=False).returncode != 0
@@ -100,6 +152,8 @@ def main():
                 ('rac_relay', 'SELECT correo FROM usuario;'),
                 ('rac_alert', 'INSERT INTO notificacion(usuario_id,sesion_id,tipo,titulo) VALUES(NULL,NULL,\'x\',\'x\');'),
                 ('rac_alert_consumer', 'UPDATE usuario SET nombre=nombre;'),
+                ('rac_standing_alert', 'UPDATE notificacion SET template_version=template_version;'),
+                ('rac_alert', 'UPDATE notificacion SET template_key=template_key;'),
                 ('rac_chat', 'SELECT telefono,correo FROM usuario;'),
                 ('rac_seed', 'SELECT contenido FROM mensaje;'),
             ]:

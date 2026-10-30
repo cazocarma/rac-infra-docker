@@ -7,13 +7,20 @@ import urllib.parse
 import urllib.request
 import psycopg
 from pathlib import Path
-from identity_permissions import configure_provisioner, configure_staff
+from identity_permissions import configure_provisioner, configure_staff, staff_client_enabled
 from identity_standing import configure_standing
 from identity_sessions import configure_sessions
+from oauth_token import TokenLease
 
 BASE = os.environ.get("KEYCLOAK_INTERNAL_URL", "http://keycloak:8080")
 REALM = "rentacompa"
 ENV = os.environ["RAC_ENV"]
+STAFF_ENABLED = staff_client_enabled(os.environ)
+DOCUMENTS = os.environ.get('DOCUMENTS_ENFORCEMENT_ENABLED', 'false')
+if DOCUMENTS not in ('true', 'false'):
+    raise RuntimeError('Invalid document rollout configuration')
+if DOCUMENTS == 'true' and os.environ.get('STANDING_ENFORCEMENT_ENABLED') != 'true':
+    raise RuntimeError('Document authority requires standing infrastructure')
 def request(method, path, data=None, token=None, form=False):
     headers = {"Content-Type": "application/x-www-form-urlencoded" if form else "application/json"}
     if token: headers["Authorization"] = "Bearer " + token
@@ -22,21 +29,23 @@ def request(method, path, data=None, token=None, form=False):
         raw = r.read()
         return json.loads(raw) if raw else None
 
+operator = TokenLease(lambda: request("POST", "/realms/master/protocol/openid-connect/token", {
+    "client_id": "admin-cli", "grant_type": "password", "username": os.environ["KEYCLOAK_ADMIN"],
+    "password": os.environ["KEYCLOAK_ADMIN_PASSWORD"]}, form=True))
 for attempt in range(60):
     try:
-        token = request("POST", "/realms/master/protocol/openid-connect/token", {
-            "client_id": "admin-cli", "grant_type": "password", "username": os.environ["KEYCLOAK_ADMIN"],
-            "password": os.environ["KEYCLOAK_ADMIN_PASSWORD"]}, form=True)["access_token"]
+        operator.get()
         break
     except (OSError, urllib.error.URLError):
         if attempt == 59: raise RuntimeError("Keycloak did not become ready") from None
         time.sleep(2)
 
-def admin(method, path, data=None): return request(method, "/admin/realms/" + REALM + path, data, token)
+
+def admin(method, path, data=None): return request(method, "/admin/realms/" + REALM + path, data, operator.get())
 try: admin("GET", "")
 except urllib.error.HTTPError as e:
     if e.code != 404: raise
-    request("POST", "/admin/realms", {"realm": REALM, "enabled": True, "registrationAllowed": True}, token)
+    request("POST", "/admin/realms", {"realm": REALM, "enabled": True, "registrationAllowed": True}, operator.get())
 
 for name in ("cliente", "compa", "admin"):
     try: admin("GET", "/roles/" + name)
@@ -88,9 +97,9 @@ role_file = role_directory / 'role-id.tmp'
 role_file.write_text(admin('GET', '/roles/compa')['id'] + '\n', encoding='ascii')
 os.chmod(role_file, 0o644)
 os.replace(role_file, role_directory / 'role-id')
-configure_staff(admin, origin)
+configure_staff(admin, origin, enabled=STAFF_ENABLED)
 if os.environ.get('STANDING_ENFORCEMENT_ENABLED', 'false') == 'true':
-    configure_standing(admin, '/credentials/standing')
+    configure_standing(admin, '/credentials/standing', documents=DOCUMENTS == 'true')
     session_directory = Path('/credentials/standing/sessions')
     configure_sessions(admin, session_directory)
     # Only the dedicated non-root session worker mounts this private volume.

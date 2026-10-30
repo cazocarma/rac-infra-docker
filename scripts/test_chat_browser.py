@@ -1,17 +1,18 @@
 """Two real OIDC sessions, responsive chat, lost network and read-only booking."""
+from flutter_material_labels import FlutterMaterialLabels
+from browser_compose import command as browser_compose
 from pathlib import Path
 import json
 import os
 import re
 import subprocess
 from playwright.sync_api import sync_playwright, expect
+MATERIAL = FlutterMaterialLabels('es-CL')
 
 ROOT=Path(__file__).resolve().parents[1]
 BASE=os.environ.get("RAC_BROWSER_URL","http://localhost").rstrip("/")
 ARTIFACTS=Path(os.environ.get("RAC_BROWSER_ARTIFACTS",".local/chat-ui"));ARTIFACTS.mkdir(parents=True,exist_ok=True)
-COMPOSE=["docker","compose","--env-file","envs/.env.dev","-p","rac-dev","-f","compose.yaml","-f","docker-compose.dev.yaml","-f","compose.observability.yaml","-f","compose.tests.yaml"]
-if (ROOT/"envs/.env.photos-s3").exists(): COMPOSE += ["-f","compose.photos-s3.yaml"]
-if (ROOT/"envs/.env.backups").exists(): COMPOSE += ["--env-file","envs/.env.backups","-f","compose.backups.yaml"]
+COMPOSE = browser_compose(ROOT)
 
 def fixture(*args):
     result=subprocess.run(COMPOSE+["run","--rm","--no-deps","test-integration","python","test_chat_fixture.py",*args],cwd=ROOT,capture_output=True,text=True,timeout=120)
@@ -22,8 +23,8 @@ info=json.loads(fixture())
 try:
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True)
-        buyer_context=browser.new_context(viewport={"width":390,"height":844},locale="es-CL",timezone_id="America/Santiago")
-        provider_context=browser.new_context(viewport={"width":1280,"height":900},locale="es-CL",timezone_id="America/Santiago")
+        buyer_context=browser.new_context(viewport={"width":390,"height":844},locale=MATERIAL.locale,timezone_id="America/Santiago")
+        provider_context=browser.new_context(viewport={"width":1280,"height":900},locale=MATERIAL.locale,timezone_id="America/Santiago")
         buyer=buyer_context.new_page();provider=provider_context.new_page()
         def semantics(page):
             locator=page.locator('flt-semantics-placeholder')
@@ -52,7 +53,7 @@ try:
             expect(native_editor).to_have_attribute('aria-label','Mensaje\nEscribe un mensaje…')
             native_editor.fill(text)
             expect(native_editor).to_have_value(text)
-            expect(page.locator('flt-semantics-host span').filter(has_text=re.compile('^2000 characters remaining$'))).to_have_count(0)
+            expect(page.locator('flt-semantics-host span').filter(has_text=re.compile('^' + re.escape(MATERIAL.remaining(2000-len(text))) + '$'))).to_be_visible()
             try:
                 with page.expect_response(lambda r:'/api/chat/bookings/' in r.url and r.request.method=='POST') as response:
                     page.get_by_role('button',name='Enviar mensaje',exact=True).click()
@@ -61,7 +62,8 @@ try:
                 page.screenshot(path=str(ARTIFACTS/'chat-send-failure.png'))
                 raise
             assert response.value.status in (200,201), response.value.text()
-            expect(page.locator('flt-semantics-host span').filter(has_text=re.compile('^2000 characters remaining$'))).to_be_visible()
+            assert response.value.request.post_data_json['contenido'] == text, 'Chat submitted different text from the editor'
+            expect(page.locator('flt-semantics-host span').filter(has_text=re.compile('^' + re.escape(MATERIAL.remaining(2000)) + '$'))).to_be_visible()
             expect(page.get_by_role('button',name='Enviar mensaje',exact=True)).to_be_enabled()
         login(buyer,info['username']);login(provider,'compa2')
         open_chat(buyer);open_chat(provider)
@@ -105,7 +107,7 @@ try:
             expect(editor).to_have_attribute('autocorrect','on')
             editor.fill(value)
             expect(editor).to_have_value(value)
-            expect(page.locator('flt-semantics-host span').filter(has_text=re.compile(f'^{limit-len(value)} characters remaining$'))).to_be_visible()
+            expect(page.locator('flt-semantics-host span').filter(has_text=re.compile('^' + re.escape(MATERIAL.remaining(limit-len(value))) + '$'))).to_be_visible()
         fill_flutter(buyer,'Describe qué ocurrió','Incidente sintético para verificar el flujo de moderación.',1000)
         reveal(buyer,buyer.get_by_role('button',name='Enviar reporte',exact=True))
         with buyer.expect_response(lambda r:r.url.endswith('/reports') and r.request.method=='POST') as reported:
@@ -123,13 +125,13 @@ try:
         buyer.get_by_role('button',name='Retirar mi bloqueo',exact=True).click()
         buyer.get_by_role('button',name='Retirar bloqueo',exact=True).click()
         expect(buyer.get_by_role('button',name='Bloquear conversación',exact=True)).to_be_visible()
-        buyer.get_by_role('button',name='Back',exact=True).click()
+        buyer.get_by_role('button',name=MATERIAL.back,exact=True).click()
         provider.get_by_role('button',name='Actualizar conversación',exact=True).click()
         expect(buyer.get_by_role('textbox',name='Mensaje',exact=True)).to_be_visible()
         later='Mensaje posterior al reporte, fuera del contexto autorizado.'
         send(provider,later)
         expect(buyer.get_by_text(later,exact=True)).to_be_visible(timeout=15000)
-        moderator_context=browser.new_context(viewport={"width":1280,"height":900},locale="es-CL",timezone_id="America/Santiago")
+        moderator_context=browser.new_context(viewport={"width":1280,"height":900},locale=MATERIAL.locale,timezone_id="America/Santiago")
         moderator=moderator_context.new_page();login(moderator,'admin1')
         moderator.goto(BASE+'/#/chat',wait_until='networkidle');semantics(moderator)
         moderator.get_by_role('button',name='Moderación de reportes',exact=True).click()
@@ -171,7 +173,7 @@ try:
         expect(buyer.get_by_text('Reporte atendido',exact=False)).to_be_visible()
         expect(buyer.get_by_role('button',name='Enviar reporte',exact=True)).to_have_count(0)
         buyer.mouse.move(1,1);buyer.screenshot(path=str(ARTIFACTS/'chat-report-status-mobile.png'))
-        buyer.get_by_role('button',name='Back',exact=True).click()
+        buyer.get_by_role('button',name=MATERIAL.back,exact=True).click()
         fixture('cancel',info['username'],info['booking'])
         expect(buyer.get_by_role('checkbox',name='Solo lectura',exact=True)).to_be_visible(timeout=15000)
         expect(provider.get_by_role('checkbox',name='Solo lectura',exact=True)).to_be_visible(timeout=15000)

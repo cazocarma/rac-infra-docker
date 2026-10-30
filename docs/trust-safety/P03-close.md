@@ -1,8 +1,13 @@
 # P03 — Expediente de cierre
 
-26-10-2026. Implementación y gates locales completos; falta confirmar el CI
-del commit final antes de fusionar. Este expediente no declara completado el
-programa Trust & Safety ni sus módulos posteriores.
+26-10-2026. **P03 cerrado a nivel de código y verificación.** El
+[CI final de fabb39b](https://github.com/cazocarma/rac-infra-docker/actions/runs/40369067075)
+pasó sus cuatro jobs en el segundo intento y el
+[PR #8](https://github.com/cazocarma/rac-infra-docker/pull/8) fue fusionado en main
+como `cafef75`. El primer intento falló al resolver una dependencia Maven;
+el reintento limitado pasó sin cambiar el proveedor. El rollout persistente
+sigue separado. Este expediente no declara completado el programa Trust & Safety
+ni sus módulos posteriores.
 
 | Requisito | Evidencia y resultado |
 |---|---|
@@ -15,7 +20,7 @@ programa Trust & Safety ni sus módulos posteriores.
 | Sesiones de identidad | V027, worker scoped y proveedor Keycloak real: online/offline, pérdida de ACK, reversión concurrente, caída/reinicio, login nuevo preservado |
 | Mínimo privilegio y operación | Flyway sin superusuario, rol separado por dueño, credencial de sesiones exclusiva, permisos negativos y modelos DEV/QA/PRD |
 | Recuperación del DEV real | Backup físico cifrado y boot de copia aislada; backup lógico de ambas BD/objetos referenciados, restore y upgrade V017→V027 repetible, conteos conservados |
-| Verificación remota previa | CI 40348571328 aprobó los cuatro jobs de 0583dfd, incluyendo sesiones y recuperación; el commit final amplía medición y corrige el relay |
+| Verificación remota final | CI 40369067075 aprobó los cuatro jobs de fabb39b: medición ampliada, relay, sesiones/recuperación y pruebas web. PR #8 fusionado en main como cafef75 |
 
 La [evidencia de rendimiento](evidence/p03-final-performance.json) conserva
 revisiones, hash del harness y hardware. La

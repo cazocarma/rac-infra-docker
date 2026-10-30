@@ -147,21 +147,26 @@ def commit_races():
     cases = [
         ('usuario', 'UPDATE', 'id', 'rac_user', 'PUT', '/api/user/me',
          {**PROFILE, 'nombre': 'Este cambio debe revertirse'},
-         'SELECT nombre FROM usuario WHERE id=%s', (state['compa'],)),
+         'SELECT nombre FROM usuario WHERE id=%s', (state['compa'],), 'application/json'),
+        ('compa_perfil', 'UPDATE', 'usuario_id', 'rac_user', 'PUT', '/api/user/me/compa',
+         {**COMPA, 'descripcion': 'Esta publicación debe revertirse'},
+         'SELECT descripcion FROM compa_perfil WHERE usuario_id=%s', (state['compa'],), 'application/json'),
+        ('usuario', 'UPDATE', 'id', 'rac_user', 'PUT', '/api/user/me/photo', png(),
+         'SELECT foto_clave FROM usuario WHERE id=%s', (state['compa'],), 'image/png'),
         ('compa_availability', 'UPDATE', 'compa_id', 'rac_match', 'POST', availability_path,
          {'availability': {**AVAILABILITY, 'lunes': ['00:00-22:00']}},
-         'SELECT disponibilidad_json FROM compa_availability WHERE compa_id=%s', (state['compa'],)),
+         'SELECT disponibilidad_json FROM compa_availability WHERE compa_id=%s', (state['compa'],), 'application/json'),
         ('mensaje', 'INSERT', 'remitente_id', 'rac_chat', 'POST', message_path,
          {'envio_id': str(uuid.uuid4()), 'contenido': 'No debe confirmarse'},
          '''SELECT (SELECT count(*) FROM mensaje WHERE sesion_id=%s),
           (SELECT count(*) FROM chat_outbox WHERE sesion_id=%s),
-          (SELECT version FROM chat_cursor WHERE sesion_id=%s)''', (state['active'],) * 3),
+          (SELECT version FROM chat_cursor WHERE sesion_id=%s)''', (state['active'],) * 3, 'application/json'),
     ]
     try:
         for instance in (1, 2):
             global INSTANCE
             INSTANCE = instance
-            for table, operation, column, role, method, path, data, query, params in cases:
+            for table, operation, column, role, method, path, data, query, params, content_type in cases:
                 before = sql(query, params, True)
                 sql(sql_builder.SQL('CREATE TRIGGER rac_fixture_pause BEFORE {} ON {} FOR EACH ROW '
                                     'EXECUTE FUNCTION public.rac_fixture_pause({},{})').format(
@@ -169,7 +174,7 @@ def commit_races():
                     sql_builder.Literal(column), sql_builder.Literal(state['compa'])))
                 with psycopg.connect(autocommit=True) as lock, ThreadPoolExecutor(max_workers=1) as pool:
                     lock.execute('SELECT pg_advisory_lock(1988833027)')
-                    request = pool.submit(api, method, path, state['compa_token'], data, 403)
+                    request = pool.submit(api, method, path, state['compa_token'], data, 403, content_type)
                     try:
                         wait(lambda: sql('''SELECT EXISTS(SELECT 1 FROM pg_locks l
                          JOIN pg_stat_activity a ON a.pid=l.pid WHERE a.datname=current_database()

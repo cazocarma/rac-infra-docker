@@ -1,4 +1,7 @@
 """Real free onboarding with an isolated, automatically removed DEV identity."""
+from flutter_material_labels import FlutterMaterialLabels
+from browser_compose import command as browser_compose
+from browser_app_labels import app_label
 from pathlib import Path
 import json
 import os
@@ -8,6 +11,7 @@ import struct
 import zlib
 import time
 from playwright.sync_api import sync_playwright, expect
+MATERIAL = FlutterMaterialLabels('es-CL')
 
 if os.environ.get('RAC_ENV', 'dev') != 'dev':
     raise RuntimeError('Onboarding browser fixtures are DEV-only')
@@ -25,15 +29,10 @@ def png_fixture(noisy=False):
     path=(ARTIFACTS/('profile-upload-noise.png' if noisy else 'profile-upload-fixture.png')).resolve()
     path.write_bytes(raw)
     return path
-COMPOSE = ['docker','compose','--env-file','envs/.env.dev','-p','rac-dev','-f','compose.yaml',
-    '-f','docker-compose.dev.yaml','-f','compose.observability.yaml','-f','compose.tests.yaml']
-if (ROOT/'envs/.env.photos-s3').exists():
-    COMPOSE += ['-f','compose.photos-s3.yaml']
-if (ROOT/'envs/.env.backups').exists():
-    COMPOSE += ['--env-file','envs/.env.backups','-f','compose.backups.yaml']
+COMPOSE = browser_compose(ROOT)
 
 def fixture(*args):
-    result = subprocess.run(COMPOSE+['run','--rm','test-integration','python','test_onboarding.py',*args],
+    result = subprocess.run(COMPOSE+['run','--rm','--no-deps','test-integration','python','test_onboarding.py',*args],
         cwd=ROOT, text=True, capture_output=True, timeout=60)
     if result.returncode:
         raise RuntimeError('Onboarding fixture failed: '+result.stderr[-1000:])
@@ -43,7 +42,7 @@ username = json.loads(fixture('prepare'))['username']
 try:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(viewport={'width':1280,'height':900},locale='es-CL',timezone_id='America/Santiago')
+        context = browser.new_context(viewport={'width':1280,'height':900},locale=MATERIAL.locale,timezone_id='America/Santiago')
         page = context.new_page()
         errors=[]
         page.on('pageerror',lambda e:errors.append(str(e)))
@@ -112,7 +111,7 @@ try:
         expect(page.get_by_text(personal['biografia'],exact=True)).to_be_visible(timeout=30000)
         assert page.get_by_role('textbox',name='Correo de acceso').count()==0
         page.screenshot(path=str(ARTIFACTS/'public-profile-preview.png'))
-        page.get_by_role('button',name='Back',exact=True).click()
+        page.get_by_role('button',name=MATERIAL.back,exact=True).click()
         page.mouse.wheel(0,-100000);page.wait_for_timeout(250)
         with page.expect_file_chooser() as chooser:
             find('button','Cambiar foto').click()
@@ -163,12 +162,12 @@ try:
             fill(day,'12:00-22:00')
         try:
             with page.expect_response(lambda r:r.url.endswith('/api/user/me/compa') and r.request.method=='PUT') as saved:
-                find('button','Activar mi perfil gratis').click()
+                find('button',app_label(ROOT, 'compaActivateProfile', MATERIAL.locale)).click()
         except Exception:
             (ARTIFACTS/'onboarding-submit-failure.txt').write_text(page.locator('body').aria_snapshot(),encoding='utf-8')
             page.screenshot(path=str(ARTIFACTS/'onboarding-submit-failure.png'))
             raise
-        assert saved.value.status==200, 'Free activation failed'
+        assert saved.value.status==200, 'Compa profile publication failed'
         initial_auth=saved.value.request.headers['authorization']
         initial_profile=context.request.get(BASE+'/api/user/me/compa',headers={'Authorization':initial_auth}).json()
         assert initial_profile['zona_horaria']=='America/Santiago'
@@ -184,7 +183,7 @@ try:
         expect(page.get_by_role('tab',name='Solicitudes recibidas',exact=True)).to_be_visible(timeout=30000)
         page.get_by_role('tab',name='Solicitudes recibidas',exact=True).click()
         expect(page.get_by_role('group',name=re.compile('3 de 3 cupos gratuitos disponibles'))).to_be_visible(timeout=30000)
-        page.get_by_role('button',name='Back',exact=True).click()
+        page.get_by_role('button',name=MATERIAL.back,exact=True).click()
         page.mouse.move(900,600);page.mouse.wheel(0,-100000);page.wait_for_timeout(200)
         fill('Habilidades','cine')
         with page.expect_response(lambda r:r.url.endswith('/api/user/me/compa') and r.request.method=='PUT') as edited:
