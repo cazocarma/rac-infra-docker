@@ -1,5 +1,31 @@
 # P04 — Documentos y aceptaciones (en desarrollo)
 
+## Laboratorio local para recorridos completos de navegador
+
+`scripts/browser_lab.py start` prepara un proyecto `rac-browser-e2e-<nonce>`
+desde archivos Git limpios de infra y los ocho compañeros fijados en el
+candidato local. No lee `.env.dev`: parte del ejemplo versionado, genera
+credenciales nuevas y publica únicamente web/Keycloak en puertos loopback
+separados. PostgreSQL usa `rac_browser_e2e` en tmpfs; RabbitMQ también usa
+almacenamiento temporal. Las imágenes de aplicaciones/herramientas y recursos
+Compose pertenecen al proyecto nuevo. Los mounts y contextos de build quedan
+limitados a las fuentes congeladas; la configuración resuelta privada no se
+imprime. El estado conserva revisiones y resultados sin credenciales.
+
+`test --state <state.json> --suite chat|booking|onboarding|reviews|all` ejecuta
+los scripts reales con Playwright 1.55.0 en el intérprete que lo invoca.
+`browser_compose.py` resuelve el comando del fixture contra ese snapshot,
+proyecto y configuración. Una referencia de laboratorio vacía, ajena o
+incompleta falla sin volver a rac-dev. Sin referencia explícita se conserva
+el comando DEV de los tests existentes de CI. `stop --state` valida otra vez
+el modelo antes de retirar exclusivamente sus contenedores/volúmenes.
+
+Dos pruebas puras inyectan recursos existentes, puertos abiertos, imágenes DEV,
+host sharing, mounts fuera del snapshot y estado inconsistente. Pasan en
+Windows y dentro de `make test-workflows` (log
+`.local/p04-browser-lab-workflows.log`). La prueba del modelo no sustituye la
+ejecución real; el arranque y los recorridos conectados siguen pendientes.
+
 ## Corrección local del contrato Material del navegador
 
 `flutter_material_labels.py` centraliza las expectativas para los idiomas

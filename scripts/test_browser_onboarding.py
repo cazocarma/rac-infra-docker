@@ -1,5 +1,6 @@
 """Real free onboarding with an isolated, automatically removed DEV identity."""
 from flutter_material_labels import FlutterMaterialLabels
+from browser_compose import command as browser_compose
 from pathlib import Path
 import json
 import os
@@ -27,15 +28,10 @@ def png_fixture(noisy=False):
     path=(ARTIFACTS/('profile-upload-noise.png' if noisy else 'profile-upload-fixture.png')).resolve()
     path.write_bytes(raw)
     return path
-COMPOSE = ['docker','compose','--env-file','envs/.env.dev','-p','rac-dev','-f','compose.yaml',
-    '-f','docker-compose.dev.yaml','-f','compose.observability.yaml','-f','compose.tests.yaml']
-if (ROOT/'envs/.env.photos-s3').exists():
-    COMPOSE += ['-f','compose.photos-s3.yaml']
-if (ROOT/'envs/.env.backups').exists():
-    COMPOSE += ['--env-file','envs/.env.backups','-f','compose.backups.yaml']
+COMPOSE = browser_compose(ROOT)
 
 def fixture(*args):
-    result = subprocess.run(COMPOSE+['run','--rm','test-integration','python','test_onboarding.py',*args],
+    result = subprocess.run(COMPOSE+['run','--rm','--no-deps','test-integration','python','test_onboarding.py',*args],
         cwd=ROOT, text=True, capture_output=True, timeout=60)
     if result.returncode:
         raise RuntimeError('Onboarding fixture failed: '+result.stderr[-1000:])

@@ -1,5 +1,6 @@
 """Real review UI, encrypted backup and restoration; all identities/photos disposable."""
 from flutter_material_labels import FlutterMaterialLabels
+from browser_compose import command as browser_compose
 from pathlib import Path
 import json
 import os
@@ -12,9 +13,7 @@ MATERIAL = FlutterMaterialLabels('es-CL')
 ROOT=Path(__file__).resolve().parents[1]
 BASE=os.environ.get("RAC_BROWSER_URL","http://localhost").rstrip("/")
 ARTIFACTS=Path(os.environ.get("RAC_BROWSER_ARTIFACTS",".local/review-ui"));ARTIFACTS.mkdir(parents=True,exist_ok=True)
-COMPOSE=["docker","compose","--env-file","envs/.env.dev","-p","rac-dev","-f","compose.yaml","-f","docker-compose.dev.yaml","-f","compose.observability.yaml","-f","compose.tests.yaml"]
-if (ROOT/"envs/.env.photos-s3").exists():COMPOSE += ["-f","compose.photos-s3.yaml"]
-if (ROOT/"envs/.env.backups").exists():COMPOSE += ["--env-file","envs/.env.backups","-f","compose.backups.yaml"]
+COMPOSE = browser_compose(ROOT)
 
 def fixture(*args):
     result=subprocess.run(COMPOSE+["run","--rm","--no-deps","test-integration","python","test_reviews_fixture.py",*args],cwd=ROOT,capture_output=True,text=True,timeout=90)
