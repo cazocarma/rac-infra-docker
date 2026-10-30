@@ -1,6 +1,67 @@
 # P04 — Documentos y aceptaciones (en desarrollo)
 
-## Último incremento local: chat, seguridad, moderación y administración
+## Último incremento local: títulos del inbox por idioma y procedencia
+
+El inbox mostraba `titulo` tal como alert lo guardó, siempre desde el catálogo
+`es`: con la interfaz en inglés aparecía "Reserva confirmada". Alert 15ccdf5
+acepta `locale=es|en` en `GET /notifications` (por defecto `es`; otro valor
+devuelve 400). Si la fila tiene procedencia, el título se toma de esa versión y
+clave exactas del catálogo, en el idioma pedido. Una fila histórica sin
+procedencia, o una versión o clave que el catálogo no puede entregar, conserva
+su título guardado: nunca se sustituye por otro texto ni se elige otro idioma.
+La procedencia no se agrega al JSON. La comprobación de disponibilidad incluye
+ahora las columnas V038, así que una API desplegada antes de esa migración falla
+al arrancar y no al responder. `rac_alert` ya tenía `SELECT` de tabla: no hace
+falta migración. El contrato (rac-shared-contracts 70f3f55) documenta el
+parámetro. Frontend 6ed1121 envía el idioma de la interfaz y recarga si cambia.
+Ambos lados son compatibles con la versión anterior del otro.
+
+Pruebas: alert pasa vet y race en todos los paquetes. La prueba de servicio
+cubre versión exacta en es/en, histórico, versión futura, clave retirada y
+cuatro locales inválidos. HTTP cubre `locale` válido, inválido y vacío. El
+repositorio se probó contra PostgreSQL desechable (`-v`, no omitida) y expone
+la procedencia solo en la fila que la tiene. La prueba de eventos ahora exige
+que el rol real `rac_alert` lea la procedencia de un aviso de standing; requiere
+base migrada y la ejecuta CI. OpenAPI 3.1 válido y 15 pruebas de contrato.
+Frontend: 225 pruebas, análisis y build web en `.local/p04-inbox-locale-full.log`,
+incluida la consulta con `locale` a nivel de cliente HTTP.
+
+Auditoría de cobertura 428 (user, match y chat, 26 escrituras HTTP). Ya no
+queda abierta la brecha "otros caminos de contenido público":
+
+- **Exigen aceptación:** reseña (middleware y comprobación en transacción),
+  `PUT /me/compa`, `POST /compas`, habilidades, disponibilidad, días libres,
+  solicitud y extensión de reserva, y mensajes de chat.
+- **Exigen aceptación solo cuando hay contenido público:** el perfil público,
+  la biografía y la foto se comprueban solo si el usuario ya tiene perfil compa;
+  sin él no son públicos.
+- **Aceptar una reserva** exige aceptación; cancelarla no.
+- **Nunca se bloquean (protectoras):** aceptar documentos, borrar foto,
+  bloquear, reportar y cancelar.
+- **Sin control documental:** las escrituras editoriales y de moderación de
+  staff, que tienen sus propios permisos.
+
+Estos servicios no exponen apelación, solicitud de privacidad ni recuperación;
+corresponden a P11/P12. Como siempre, el control documental depende de su flag
+de activación (`DOCUMENTS_ENFORCEMENT_ENABLED` en user; dependencia configurada
+en chat).
+
+`browser_lab.py` expone ahora también `notifications`, `admin` y `schedule`, los
+mismos scripts del job de integración de CI, que ya resolvían el Compose del
+laboratorio. Así el gate local cubre todos los recorridos de navegador de CI.
+
+Laboratorios. `rac-browser-e2e-3d84d2ba94f6` (frontend 065eceb) pasó chat,
+reservas, onboarding y reseñas. `rac-browser-e2e-5d3fdbb8f8cb` (infra d1a327b,
+alert 15ccdf5, frontend 6ed1121 y los demás pins del candidato) pasó las siete
+suites, cada una ejecutada por separado: chat, reservas, onboarding, reseñas,
+inbox, administración y agenda. Ambos se retiraron con `stop` validado, sin
+contenedores ni volúmenes. Evidencia en `.local/p04-browser-065eceb-all.log`,
+`.local/p04-browser-6ed1121-all.log` y `artifacts/<suite>/result.log`. CI
+40991252653 (infra fc1d48c, frontend 640ab9f) terminó con éxito. Alert,
+frontend y contratos se publicaron antes de infra y el manifiesto activo vuelve
+a coincidir con el candidato.
+
+## Incremento local: chat, seguridad, moderación y administración
 
 Frontend 1cf2b8e migra a ARB es/en, con revisión pending, la lista de
 conversaciones, la conversación, su pantalla de seguridad y la moderación de

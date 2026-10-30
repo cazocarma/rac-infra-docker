@@ -3,8 +3,8 @@
   "rac-user-service": "1cc239da81bfd39673ca3420cd1cec37c4c29652",
   "rac-match-service": "8a34b4fe42d57a715ce6f71be9d3faa814ec8426",
   "rac-chat-service": "f07835ee81ae5044bdd2cea694efba3cefc0d9f3",
-  "rac-frontend-flutter": "640ab9ffa7f179ca334c974cafb954ecdd3b7e5e",
-  "rac-alert-service": "372803eaae695c9280c89bfcfc14e5bda73ca381",
+  "rac-frontend-flutter": "6ed1121c49541cae9e169f475161e502530a58b1",
+  "rac-alert-service": "15ccdf5fd9f54b897c3cd72d43933adf560bfbc9",
   "rac-admin-service": "33a33442ebba782f29e1c5122308b04316af81a8",
   "rac-platform": "535006e270b574fc8b25d6f05552fdc8eb0768d4"
 }
