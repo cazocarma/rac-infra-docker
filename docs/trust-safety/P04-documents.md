@@ -28,9 +28,19 @@ horas en plural, agenda sin publicar, sin horarios, fallo de carga, siete
 respuestas de envío clasificadas y éxito con navegación a reservas. Análisis,
 suite completa y build web del archivo Git fijo terminaron con salida 0:
 análisis sin incidencias y 198 pruebas, en
-`.local/p04-discovery-booking-localization-full.log`. Sigue local y sin
-recorrido de navegador. CI 40980902654 (infra 88760a1, frontend ed28b58)
-terminó con éxito, integración incluida.
+`.local/p04-discovery-booking-localization-full.log`. CI 40980902654 (infra
+88760a1, frontend ed28b58) terminó con éxito, integración incluida.
+
+El laboratorio `rac-browser-e2e-a28a73ac695e` (infra 78dd8e3, frontend
+640ab9f y los SHA de backend del candidato) pasó los cuatro recorridos reales:
+chat, reservas, onboarding y reseñas. Cubre por tanto también 074eb40 y
+48f6f4b. El primer intento no llegó a abrir el navegador porque el intérprete
+de pruebas busca Chromium en la ruta por defecto. Con `PLAYWRIGHT_BROWSERS_PATH`
+apuntando a `.local/browsers` pasaron todos. `stop` validado retiró
+contenedores, volúmenes y redes; quedan `state.json`, la salida en
+`.local/p04-browser-640ab9f-all.log` y `artifacts/<suite>/result.log`.
+Sigue local: estos commits no están publicados ni fijados en el manifiesto
+activo.
 
 Quedan fuera de ARB chat, seguridad del chat, moderación, reservas
 (`match_screen`), reseñas, administración y textos de error de las capas API
