@@ -1,6 +1,32 @@
 # P04 — Documentos y aceptaciones (en desarrollo)
 
-## Último incremento local: descubrimiento, perfil público y reserva
+## Último incremento local: Mis reservas y reseñas
+
+Frontend 6bdd3c9 migra a ARB es/en, con revisión pending, Mis reservas, la
+reseña por reserva, el diálogo de reseña y las reseñas públicas: 58 claves. El
+texto español no cambia, por lo que los recorridos de reservas y reseñas siguen
+buscando las mismas etiquetas (`Mis reservas`, `Solicitudes recibidas`,
+`Aceptar`, `Ver planes`, `Cancelar reserva`, `Dejar una reseña`,
+`5 de 5 estrellas` y `Publicar reseña`).
+
+Estados de reserva, diálogo de límite semanal y fallo de actualización pasan a
+estados tipados traducidos al renderizar. Un estado desconocido ya no muestra
+su código interno. `UserApi` deja de lanzar mensajes en español para reseñas y
+lanza `ApiException` con estado. El diálogo distingue 409 (reserva aún no
+evaluable o ya evaluada), que antes descartaba, de otros fallos. Recargar y
+reintentar ya no devuelven un Future desde `setState`. El límite de "3 reservas
+gratis" permanece literal en el texto pending, igual que antes; su valor
+definitivo es una decisión de producto/jurídica pendiente.
+
+Ocho pruebas nuevas cubren es/en × 360/1200: pestañas, estados, referencia,
+cancelación conservada, cupo 402 con su mensaje, fallo 500, reseña 409/500 y
+publicación exitosa. También cubren recarga fallida que pasa a estados vacíos y
+reseñas públicas con fallo, reintento y paginación. `reviews_test` añade
+delegates. Análisis, suite y build web del archivo Git fijo: salida 0, 206
+pruebas, en `.local/p04-bookings-reviews-localization-full.log`. Sigue local y
+sin recorrido de navegador.
+
+## Incremento publicado: descubrimiento, perfil público y reserva
 
 Frontend 640ab9f migra a ARB es/en las pantallas de exploración, perfil público
 del compa y solicitud de reserva: 60 claves con revisión pending y plurales ICU
@@ -19,7 +45,7 @@ abriendo S2 mediante el transporte común y la pantalla mantiene su error
 genérico, sin reenvío. Las pruebas detectaron además que reintentar en el perfil
 devolvía un Future dentro de `setState`: en debug lanzaba una aserción y no
 reconstruía la pantalla. Quedó corregido. El mismo patrón persiste en
-`reviews.dart` y `match_screen.dart`, que se tratarán al migrar esas pantallas.
+`reviews.dart` y `match_screen.dart`; quedó corregido en 6bdd3c9.
 
 Doce pruebas nuevas cubren es/en × 360/1200: conteo singular, plural y `12+`,
 etiqueta accesible de la tarjeta, vacío, fallo sin detalle interno, reintento y
