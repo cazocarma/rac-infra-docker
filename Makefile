@@ -294,6 +294,7 @@ endif
 # Same validation locally and in the first CI gate; no App credentials required.
 .PHONY: test-workflows
 test-workflows:
+	docker run --rm --mount "type=bind,source=$(CURDIR),target=/repo,readonly" -w /repo python@sha256:57b29a7c050c4e679e4bea572e14b3965cf4b5839de2da49d55e49ffc4024f39 python -m unittest discover -s scripts -p test_flutter_material_labels.py
 	docker run --rm --mount "type=bind,source=$(CURDIR),target=/repo,readonly" -w /repo rhysd/actionlint@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9 -shellcheck= -oneline
 	docker run --rm --mount "type=bind,source=$(CURDIR),target=/repo,readonly" -w /repo python@sha256:57b29a7c050c4e679e4bea572e14b3965cf4b5839de2da49d55e49ffc4024f39 sh -c "pip install --disable-pip-version-check --quiet -r ci/requirements-workflows.txt && python scripts/check_workflow_context.py && python -m unittest discover -s scripts -p test_workflow_context.py && python -m unittest discover -s scripts -p test_ci_access.py && python -m unittest discover -s scripts -p test_oauth_token.py && python -m unittest discover -s scripts -p test_documents_lab.py"
 

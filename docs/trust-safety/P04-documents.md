@@ -1,5 +1,38 @@
 # P04 — Documentos y aceptaciones (en desarrollo)
 
+## Corrección local del contrato Material del navegador
+
+`flutter_material_labels.py` centraliza las expectativas para los idiomas
+explícitos es/es-CL y en/en-US del SDK fijado. Rechaza idiomas no soportados
+y contadores inválidos; no acepta indistintamente etiquetas en cualquier
+idioma. Cuatro scripts (reservas, onboarding, chat y reseñas) usan ese contrato
+para el botón de regreso, menú y anuncios del contador según corresponda.
+Antes de enviar el chat, el test exige que Flutter anuncie el número esperado
+de caracteres restantes, en lugar de inferir sincronización por la ausencia
+del contador vacío. También verifica el texto del POST, conserva el estado
+HTTP, el vaciado posterior y la recepción por la contraparte.
+
+Frontend ed28b58 agrega una prueba de semántica Material real en es/en:
+contador vacío, escritura y clear. Emite etiquetas de regreso, menú y
+contadores 0/1/1995/2000 para comparar con el harness. El ensayo descubrió
+separadores de miles (`2.000`/`2,000`) y la forma inglesa especial de cero;
+no bastaba traducir la plantilla. El primer ensayo tuvo una fuga del handle
+de semántica del propio test, corregida con finally; no se cuenta como aprobado.
+El runner de infra usa un archivo Git limpio de frontend, sin montar una
+copia mutable, y conserva el SHA en `.local/material-browser-contract.log`.
+Su ejecución pasó en `.local/p04-material-contract-snapshot.log`. Dos pruebas
+Python comprueban casos de idioma/conteo y rechazo de observaciones ausentes,
+duplicadas o alteradas. `make test-workflows` pasó en
+`.local/p04-material-workflows.log`. CI incorpora el contrato real después
+del checkout y antes de los ensayos costosos de integración.
+
+Estos cambios siguen locales. Falta ensayar el recorrido completo de navegador
+en un stack desechable: el contrato Material no prueba envío, autorización,
+reconexión, moderación ni persistencia del chat. No se reintentó ni publicó
+otra CI. El manifiesto activo remoto conserva frontend 1604d17; solo el
+candidato local avanza a ed28b58. La copia Git fija pasó análisis, 174 pruebas
+y build web release con salida 0 en `.local/p04-material-frontend-full.log`.
+
 ## Último incremento local: perfil y errores de foto
 
 Frontend 6085bfb migra perfil, validaciones, diálogos y presentación pública
@@ -26,7 +59,7 @@ reemplaza la revisión que está comprobando CI 40939775713.
 CI 40939775713 terminó en fallo en el navegador de chat: el selector exige
 `2000 characters remaining` aunque el contexto es es-CL y la aplicación ya
 registra las localizaciones Material. El SDK Flutter 3.44.0 fijado devuelve
-`Quedan 2000 caracteres` y `Atrás` para español. Los scripts de reservas,
+`Quedan 2.000 caracteres` y `Atrás` para español. Los scripts de reservas,
 onboarding y reseñas también contienen expectativas Material en inglés.
 Se debe corregir la coherencia de idioma del harness y ensayarlo en navegador
 local antes de otra publicación. Esto no constituye evidencia de que falle

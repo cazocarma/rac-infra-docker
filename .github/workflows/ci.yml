@@ -229,6 +229,9 @@ jobs:
           ref: ${{ fromJSON(steps.revisions.outputs.repositories)['rac-platform'] }}
           path: rac-platform
           token: ${{ steps.repository-token.outputs.token }}
+      - name: Browser Material labels against pinned frontend semantics
+        working-directory: rac-infra-docker
+        run: python scripts/test_flutter_material_contract.py
       - name: Shared platform race tests at pinned revision
         run: docker run --rm --mount type=bind,source="$PWD/rac-platform",target=/src,readonly -w /src golang:1.27.2 go test -race -count=1 ./...
       - name: Verify generated private dependency against pinned platform sources

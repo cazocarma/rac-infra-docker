@@ -1,9 +1,11 @@
 """RAC UI acceptance: login, booking, provider acceptance, cancellation, mobile."""
+from flutter_material_labels import FlutterMaterialLabels
 from pathlib import Path
 import os
 import re
 import json
 from playwright.sync_api import sync_playwright, expect
+MATERIAL = FlutterMaterialLabels('es-CL')
 if os.environ.get('RAC_ENV', 'dev') != 'dev':
     raise RuntimeError('Browser fixtures are allowed only in DEV')
 BASE = os.environ.get('RAC_BROWSER_URL', 'http://localhost')
@@ -14,7 +16,7 @@ with sync_playwright() as p:
     errors = []
     def login(username, width=1366, height=1000):
         # Linux can inherit en-US@posix, which is not a valid browser BCP 47 locale.
-        context = browser.new_context(viewport={'width': width, 'height': height}, locale='es-CL', timezone_id='America/Santiago')
+        context = browser.new_context(viewport={'width': width, 'height': height}, locale=MATERIAL.locale, timezone_id='America/Santiago')
         page = context.new_page()
         page.on('pageerror', lambda e: errors.append(str(e)))
         page.goto(BASE, wait_until='networkidle')
@@ -115,7 +117,7 @@ with sync_playwright() as p:
         expect(provider_page.get_by_role('group', name=re.compile(r'cupos gratuitos disponibles'))).to_be_visible()
         provider_page.screenshot(path=str(ARTIFACTS/'plans-allowance.png'))
         provider.unroute(cap_route)
-        provider_page.get_by_role('button', name='Back', exact=True).click()
+        provider_page.get_by_role('button', name=MATERIAL.back, exact=True).click()
         provider_page.mouse.move(900,750)
         provider_page.mouse.wheel(0,-20000)
         provider_page.wait_for_timeout(250)
@@ -131,7 +133,7 @@ with sync_playwright() as p:
         page.get_by_role('button', name='Cancelar reserva', exact=True).click()
         card = booking_card(page, booking_id, 'Cancelada')
         expect(card.get_by_role('checkbox', name='Cancelada', exact=True)).to_be_visible(timeout=30000)
-        page.get_by_role('button', name='Back', exact=True).click()
+        page.get_by_role('button', name=MATERIAL.back, exact=True).click()
         page.get_by_text('Notificaciones', exact=True).click()
         # Identify the destination by its accessible page title; the inbox also
         # contains account notices, so explanatory booking-only copy is obsolete.
@@ -145,7 +147,7 @@ with sync_playwright() as p:
         page.set_viewport_size({'width':320,'height':568})
         page.screenshot(path=str(ARTIFACTS/'mobile-notifications.png'))
         page.set_viewport_size({'width':1366,'height':1000})
-        page.get_by_role('button', name='Back', exact=True).click()
+        page.get_by_role('button', name=MATERIAL.back, exact=True).click()
         page.get_by_text('Mis reservas', exact=True).click()
         mobile, mobile_page = login('cliente2', 390, 844)
         mobile_page.screenshot(path=str(ARTIFACTS/'mobile-home.png'))
@@ -156,9 +158,9 @@ with sync_playwright() as p:
         mobile_page.get_by_role('button', name='Reservar', exact=True).click()
         expect(mobile_page.get_by_role('group', name=re.compile('2. Hora de inicio'))).to_be_visible(timeout=30000)
         mobile_page.screenshot(path=str(ARTIFACTS/'mobile-booking.png'))
-        mobile_page.get_by_role('button', name='Back', exact=True).click()
-        mobile_page.get_by_role('button', name='Back', exact=True).click()
-        mobile_page.get_by_role('button', name='Open navigation menu').click()
+        mobile_page.get_by_role('button', name=MATERIAL.back, exact=True).click()
+        mobile_page.get_by_role('button', name=MATERIAL.back, exact=True).click()
+        mobile_page.get_by_role('button', name=MATERIAL.open_navigation).click()
         with mobile_page.expect_response(lambda r: '/api/chat/conversations' in r.url and r.request.method == 'GET') as conversations:
             mobile_page.get_by_role('button', name='Mensajes', exact=True).click()
         assert conversations.value.status == 200, conversations.value.text()
@@ -166,7 +168,7 @@ with sync_playwright() as p:
         expect(mobile_page.get_by_role('heading', name='Mensajes', exact=True)).to_be_visible()
         expect(mobile_page.get_by_text('Conversemos el próximo plan', exact=True)).to_be_visible()
         expect(mobile_page.get_by_role('button', name='Actualizar conversaciones', exact=True)).to_be_visible()
-        page.get_by_role('button', name='Back', exact=True).click()
+        page.get_by_role('button', name=MATERIAL.back, exact=True).click()
         with page.expect_response(lambda r: r.url.startswith(BASE.rstrip('/')+'/redirect.html') and r.request.method == 'GET', timeout=60000):
             page.get_by_text('Salir', exact=True).click()
         page.wait_for_load_state('networkidle')
