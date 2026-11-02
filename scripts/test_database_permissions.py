@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def run(*args, input=None, ok=True):
-    result = subprocess.run(args, input=input, capture_output=True, text=True, timeout=300)
+    result = subprocess.run(args, input=input, capture_output=True, text=True, encoding='utf-8', timeout=300)
     if ok and result.returncode:
         raise RuntimeError('Disposable database test command failed: ' + args[0] + '\n' + result.stderr[-1500:])
     return result
@@ -164,6 +164,8 @@ def main():
             # previously required granting UPDATE on another owner's table.
             client, compa, booking = [str(uuid.uuid4()) for _ in range(3)]
             sql(database, f"INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('{client}','Fixture','client@example.test','cliente','kc-c'),('{compa}','Fixture','compa@example.test','compa','kc-p');", 'rac_user')
+            from listing_revision_fixture import verify as verify_listing_revisions
+            verify_listing_revisions(sql, database, compa)
             # Replacing catalog activities requires DELETE even when the profile
             # is new. Other owners retain no delete permission on them.
             sql(database, 'DELETE FROM compa_activities WHERE false;', 'rac_user')
@@ -195,6 +197,9 @@ def main():
             assert sql(restored, "SELECT has_table_privilege('rac_chat','sesion','UPDATE');").stdout.strip() == 'f'
             assert sql(restored, "SELECT has_table_privilege('rac_chat','mensaje','INSERT');").stdout.strip() == 't'
             assert sql(restored, 'SELECT count(*) FROM reserva_resena;', 'rac_user').stdout.strip() == '1'
+            assert sql(restored, 'SELECT count(*) FROM listing_revisions;', 'rac_user').stdout.strip() == '2'
+            assert sql(restored, 'SELECT count(*) FROM listing_revision_decisions;', 'rac_user').stdout.strip() == '2'
+            assert sql(restored, "SELECT bool_and(payload_hash=public.digest(payload_canonical,'sha256')) FROM listing_revisions;", 'rac_user').stdout.strip() == 't'
         print('PASS: fresh and V018 upgrade, non-superuser migration, independent roles, negative permissions, trigger locks/outboxes/review and password-free backup dump')
     finally:
         run('docker', 'rm', '-f', name, ok=False)

@@ -12,6 +12,7 @@ Este expediente aplica la Fase 0 solicitada en `RAC/rac-trust-safety-prompt.md`,
 - [Plan y decisiones humanas](plan.md): secuencia de PR, migraciones, gates y alcance.
 - [Decisiones aprobadas el 2 de noviembre de 2026](decisions-2026-11-02.md).
 - [P07: analizador y contactos públicos](P07-content-signals.md).
+- [P08: snapshots inmutables y revisión de publicaciones](P08-listings.md).
 - [Matriz de aceptación](acceptance.md): módulos M1–M17, pantallas y aceptación global.
 - [P01: implementación, pruebas y límites](P01-foundation.md).
 - [P02: aislamiento de servicios, Keycloak y activación pendiente](P02-service-isolation.md).
