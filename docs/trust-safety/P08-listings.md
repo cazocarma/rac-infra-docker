@@ -167,6 +167,21 @@ SECURITY DEFINER con `search_path=pg_catalog`; no concede SELECT a la API ni
 reescribe V041. Se conserva la reproducción en
 `.local/p08-corrector-deferred-constraint-reproduction.log`.
 
+La prueba aislada del corrector terminó exit 0
+(`.local/p08-corrector-role-probe-go.log`). Después se congelaron por Git archive
+infra `5ea2e1f`, user `75c3b2c`, platform `42dbb345` (v0.16.0) y los otros seis
+compañeros del manifiesto candidato. Permisos y migraciones/user terminaron
+exit 0 desde ese conjunto exacto en
+`.local/rac-p08-db-proof-f0fbe66fef5a/{revisions.json,permissions.log,migrations-user.log}`.
+La suite exigió el PASS de ambos ingresses reales: fallos de auditoría después de
+la escritura, MFA vencido después del SQL, catálogo ausente/futuro, versionado,
+reintentos y dos instancias en carrera, conservando el snapshot público anterior.
+También mantuvo los escenarios de documentos, identidad, standing y migraciones.
+Se retiraron los contenedores desechables; no se migró ni modificó DEV.
+
+Este ensayo no publica platform v0.16.0, no cambia los pins activos de CI y no
+prueba entrega de avisos, el catálogo de motivos real ni aprobación positiva.
+
 ## Corte pendiente para completar P08
 
 1. API dueña de envío/lectura/decisión, autorización staff MFA/step-up y razones

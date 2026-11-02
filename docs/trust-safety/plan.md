@@ -90,4 +90,17 @@ No incluir teléfonos de emergencia definitivos sin validar fuente oficial/juris
 
 Fase A: P01–P15, decisiones aplicables resueltas y matriz de aceptación con evidencia; bloqueante para usuarios reales. No anunciar prevención total de ilícitos. Fase B antes de cobros: proveedor de pagos, impuestos, retracto/cancelación, suscripción, disputas y señales de contracargo, todo tras decisión y textos aprobados. Fase C: DPIA y revisión adicional antes de imágenes externas, chat en servidor o scoring avanzado. El chat privado seguirá fuera del análisis servidor por defecto.
 
-P01 y P02 tienen evidencia local separada. La siguiente unidad es P03, estado de cuenta y enforcement transversal, con D02/D03 ya aprobadas; la activación local de P02 requiere el respaldo/recuperación indicado en su runbook. Mantener entregas revisables, sin mezclar toda la plataforma en un único PR.
+P01 y P02 tienen evidencia local separada. La implementación ha avanzado hasta
+P08; su estado y las pruebas de snapshots, lectura privada y decisiones negativas
+están en [P08-listings.md](P08-listings.md). Esto no declara cerradas las unidades
+anteriores ni sustituye sus gates de salida. P08 continúa abierto: aprobación con
+precondiciones vigentes, medios/P09, corte de todas las lecturas públicas y flujos
+Flutter siguen pendientes. El despliegue de la app conserva el comportamiento
+anterior hasta ese corte coordinado; las revisiones locales no certifican sus
+publicaciones actuales como revisadas.
+
+La activación local de P02 requiere el respaldo/recuperación indicado en su
+runbook. Mantener entregas revisables, sin mezclar toda la plataforma en un único
+PR. Las decisiones de activación y revisión jurídica siguen rigiéndose por la
+tabla D01–D14 y el registro de decisiones aprobado, no por el número de fase
+alcanzado en desarrollo.
