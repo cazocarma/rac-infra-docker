@@ -1,5 +1,5 @@
 # Isolated CPU proof image, not an activated production worker.
-FROM golang:1.27.2
+FROM golang:1.27.3
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       tesseract-ocr=5.5.0-1+b1 \

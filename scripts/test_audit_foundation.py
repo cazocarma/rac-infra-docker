@@ -149,7 +149,7 @@ def main():
                 (path / 'to.json').write_text(json.dumps(head))
                 command = ('docker', 'run', '--rm', '-i', '--mount', f'type=bind,source={module},target=/src,readonly',
                            '--mount', f'type=bind,source={path},target=/bounds,readonly', '-w', '/src',
-                           'golang:1.27.2', 'go', 'run', './cmd/rac-audit', 'verify', '--from', '/bounds/from.json', '--to', '/bounds/to.json')
+                           'golang:1.27.3', 'go', 'run', './cmd/rac-audit', 'verify', '--from', '/bounds/from.json', '--to', '/bounds/to.json')
                 run(*command, input='\n'.join(json.dumps(r) for r in records))
                 assert run(*command, input='\n'.join(json.dumps(r) for r in records[:-1]), ok=False).returncode != 0
         print('PASS: append permissions, authenticated service identity, idempotence, rollback, concurrent chain, canonical parity, tampering and truncation')

@@ -62,7 +62,7 @@ try:
             "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-match-go-build:/root/.cache/go-build",
             "-e", f"RAC_QUOTA_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
             "-e", f"RAC_DOCUMENT_MATCH_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/document_match?sslmode=disable",
-            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/repo ./internal/http")
+            "golang:1.27.3", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/repo ./internal/http")
         print("PASS: concurrent weekly allowance, refund, week boundary and subscription entitlement")
         assert '--- PASS: TestBookingDocumentsPostgres' in quota_tests.stdout
         print('PASS: booking document preconditions, remote owner authority, commit race rollback, quota and protective cancellation during outage')
@@ -82,7 +82,7 @@ try:
             "--mount", f"type=bind,source={quota_source},target=/sources,readonly",
             "-v", "rac-quota-go-cache:/go/pkg/mod", "-v", "rac-match-go-build:/root/.cache/go-build",
             "-e", f"RAC_STANDING_RECOVERY_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/standing_recovery?sslmode=disable",
-            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v -run '^TestStandingRecoveryPostgresHTTP$' ./internal/events")
+            "golang:1.27.3", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v -run '^TestStandingRecoveryPostgresHTTP$' ./internal/events")
         assert '--- PASS: TestStandingRecoveryPostgresHTTP' in recovery_tests.stdout
         print('PASS: original-event recovery without broker, missed sanction followed by reversal, fresh authorization preserved, counterpart quota, outages, claim expiry/fencing and event gaps')
     chat_source = ROOT.parent / "rac-chat-service"
@@ -97,7 +97,7 @@ try:
             "-e", f"RAC_CHAT_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/fresh?sslmode=disable",
             "-e", "RAC_CHAT_MIGRATED=1",
             "-e", f"RAC_DOCUMENT_CHAT_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/document_chat?sslmode=disable",
-            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http")
+            "golang:1.27.3", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http")
         assert '--- PASS: TestChatDocumentsPostgres' in chat_tests.stdout
         print('PASS: remote document authority, booking-derived persona, commit/outbox rollback on material race, mismatched registry, outage and protective chat reads/retry')
         print("PASS: private booking chat, idempotent concurrent messages, cursor pages and DB cancellation guard")
@@ -139,7 +139,7 @@ try:
             "-e", f"RAC_LISTING_REVIEW_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/listing_review_http?sslmode=disable",
             "-e", f"RAC_LISTING_CORRECTION_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/listing_corrector_http?sslmode=disable",
             "-e", f"RAC_PHOTO_ASSET_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/photo_sources?sslmode=disable",
-            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol ./internal/editorial ./internal/strictjson ./internal/listings ./internal/listingreview ./internal/photoassets" + (" ./internal/identity/..." if (onboarding_source / 'internal/identity').exists() else ""))
+            "golang:1.27.3", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol ./internal/editorial ./internal/strictjson ./internal/listings ./internal/listingreview ./internal/photoassets" + (" ./internal/identity/..." if (onboarding_source / 'internal/identity').exists() else ""))
         assert '--- PASS: TestPhotoSourcePostgres/memory' in user_tests.stdout
         print('PASS: private immutable photo sources as owner role, verified bytes, ownership, concurrent confirmation, atomic analysis intent and outbox-fault rollback')
         assert '--- PASS: TestReaderPostgresHTTP' in user_tests.stdout

@@ -96,7 +96,7 @@ try:
             '-v', 'rac-quota-go-cache:/go/pkg/mod', '-v', f'rac-{service}-go-build:/root/.cache/go-build',
             '-e', f'RAC_EVENTS_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}-pg:5432/rac_events_test?sslmode=disable',
             '-e', f'RAC_EVENTS_TEST_AMQP_URL=amqp://test:test-only@{NAME}-mq:5672/',
-            'golang:1.27.2', 'sh', '-c', 'cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/events')
+            'golang:1.27.3', 'sh', '-c', 'cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/events')
         if service == 'alert':
             for name in ('TestStandingNoticesPostgres', 'TestStandingNoticeRecoveryPostgresHTTP', 'TestStandingDiscoveryPagesPostgres', 'TestStandingNoticeBrokerRedelivery'):
                 assert '--- PASS: ' + name in result.stdout, 'Required standing notification test did not run: ' + name

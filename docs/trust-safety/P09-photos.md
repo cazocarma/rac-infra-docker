@@ -96,7 +96,11 @@ pública futura no debe devolver RuleID/spans ni volcar esta evaluación en logs
 Contacto genera `contact_correction_required`; los demás resultados son
 `needs_review`. Nunca hay aprobación o sanción automática. Categorías sin
 evaluar siguen explícitas y la evaluación declara pendientes similitud de imagen
-baneada y revisión humana. El pHash todavía no está implementado.
+baneada y revisión humana cuando no hay un comparador configurado. La base
+perceptual preparada después se describe a continuación; no hay catálogo activo
+de imágenes retiradas ni carga desde casos reales.
+La implementación, las exclusiones y el corpus ampliado se detallan en
+[P09-image-similarity.md](P09-image-similarity.md).
 
 El laboratorio `test_photo_processing.py` instala versiones fijadas de
 Tesseract/modelos en una imagen de prueba, ejecuta con red deshabilitada y exige
@@ -130,8 +134,8 @@ artefactos persistidos o publicación revisada; no activó un worker en DEV.
 
 - API de subida/reanudación, autorización y estado, límites/observabilidad y
   reconciliación de operaciones inciertas; configuración de cuarentena separada.
-- Worker con claims/reintentos/fencing, integración del reencode/OCR locales
-  preparados, pHash y artefactos inmutables versionados.
+- Worker con claims/reintentos/fencing, integración de reencode/OCR/similitud
+  preparados y artefactos inmutables versionados; catálogo vinculado a casos.
 - Corpus de transformaciones y falsos positivos; una coincidencia es señal,
   nunca prueba de identidad ni sanción automática. Moderación externa sigue off.
 - Revisión humana, promoción verificada a `public-media` privado y referencias

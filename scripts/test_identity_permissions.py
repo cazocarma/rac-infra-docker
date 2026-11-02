@@ -195,7 +195,7 @@ def main():
                 '-v', 'rac-user-go-build:/root/.cache/go-build',
                 '-e', 'SSL_CERT_FILE=/fixture/cert.pem', '-e', 'RAC_STANDING_IDENTITY_FIXTURE=/fixture/reader-fixture.json',
                 '-e', 'GOPROXY=off', '-e', 'GOSUMDB=off', '-w', '/source',
-                'golang:1.27.2', 'go', 'test', '-race', '-count=1', './internal/platform', '-run', 'TestProvisionedStandingReaderKeycloak')
+                'golang:1.27.3', 'go', 'test', '-race', '-count=1', './internal/platform', '-run', 'TestProvisionedStandingReaderKeycloak')
         else:
             raise RuntimeError('User checkout required for real standing JWT verification')
         assert configure_standing(admin, standing_directory, documents=False) == bindings
@@ -262,7 +262,7 @@ def main():
             '--mount', f'type=bind,source={admin_source},target=/source,readonly',
             '-v', 'rac-admin-go-build:/root/.cache/go-build', '-v', 'rac-quota-go-cache:/go/pkg/mod',
             '-e', 'GOPROXY=off', '-e', 'GOSUMDB=off', '-w', '/source',
-            'golang:1.27.2', 'go', 'test', '-mod=vendor', '-race', '-run', '^$', './internal/staff')
+            'golang:1.27.3', 'go', 'test', '-mod=vendor', '-race', '-run', '^$', './internal/staff')
 
         class Form(HTMLParser):
             action = None
@@ -335,7 +335,7 @@ def main():
             '-v', 'rac-admin-go-build:/root/.cache/go-build', '-v', 'rac-quota-go-cache:/go/pkg/mod',
             '-e', 'SSL_CERT_FILE=/fixture/cert.pem', '-e', 'RAC_STAFF_IDENTITY_FIXTURE=/fixture/staff-fixture.json',
             '-e', 'GOPROXY=off', '-e', 'GOSUMDB=off', '-w', '/source',
-            'golang:1.27.2', 'go', 'test', '-mod=vendor', '-race', '-v', '-count=1', './internal/staff', '-run', '^TestProvisionedStaffKeycloak$')
+            'golang:1.27.3', 'go', 'test', '-mod=vendor', '-race', '-v', '-count=1', './internal/staff', '-run', '^TestProvisionedStaffKeycloak$')
         assert '--- PASS: TestProvisionedStaffKeycloak' in staff_result, 'staff integration test absent or skipped'
         print('PASS: real staff token signature/issuer/audience, scoped legal role, original MFA deadline across real refresh and HTTP permissions; ID/service tokens denied')
         # Exercise renewal even on a fast local runner, without lengthening or

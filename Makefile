@@ -319,3 +319,7 @@ test-photo-storage:
 	$(PYTHON) scripts/test_photo_storage.py
 test-photo-processing:
 	$(PYTHON) scripts/test_photo_processing.py
+
+.PHONY: test-go-security
+test-go-security:
+	$(PYTHON) scripts/test_go_security.py

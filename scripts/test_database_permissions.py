@@ -211,7 +211,7 @@ def main():
             '--mount', f'type=bind,source={platform_source},target=/source,readonly',
             '-v', 'rac-quota-go-cache:/go/pkg/mod', '-v', 'rac-quota-go-build:/root/.cache/go-build',
             '-e', f'RAC_STAFF_ROLE_TEST_DATABASE_URL=postgres://postgres:test-only@postgres:5432/fresh?sslmode=disable',
-            'golang:1.27.2', 'sh', '-c',
+            'golang:1.27.3', 'sh', '-c',
             'cp -a /source /tmp/platform && cd /tmp/platform && go test -race -count=1 -v ./staff/postgres', ok=False)
         if role_proof.returncode:
             details = '\n'.join(line for line in role_proof.stdout.splitlines()

@@ -46,7 +46,7 @@ def main():
                 '--mount',f'type=bind,source={ROOT/name},target=/src','-w','/src',
                 '-v','rac-quota-go-cache:/go/pkg/mod','-e','GONOPROXY=none',
                 '-e','GONOSUMDB='+MODULE,'-e','GOPROXY=file:///proxy,https://proxy.golang.org',
-                'golang:1.27.2','sh','-c',command],capture_output=True,text=True)
+                'golang:1.27.3','sh','-c',command],capture_output=True,text=True)
             if result.returncode:
                 raise RuntimeError(name+': Go dependency generation failed\n'+result.stderr[-2000:])
             print('Generated '+name+' vendor from '+args.version+' ('+revision[:12]+')',flush=True)

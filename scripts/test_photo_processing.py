@@ -30,11 +30,15 @@ def main():
             './internal/photoassets ./internal/contentproof ./internal/photos ./internal/listings')
         for required in ('TestPhotoProcessingTesseract/contact_border','TestPhotoProcessingTesseract/benign',
                          'TestPhotoProcessingPreservesFrameAndPrivateProof','TestPhotoProcessingFailsClosed',
-                         'TestFreezeBoundsAndSnapshotsAnalysis'):
+                         'TestFreezeBoundsAndSnapshotsAnalysis','TestPerceptualSimilaritySyntheticCorpus',
+                         'TestFingerprintExclusionsAndImmutablePolicy','TestFingerprintConcurrencyAndSignalOnlyDisposition'):
             if '--- PASS: '+required not in result.stdout:
                 raise RuntimeError('Required photo analysis proof skipped: '+required)
         print('IMAGE '+image_id,flush=True)
-        print('PASS: real local Tesseract on full-frame synthetic contact/benign images, metadata removal, shared signals, immutable private proof and fail-closed errors',flush=True)
+        for line in result.stdout.splitlines():
+            if 'synthetic corpus:' in line:
+                print(line.strip(),flush=True)
+        print('PASS: local OCR, full-frame normalization, shared signals and versioned perceptual similarity; synthetic corpus, exclusions, concurrent hashing and human-review-only outcomes',flush=True)
     finally:
         run('docker','image','rm',image,ok=False)
 

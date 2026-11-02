@@ -88,7 +88,7 @@ def main():
             '-e', 'RAC_ONBOARDING_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/photos?sslmode=disable',
             '-e', 'RAC_PHOTO_ASSET_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/photo_sources?sslmode=disable',
             '-e', 'RAC_PHOTO_MIGRATION_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/photo_migration?sslmode=disable',
-            'golang:1.27.2', 'sh', '-c',
+            'golang:1.27.3', 'sh', '-c',
             'cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v '
             "-run '^(TestS3CreateOnlyIntegration|TestPhotoSourcePostgres|TestProfilePhotosOwnershipAndPublication|TestCopyPhotosIntegrityAndRetry)$' "
             './internal/photostore ./internal/photoassets ./internal/http ./cmd/migrate-photos')
