@@ -78,7 +78,7 @@ else:
         api('GET',path,token,expected=404)
         api('PUT',path,expected=401)
         profile={'descripcion':'Compartamos cine y actividades entretenidas juntos.','tarifa_hora':12000,
-            'zona_horaria':'America/Santiago','habilidades':['cine','running'], 'availability':{day:['00:00-23:59'] for day in ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']}}
+            'zona_horaria':'America/Santiago','actividades':[{'slug':'cine'},{'slug':'running','nota':'Por la costanera'}], 'availability':{day:['00:00-23:59'] for day in ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']}}
         api('PUT',path,token,{**profile,'role':'admin'},expected=400)
         api('PUT',path,token,{**profile,'usuario_id':me['id']},expected=400)
         api('PUT',path,token,{**profile,'availability':{'lunes':['21:00-20:00']}},expected=400)
@@ -92,10 +92,10 @@ else:
         assert api('GET','/api/user/me',token)['role']=='compa'
         allowance=api('GET',f"/api/match/compa/{me['id']}/allowance",token)
         assert allowance['disponibles']==3 and not allowance['suscripcion_activa']
-        profile['habilidades']=['cine']
+        profile['actividades']=[{'slug':'cine'}]
         api('PUT',path,token,profile)
         own=api('GET',path,token)
-        assert own['profile']['habilidades']==['cine']
+        assert [a['slug'] for a in own['profile']['actividades']]==['cine']
         public=api('GET','/api/user/compas/'+own['profile']['id'])
         assert public['usuario_id']==me['id']
         buyer=login('cliente1')
@@ -115,6 +115,6 @@ else:
         api('PUT',f"/api/match/session/{booking['id']}/state",token,{'estado':'activa'})
         assert api('GET',slots_path,buyer)['slots']==[]
         wait_booking_notifications(token, booking['id'], ['pendiente', 'activa'])
-        print('PASS: base account activates for free, refreshes signed role, edits skills, publishes availability and receives/accepts reservation')
+        print('PASS: base account activates for free, refreshes signed role, edits catalog activities, publishes availability and receives/accepts reservation')
     finally:
         cleanup(username)

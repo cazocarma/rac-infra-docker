@@ -31,7 +31,7 @@ DAYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'
 AVAILABILITY = {day: ['00:00-23:59'] for day in DAYS}
 PROFILE = {'nombre': 'Compa sintético', 'intereses': ['Cine']}
 COMPA = {'descripcion': 'Actividad de prueba dentro del laboratorio aislado.',
-         'tarifa_hora': 12000, 'zona_horaria': 'UTC', 'habilidades': ['cine'],
+         'tarifa_hora': 12000, 'zona_horaria': 'UTC', 'actividades': [{'slug': 'cine'}],
          'availability': AVAILABILITY}
 LEGACY = {'nombre': 'Compa sintético', 'correo': 'compa1@demo.com',
           'fecha_nacimiento': '1990-01-01', 'telefono': '+56912345678',
@@ -213,7 +213,6 @@ if phase == 'seed':
     api('POST', '/api/user/profile', state['compa_token'], LEGACY)
     api('PUT', '/api/user/me/compa', state['compa_token'], COMPA)
     api('POST', '/api/user/compas', state['compa_token'], {'descripcion': COMPA['descripcion'], 'tarifa_hora': 12000})
-    api('POST', f"/api/user/compas/{state['profile']}/skills", state['compa_token'], {'skills': ['cine']})
     api('PUT', '/api/user/me/photo', state['compa_token'], png(), content_type='image/png')
     api('POST', f"/api/match/availability/{state['compa']}", state['compa_token'], {'availability': AVAILABILITY})
     off = stamp(120).date().isoformat()
@@ -309,7 +308,6 @@ elif phase == 'writers':
         api('POST', '/api/user/profile', token, LEGACY, expected=403)
         api('PUT', '/api/user/me/compa', token, COMPA, expected=403)
         api('POST', '/api/user/compas', token, {'descripcion': COMPA['descripcion'], 'tarifa_hora': 12000}, expected=403)
-        api('POST', f"/api/user/compas/{state['profile']}/skills", token, {'skills': ['cine']}, expected=403)
         api('PUT', '/api/user/me/photo', token, png(), expected=403, content_type='image/png')
         api('POST', f"/api/match/availability/{state['compa']}", token, {'availability': AVAILABILITY}, expected=403)
         off = stamp(125).date().isoformat()
@@ -344,7 +342,7 @@ elif phase == 'writers':
             {'motivo': 'otro', 'detalle': 'Reporte sintético con cuenta baneada.'}, expected=201 if INSTANCE == 1 else 200)
     api('PUT', f"/api/match/session/{state['pending']}/state", state['buyer_token'], {'estado': 'cancelada'})
     change(state['buyer'], 'active')
-    print('PASS: old real JWT denied on profile/listing/skills/photo/review/agenda/time-off/create/accept/extend/send; protective reads retained')
+    print('PASS: old real JWT denied on profile/listing/activities/photo/review/agenda/time-off/create/accept/extend/send; protective reads retained')
 elif phase == 'races':
     commit_races()
 elif phase == 'measure':

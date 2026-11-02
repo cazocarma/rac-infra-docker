@@ -13,7 +13,7 @@ if len(sys.argv)>1 and sys.argv[1]=='prepare':
  username=json.loads(subprocess.check_output([sys.executable,'test_onboarding.py','prepare'],text=True))['username']
  try:
   token=login(username);me=api('GET','/api/user/me',token)
-  profile={'descripcion':'Agenda sintética para pruebas de días libres.','tarifa_hora':12000,'zona_horaria':'America/Santiago','habilidades':['cine'],'availability':{day:['00:00-23:59'] for day in ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']}}
+  profile={'descripcion':'Agenda sintética para pruebas de días libres.','tarifa_hora':12000,'zona_horaria':'America/Santiago','actividades':[{'slug':'cine'}],'availability':{day:['00:00-23:59'] for day in ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']}}
   api('PUT','/api/user/me/compa',token,profile);token=login(username)
   date=(dt.datetime.now(dt.timezone.utc)+dt.timedelta(days=40)).date().isoformat()
   block=api('POST',f"/api/match/availability/{me['id']}/time-off",token,{'desde':date,'hasta':date},expected=201)
