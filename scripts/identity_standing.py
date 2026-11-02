@@ -10,6 +10,9 @@ import urllib.error
 
 AUDIENCE = 'rac-standing'
 DOCUMENT_AUDIENCE = 'rac-documents'
+# Identity verification state is read only by match, to gate booking requests.
+IDENTITY_AUDIENCE = 'rac-identity'
+PREFIXES = {AUDIENCE: 'standing', DOCUMENT_AUDIENCE: 'documents', IDENTITY_AUDIENCE: 'identity'}
 READERS = {'match': 'rac-match-standing', 'chat': 'rac-chat-standing', 'alert': 'rac-alert-standing'}
 
 
@@ -21,9 +24,9 @@ def write_atomic(file, value, mode):
     temporary.replace(file)
 
 
-def configure_standing(admin, directory, documents=False):
-    if not isinstance(documents, bool):
-        raise ValueError("Document rollout must be boolean")
+def configure_standing(admin, directory, documents=False, identity=False):
+    if not isinstance(documents, bool) or not isinstance(identity, bool):
+        raise ValueError("Document and identity rollouts must be boolean")
     directory = Path(directory)
     payload = {'clientId': AUDIENCE, 'enabled': True, 'protocol': 'openid-connect',
         'bearerOnly': True, 'publicClient': False, 'standardFlowEnabled': False,
@@ -53,11 +56,12 @@ def configure_standing(admin, directory, documents=False):
 
     standing = resource(AUDIENCE, 'standing.read')
     document = resource(DOCUMENT_AUDIENCE, 'documents.read') if documents else None
+    verification = resource(IDENTITY_AUDIENCE, 'identity.read') if identity else None
 
     def mappers(resources):
         result = []
         for audience, _, role in resources:
-            prefix = "standing" if audience == AUDIENCE else "documents"
+            prefix = PREFIXES[audience]
             result.extend([
                 {'name': prefix + '-audience', 'protocol': 'openid-connect', 'protocolMapper': 'oidc-audience-mapper',
                  'config': {'included.custom.audience': audience, 'access.token.claim': 'true', 'id.token.claim': 'false'}},
@@ -81,7 +85,7 @@ def configure_standing(admin, directory, documents=False):
         # can resume with the same secret rather than stranding a new client.
         if not file.exists():
             write_atomic(file, secret + '\n', 0o600)
-        resources = [standing] + ([document] if document and name in ('match', 'chat') else [])
+        resources = [standing] + ([document] if document and name in ('match', 'chat') else []) +             ([verification] if verification and name == 'match' else [])
         reader = client({'clientId': client_id, 'enabled': True, 'protocol': 'openid-connect',
             'publicClient': False, 'bearerOnly': False, 'clientAuthenticatorType': 'client-secret',
             'secret': secret, 'serviceAccountsEnabled': True, 'standardFlowEnabled': False,
