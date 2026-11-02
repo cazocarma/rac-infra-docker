@@ -58,11 +58,35 @@ corrigió la sincronización y se repitió la suite completa, sin relajar aserci
 Los 15 casos focalizados incluyen es/en, 360/1200 px, conservación del borrador,
 corrección/reintento y clasificación de errores sin filtrar diagnóstico privado.
 
-`make test-workflows` pasó (`.local/p07-workflows.log`).
-Los resultados del navegador se añadirán al terminar su ejecución.
+`make test-workflows` pasó, incluido el caso nuevo de diagnóstico UTF-8
+(`.local/p07-workflows-final.log`).
 Las pruebas de handlers usan una BD nil para demostrar que el
 rechazo se produce antes de intentar persistir. No sustituyen ensayos con roles
 reales de PostgreSQL ni navegación integrada.
+
+## Laboratorio integrado comprobado
+
+`rac-browser-e2e-68710a812fda`, infra
+`064cd446ca4c4407b3834d3ef907ef81d9d687a0` y ocho revisiones exactas del
+manifiesto candidato: pasaron chat, reservas, onboarding, reseñas, notificaciones,
+admin y agenda (`.local/p07-browser-all-final.log`, exit 0).
+Onboarding comprobó con los servicios y PostgreSQL reales el rechazo de nombre,
+biografía, intereses, descripción y notas con contacto; las lecturas posteriores
+conservaron todos los datos guardados y el teléfono privado. La UI mostró el
+aviso y permitió corregir/guardar. También pasó foto privada/pública y persistencia
+tras recrear user-service. No se activó S3 ni respaldo externo para este ensayo.
+
+Los ensayos previos descubrieron dos problemas del harness: Python hijo emitía
+diagnósticos con la página de códigos de Windows mientras el padre esperaba
+UTF-8; y Flutter agrupa el aviso en un nombre accesible con otros textos. Se
+fijó el entorno UTF-8 con una prueba de subprocess y se exigió el mensaje completo
+dentro del grupo, tras inspeccionar respuesta 400, árbol accesible y captura.
+No se aceptaron respuestas incorrectas ni se relajó la persistencia esperada.
+
+El laboratorio final y los dos anteriores se retiraron con su comando `stop`,
+incluidos sus volúmenes propios. Se conservan fuentes y artefactos locales; el
+almacenamiento RustFS de DEV no se modificó. Este ensayo no activa usuarios reales
+ni cierra los pendientes de política o revisión jurídica.
 
 ## Pendientes de P07/P08
 
