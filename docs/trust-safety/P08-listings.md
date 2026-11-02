@@ -1,8 +1,9 @@
 # P08 — Revisiones de publicaciones
 
 Estado: base local en desarrollo sobre P07. La CI del PR P07 #12 terminó completa
-en SUCCESS (run 41467621049). P08 no está publicado ni conectado a endpoints o
-pantallas; la publicación anterior de la app no se considera una revisión humana.
+en SUCCESS (run 41467621049). P08 no está publicado ni conectado al stack o a
+pantallas; los ingresses privados están en ensayo local. La publicación anterior
+de la app no se considera una revisión humana.
 No se activa la migración en DEV por inferencia de los ensayos desechables.
 
 ## Modelo preparado
@@ -126,6 +127,45 @@ además de documentos, identidad, standing, envío de revisiones, preservación 
 datos y detección de cambios de checksum. El manifiesto candidato local fija
 estos commits y platform v0.16.0; el manifiesto activo de CI conserva P07 hasta
 publicar y verificar coordinadamente la siguiente entrega.
+
+## Corrección y rechazo privados en desarrollo
+
+V043 añade catálogos de motivos versionados y sellados, decisiones negativas,
+registro delegado e intención de aviso en outbox. No instala motivos ni activa un
+catálogo. Un catálogo se carga en una transacción: primero sus definiciones y
+después la fila revisada que lo sella. No se pueden añadir motivos a una versión
+sellada ni modificar sus definiciones. Un bloqueo por versión serializa carga y
+sellado. La activación y su flujo editorial siguen pendientes.
+
+`NewCorrector` usa otro login con solo tres funciones, sin lectura de contenido,
+tablas ni permiso de publicación. Su router admite POST
+`/internal/listings/revisions/{id}/decisions` para `rejected` o
+`changes_requested`, bajo `listings.review` y MFA. Exige ID de evento, versión
+esperada como decimal en texto, hash exacto, versión de motivos y código válido;
+el actor/política técnica proceden de la sesión/configuración del servidor.
+No admite notas libres, fragmentos privados ni parámetros que afirmen autoridad.
+La aprobación positiva no está implementada por este comando.
+
+La decisión bloquea la publicación, impide autorrevisión, confirma que la revisión
+sigue pendiente y conserva la publicación aprobada anterior, incluso al rechazar.
+En la misma transacción escribe decisión, correlación humana, outbox mínimo y
+`listing.reviewed` en la auditoría. La intención de aviso no equivale a entrega:
+no hay consumidor de esta outbox ni correo/push activado. No crea sanciones.
+
+Los reintentos exactos recuperan el resultado original aunque cambie o falte el
+catálogo vigente; reutilizar el evento con otro actor, comando, política técnica
+o login produce conflicto. Dos instancias que deciden con eventos distintos
+compiten por una versión; con el mismo evento deben recibir la misma respuesta
+sin duplicar efectos. Se revalidan los privilegios y MFA antes del commit.
+Readiness distingue la falta de un catálogo efectivo o una fecha de revisión
+futura; no anuncia un corrector operativo cuando no puede resolver peticiones.
+
+La prueba con el login restringido reprodujo un defecto que no aparecía al usar
+superusuario: las constraints diferidas de V041 ejecutaban SELECT al COMMIT tras
+volver al login sin tablas. V043 cambia solo sus dos funciones de comprobación a
+SECURITY DEFINER con `search_path=pg_catalog`; no concede SELECT a la API ni
+reescribe V041. Se conserva la reproducción en
+`.local/p08-corrector-deferred-constraint-reproduction.log`.
 
 ## Corte pendiente para completar P08
 
