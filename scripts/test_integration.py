@@ -57,9 +57,10 @@ try:
     api("POST", "/api/auth/login", data={"username": "cliente1", "password": "123456"}, expected=404)
     api("POST", "/api/user/compas", base, {}, expected=403)
     profile = api("POST", "/api/user/compas", compa, {"descripcion": "Compa de demostración", "tarifa_hora": 12000})
-    api("POST", f"/api/user/compas/{profile['id']}/skills", base, {"skills": ["asado"]}, expected=403)
-    api("POST", f"/api/user/compas/{profile['id']}/skills", second_compa, {"skills": ["asado"]}, expected=403)
-    api("POST", f"/api/user/compas/{profile['id']}/skills", compa, {"skills": ["asado"]})
+    # Free-text skills are retired (P06); only the closed catalog is offered.
+    api("POST", f"/api/user/compas/{profile['id']}/skills", compa, {"skills": ["asado"]}, expected=404)
+    api("GET", "/api/user/skills", expected=404)
+    assert [c["slug"] for c in api("GET", "/api/user/activities")["items"]][:2] == ["cine", "teatro"]
     api("GET", f"/api/match/compa/{provider['id']}/sessions", base, expected=403)
     api("GET", f"/api/match/availability/{profile['id']}", expected=401)
     availability = {d: ["00:00-23:59"] for d in ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]}

@@ -69,6 +69,19 @@ try:
             expect(control).to_have_value(value)
             page.keyboard.press('Tab')
             page.wait_for_timeout(100)
+        def activity(key):
+            # Catalog chips: Flutter exposes FilterChip as checkbox or button.
+            name=app_label(ROOT, key, MATERIAL.locale)
+            page.mouse.move(page.viewport_size['width']*.6,page.viewport_size['height']*.7)
+            for _ in range(40):
+                for role in ('checkbox','button'):
+                    # The accessible name is "<description>. <name>".
+                    locator=page.get_by_role(role,name=re.compile(re.escape(name)+'$'))
+                    if locator.count() and locator.first.is_visible(): return locator.first
+                page.mouse.wheel(0,220)
+                page.wait_for_timeout(100)
+            (ARTIFACTS/'onboarding-failure.txt').write_text(page.locator('body').aria_snapshot(),encoding='utf-8')
+            raise AssertionError('Missing catalog activity: '+key)
         page.goto(BASE,wait_until='networkidle')
         semantics()
         page.get_by_role('button',name='Ingresar o crear cuenta').click()
@@ -157,7 +170,10 @@ try:
         page.set_viewport_size({'width':1280,'height':900})
         fill('Cuéntanos sobre ti','Compartamos cine y actividades entretenidas juntos.')
         fill('Tarifa por hora (CLP)','12000')
-        fill('Habilidades','asado, cine')
+        # Only the closed catalog is offered: no free-text skills (P06).
+        assert page.get_by_role('textbox',name=re.compile('Habilidades')).count()==0
+        activity('activityCinema').click()
+        activity('activityKaraoke').click()
         for day in ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']:
             fill(day,'12:00-22:00')
         try:
@@ -171,6 +187,7 @@ try:
         initial_auth=saved.value.request.headers['authorization']
         initial_profile=context.request.get(BASE+'/api/user/me/compa',headers={'Authorization':initial_auth}).json()
         assert initial_profile['zona_horaria']=='America/Santiago'
+        assert [a['slug'] for a in initial_profile['profile']['actividades']]==['cine','karaoke']
         assert context.request.get(BASE+photo_path).status==200, 'Published compa photo unavailable'
         published=context.request.get(BASE+'/api/user/compas/'+initial_profile['profile']['id']).json()
         assert published['biografia']==personal['biografia'] and published['foto_url']==photo_path
@@ -185,14 +202,14 @@ try:
         expect(page.get_by_role('group',name=re.compile('3 de 3 cupos gratuitos disponibles'))).to_be_visible(timeout=30000)
         page.get_by_role('button',name=MATERIAL.back,exact=True).click()
         page.mouse.move(900,600);page.mouse.wheel(0,-100000);page.wait_for_timeout(200)
-        fill('Habilidades','cine')
+        activity('activityKaraoke').click()
         with page.expect_response(lambda r:r.url.endswith('/api/user/me/compa') and r.request.method=='PUT') as edited:
             find('button','Guardar cambios').click()
         assert edited.value.status==200
         expect(page.get_by_role('button',name='Ir a mi agenda',exact=True)).to_be_enabled(timeout=30000)
         auth=edited.value.request.headers['authorization']
         response=context.request.get(BASE+'/api/user/me/compa',headers={'Authorization':auth})
-        assert response.status==200 and response.json()['profile']['habilidades']==['cine']
+        assert response.status==200 and [a['slug'] for a in response.json()['profile']['actividades']]==['cine']
         page.goto(BASE+'/#/home',wait_until='networkidle');semantics()
         find('button','Cris perfil de prueba').click()
         expect(page.get_by_role('button',name='Reservar',exact=True)).to_be_visible(timeout=30000)

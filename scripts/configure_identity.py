@@ -120,8 +120,6 @@ if ENV == "dev":
     admin("PUT", "", {"loginTheme": "rac", "displayName": "Rent-A-Compa",
         "internationalizationEnabled": True, "supportedLocales": ["es", "en"], "defaultLocale": "es"})
     with psycopg.connect(os.environ["DATABASE_URL"]) as db:
-        for skill in ("asado", "cine", "karaoke", "running"):
-            db.execute("INSERT INTO skill(id,name) VALUES(gen_random_uuid(),%s) ON CONFLICT(name) DO NOTHING", (skill,))
         for username, role in [("cliente1", "cliente"), ("cliente2", "cliente"), ("compa1", "compa"), ("compa2", "compa"), ("admin1", "admin")]:
             users = admin("GET", "/users?exact=true&username=" + username)
             if not users:
@@ -147,5 +145,7 @@ if ENV == "dev":
                 ident = db.execute("INSERT INTO usuario(id,nombre,correo,rol,keycloak_id,email_verified) VALUES(gen_random_uuid(),%s,%s,%s,%s,true) RETURNING id", (username, user["email"], role, user["id"])).fetchone()[0]
             if role == "compa":
                 db.execute("INSERT INTO compa_perfil(id,usuario_id,descripcion,tarifa_hora) VALUES(gen_random_uuid(),%s,'Compa de demostración',12000) ON CONFLICT(usuario_id) DO NOTHING", (ident,))
+                # Public profiles must offer a catalog activity (P06).
+                db.execute("INSERT INTO compa_activities(compa_id,category_id) SELECT cp.id,c.id FROM compa_perfil cp, activity_categories c WHERE cp.usuario_id=%s AND c.slug='cine' ON CONFLICT DO NOTHING", (ident,))
                 db.execute("INSERT INTO compa_availability(compa_id,disponibilidad_json) VALUES(%s,%s::jsonb) ON CONFLICT(compa_id) DO NOTHING", (ident, json.dumps({d: ["00:00-23:59"] for d in ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]})))
 print("OIDC clients and roles configured; demo data enabled only for DEV.")

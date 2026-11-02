@@ -147,6 +147,57 @@ try:
         assert '--- PASS: TestVerifiedReviews' in user_tests.stdout
         assert '--- PASS: TestProfileStandingProvisioning' in user_tests.stdout
         print("PASS: scoped user writes, standing guards, concurrent rollback, public visibility, reviews and protected reads")
+    if (migration_dir / 'V040__activity_catalog.sql').exists():
+        import shutil
+        import tempfile
+        # Upgrade real V039 skill data: exact names map, the rest stays for review.
+        with tempfile.TemporaryDirectory(prefix='rac-catalog-upgrade-', dir=Path.home()) as partial:
+            for migration in migration_dir.glob('V*.sql'):
+                if int(migration.name[1:4]) < 40:
+                    shutil.copy(migration, partial)
+            sql("fresh", "CREATE DATABASE catalog_upgrade;")
+            flyway("catalog_upgrade", Path(partial))
+        sql("catalog_upgrade", """
+INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES
+ ('00000000-0000-4000-8000-0000000000a1','Synthetic','catalog-a@example.test','compa','catalog-a'),
+ ('00000000-0000-4000-8000-0000000000a2','Synthetic','catalog-b@example.test','compa','catalog-b');
+INSERT INTO compa_perfil(id,usuario_id,descripcion,tarifa_hora) VALUES
+ ('00000000-0000-4000-8000-0000000000c1','00000000-0000-4000-8000-0000000000a1','Synthetic profile one',1000),
+ ('00000000-0000-4000-8000-0000000000c2','00000000-0000-4000-8000-0000000000a2','Synthetic profile two',1000);
+INSERT INTO skill(id,name) VALUES
+ ('00000000-0000-4000-8000-0000000000e1','cine'),('00000000-0000-4000-8000-0000000000e2',' Juegos de Mesa '),
+ ('00000000-0000-4000-8000-0000000000e3','Música'),('00000000-0000-4000-8000-0000000000e4','asado'),
+ ('00000000-0000-4000-8000-0000000000e5','Fotografía Urbana');
+INSERT INTO compa_perfil_skill(perfil_id,skill_id) VALUES
+ ('00000000-0000-4000-8000-0000000000c1','00000000-0000-4000-8000-0000000000e1'),
+ ('00000000-0000-4000-8000-0000000000c1','00000000-0000-4000-8000-0000000000e2'),
+ ('00000000-0000-4000-8000-0000000000c1','00000000-0000-4000-8000-0000000000e3'),
+ ('00000000-0000-4000-8000-0000000000c2','00000000-0000-4000-8000-0000000000e4'),
+ ('00000000-0000-4000-8000-0000000000c2','00000000-0000-4000-8000-0000000000e5');""")
+        flyway("catalog_upgrade", migration_dir)
+        mapped = sql("catalog_upgrade", "SELECT string_agg(a.compa_id::text||':'||c.slug,',' ORDER BY a.compa_id,c.slug) FROM compa_activities a JOIN activity_categories c ON c.id=a.category_id;")
+        assert mapped == ('00000000-0000-4000-8000-0000000000c1:cine,00000000-0000-4000-8000-0000000000c1:juegos_de_mesa,'
+                          '00000000-0000-4000-8000-0000000000c2:fotografia_urbana'), mapped
+        kept = sql("catalog_upgrade", "SELECT string_agg(compa_id::text||':'||name,',' ORDER BY compa_id,name) FROM legacy_compa_skills;")
+        assert kept == '00000000-0000-4000-8000-0000000000c1:Música,00000000-0000-4000-8000-0000000000c2:asado', kept
+        assert sql("catalog_upgrade", "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('skill','compa_perfil_skill');") == '0'
+        assert sql("catalog_upgrade", "SELECT count(*) FROM information_schema.columns WHERE table_name='compa_perfil' AND column_name='habilidades_cache';") == '0'
+        assert sql("catalog_upgrade", "SELECT count(*) FROM pg_proc WHERE proname IN ('refresh_habilidades_cache','trg_refresh_habilidades_cache');") == '0'
+        assert sql("catalog_upgrade", "SELECT count(*)||':'||count(*) FILTER (WHERE approval='proposed') FROM activity_categories;") == '12:12'
+        def catalog_rejected(statement):
+            result = run("docker", "exec", "-i", NAME, "psql", "-X", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "catalog_upgrade", "-At", input=statement, ok=False)
+            return result.returncode != 0
+        for name, statement in {
+            'long note': "UPDATE compa_activities SET note=repeat('a',141);",
+            'empty note': "UPDATE compa_activities SET note='';",
+            'minor category': "INSERT INTO activity_categories(slug,name_key,description_key,setting,sort,min_age) VALUES('kids','activityKids','activityKidsDescription','venue',1,16);",
+            'unknown setting': "INSERT INTO activity_categories(slug,name_key,description_key,setting,sort) VALUES('x_y','activityX','activityXDescription','home',1);",
+            'free-text slug': "INSERT INTO activity_categories(slug,name_key,description_key,setting,sort) VALUES('Masajes Relax','activityX','activityXDescription','venue',1);",
+            'rac_user catalog write': "SET ROLE rac_user; INSERT INTO activity_categories(slug,name_key,description_key,setting,sort) VALUES('x_y','activityX','activityXDescription','venue',1);",
+            'rac_user legacy read': "SET ROLE rac_user; SELECT count(*) FROM legacy_compa_skills;",
+        }.items():
+            assert catalog_rejected(statement), name
+        print('PASS: closed activity catalog upgrade maps exact skills, keeps the rest unpublished for review, drops free-text skills and enforces catalog limits and privileges')
     if (migration_dir / 'V039__identity_verification.sql').exists():
         def identity_rejected(statement):
             result = run("docker", "exec", "-i", NAME, "psql", "-X", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "fresh", "-At", input=statement, ok=False)
