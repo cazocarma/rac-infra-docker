@@ -119,6 +119,31 @@ try:
         personal=context.request.get(BASE+'/api/user/me',headers={'Authorization':auth}).json()
         assert personal['nombre']=='Cris perfil de prueba' and personal['intereses']==['Cine','Running']
         assert personal['biografia']=='Me gusta compartir películas, caminatas y buenos momentos.'
+        # Real owner-role DB: forbidden public edits leave the saved profile and
+        # private phone unchanged. Public failures must not echo submitted text.
+        personal_payload={key:personal.get(key,'') for key in ['nombre','biografia','telefono','pais','region','ciudad','intereses']}
+        for field, value in [('nombre','@compa_test'),('biografia','hola arroba ejemplo punto com'),('intereses',['https://example.com'])]:
+            rejected=context.request.put(BASE+'/api/user/me',headers={'Authorization':auth},data={**personal_payload,field:value})
+            assert rejected.status==400 and rejected.json()=={'error':'public_contact_not_allowed','field':field}
+            unchanged=context.request.get(BASE+'/api/user/me',headers={'Authorization':auth}).json()
+            assert all(unchanged[key]==personal[key] for key in personal_payload)
+        fill('Biografía pública (opcional)','Escríbeme a hola@example.com')
+        with page.expect_response(lambda r:r.url.endswith('/api/user/me') and r.request.method=='PUT') as contact_save:
+            find('button','Guardar cambios').click()
+        assert contact_save.value.status==400
+        # Flutter merges the notice into the surrounding group's accessible
+        # name. Require the complete localized notice within that group.
+        try:
+            expect(page.get_by_role('group',name=re.compile(re.escape(app_label(ROOT,'publicContactNotAllowed','es'))))).to_be_visible(timeout=30000)
+        except Exception:
+            (ARTIFACTS/'public-contact-error-aria.txt').write_text(page.locator('body').aria_snapshot(),encoding='utf-8')
+            page.screenshot(path=str(ARTIFACTS/'public-contact-error.png'))
+            raise
+        fill('Biografía pública (opcional)',personal['biografia'])
+        with page.expect_response(lambda r:r.url.endswith('/api/user/me') and r.request.method=='PUT') as corrected_save:
+            find('button','Guardar cambios').click()
+        assert corrected_save.value.status==200
+        print('PASS: public contacts rejected before persistence, explicit UI correction, private phone preserved',flush=True)
         page.mouse.wheel(0,-100000);page.wait_for_timeout(250)
         find('button','Vista previa pública').click()
         expect(page.get_by_text(personal['biografia'],exact=True)).to_be_visible(timeout=30000)
@@ -188,6 +213,16 @@ try:
         initial_profile=context.request.get(BASE+'/api/user/me/compa',headers={'Authorization':initial_auth}).json()
         assert initial_profile['zona_horaria']=='America/Santiago'
         assert [a['slug'] for a in initial_profile['profile']['actividades']]==['cine','karaoke']
+        compa_payload={'descripcion':initial_profile['profile']['descripcion'],'tarifa_hora':12000,
+                       'actividades':[{'slug':a['slug']} for a in initial_profile['profile']['actividades']],
+                       'availability':initial_profile['availability'],'zona_horaria':initial_profile['zona_horaria']}
+        for field, change in [('descripcion',{'descripcion':'Conversemos por WhatsApp antes de reservar'}),
+                              ('actividades.nota',{'actividades':[{'slug':'cine','nota':'hola arroba ejemplo punto com'}]})]:
+            rejected=context.request.put(BASE+'/api/user/me/compa',headers={'Authorization':initial_auth},data={**compa_payload,**change})
+            assert rejected.status==400 and rejected.json()=={'error':'public_contact_not_allowed','field':field}
+            unchanged=context.request.get(BASE+'/api/user/me/compa',headers={'Authorization':initial_auth}).json()
+            assert unchanged==initial_profile
+        print('PASS: compa description and activity notes reject public contacts without altering saved publication',flush=True)
         assert context.request.get(BASE+photo_path).status==200, 'Published compa photo unavailable'
         published=context.request.get(BASE+'/api/user/compas/'+initial_profile['profile']['id']).json()
         assert published['biografia']==personal['biografia'] and published['foto_url']==photo_path

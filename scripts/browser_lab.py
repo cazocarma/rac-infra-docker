@@ -91,6 +91,13 @@ def snapshot(directory):
     return revisions
 
 
+def python_environment(environment):
+    # Parent capture uses UTF-8 explicitly. Python children on Windows otherwise
+    # inherit a legacy code page and can hide the actual browser assertion with
+    # a decoding error. Override inherited ASCII/code-page settings as well.
+    return {**environment, 'PYTHONIOENCODING': 'utf-8', 'PYTHONUTF8': '1'}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('start', 'stop', 'status', 'test'))
@@ -209,7 +216,7 @@ def main():
             state_path.write_text(json.dumps(state, indent=2), encoding='utf-8')
             try:
                 result = subprocess.run([sys.executable, str(root / 'scripts' / suites[name])],
-                                        cwd=root, env=environment, capture_output=True,
+                                        cwd=root, env=python_environment(environment), capture_output=True,
                                         text=True, encoding='utf-8', timeout=900)
                 output = result.stdout + result.stderr
                 for value in values.values():

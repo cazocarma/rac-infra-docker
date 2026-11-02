@@ -38,7 +38,15 @@ Los números SQL reales se asignan al abrir cada PR tras revisar la rama base. L
 
 ## Decisiones humanas
 
-Salvo la dirección técnica D01 aprobada con este plan, siguen `DECISION_REQUIRED`. Recomendaciones no equivalen a aprobación. Decisiones de producto no pueden suplir las que requieren asesoría jurídica o presupuesto.
+Actualización: [decisiones aprobadas el 2 de noviembre de 2026](decisions-2026-11-02.md).
+Ese registro distingue dirección de producto aprobada de importes, proveedores,
+validación jurídica y activaciones aún pendientes. La tabla original siguiente
+conserva el contexto y debe leerse junto con esa actualización.
+
+La tabla registra las propuestas originales y las aprobaciones D01–D03. Las
+aprobaciones posteriores de producto y operación constan en el registro enlazado
+arriba; los pendientes jurídicos, proveedores, importes y activaciones no se
+consideran resueltos por aprobar una dirección técnica.
 
 | ID | Decisión / propuesta segura | Bloquea |
 |---|---|---|
