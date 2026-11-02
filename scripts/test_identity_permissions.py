@@ -137,6 +137,18 @@ def main():
             'client_id': 'rac-match-standing', 'client_secret': standing_secret, 'grant_type': 'client_credentials'}, form=True)['access_token']
         assert configure_standing(admin, standing_directory, documents=True) == bindings
         assert configure_standing(admin, standing_directory, documents=True) == bindings
+        # Identity state: only match receives the separate audience and role.
+        assert configure_standing(admin, standing_directory, documents=True, identity=True) == bindings
+        assert configure_standing(admin, standing_directory, documents=True, identity=True) == bindings
+        for client_id, reader_secret, expected in (('rac-match-standing', standing_secret, True),
+                                             ('rac-chat-standing', chat_secret, False),
+                                             ('rac-alert-standing', alert_secret, False)):
+            issued = request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
+                'client_id': client_id, 'client_secret': reader_secret, 'grant_type': 'client_credentials'}, form=True)['access_token']
+            claims = json.loads(base64.urlsafe_b64decode(issued.split('.')[1] + '=='))
+            audiences = claims['aud'] if isinstance(claims['aud'], list) else [claims['aud']]
+            assert ('rac-identity' in audiences) == expected, client_id
+            assert (claims.get('resource_access', {}).get('rac-identity', {}).get('roles') == ['identity.read']) == expected, client_id
         chat_document_token = request('POST', '/realms/rentacompa/protocol/openid-connect/token', {
             'client_id': 'rac-chat-standing', 'client_secret': chat_secret, 'grant_type': 'client_credentials'}, form=True)['access_token']
         chat_document_claims = json.loads(base64.urlsafe_b64decode(chat_document_token.split('.')[1] + '=='))
@@ -192,9 +204,10 @@ def main():
         disabled_claims = json.loads(base64.urlsafe_b64decode(disabled_token.split('.')[1] + '=='))
         assert 'rac-documents' not in disabled_claims['aud']
         assert 'rac-documents' not in disabled_claims.get('resource_access', {})
+        assert 'rac-identity' not in disabled_claims['aud'] and 'rac-identity' not in disabled_claims.get('resource_access', {})
         assert disabled_claims['resource_access']['rac-standing']['roles'] == ['standing.read']
         assert (standing_directory / 'match/secret').read_text().strip() == standing_secret
-        print('PASS: idempotent standing/document credentials, match/chat document scope, alert exclusion, no refresh/password/admin access, Go signature verification and real OAuth to both authority HTTP endpoints')
+        print('PASS: idempotent standing/document/identity credentials, match/chat document scope, match-only identity scope, alert exclusion, no refresh/password/admin access, Go signature verification and real OAuth to both authority HTTP endpoints')
         assert admin('GET', '/users/' + account['id'] + '/role-mappings/clients/' + management['id']) == []
         assert admin('GET', '/clients/' + client['id'] + '/scope-mappings/clients/' + management['id']) == []
         admin('POST', '/users', {'username': 'subject', 'enabled': True})

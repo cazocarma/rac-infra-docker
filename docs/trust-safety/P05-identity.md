@@ -82,7 +82,76 @@ huella ausente ahora se envía como `NULL`. El reensayo pasó con salida 0,
 incluidas todas las suites existentes de user sobre el esquema con V039:
 `.local/p05-identity-migrations.log`.
 
-Pendiente en P05: gates `IDENTITY_VERIFICATION_REQUIRED` al publicar y antes de la
-primera reserva (match por autoridad, como documentos/standing), pantalla S3,
-contrato OpenAPI, caso P1 por huella baneada (modelo de casos en P11) y
-`DeleteSubjectData` dentro de la saga de supresión (P12).
+## Incremento 2: gates, autoridad compartida y S3
+
+`rac-platform` v0.14.0 agrega `identity`. Query y Observation se ligan a la
+cuenta (subject Keycloak) y al propósito. `Check` falla cerrado: una lectura
+ausente, lenta, vieja o de otra cuenta queda como no disponible, y solo pasa
+una aprobación. El paquete incluye cliente HTTP autenticado, handler interno y
+la respuesta pública 428 `IDENTITY_VERIFICATION_REQUIRED`, que solo lleva
+`purpose` y `flow`; nunca detalle de la verificación. Los cinco consumidores
+se generan con `vendor_platform.py`. El tag existe solo localmente hasta
+publicar: `v0.13.0` no se toca.
+
+**user:**
+
+- Implementa la fuente (si hay una aprobación para el subject) y monta
+  `/internal/identity` en el listener de autoridad.
+- El lector tiene audiencia propia `rac-identity` y rol `identity.read`, ligado
+  solo a `rac-match-standing`. Los tokens de standing o documentos, chat y alert
+  reciben 401.
+- `PUT /me/compa`, `POST /compas` y `POST /compas/:id/skills` exigen identidad
+  aprobada con `IDENTITY_ENFORCEMENT_ENABLED=true`, después de documentos. El
+  correo verificado y el rol compa no la sustituyen.
+- Activar enforcement sin proveedor, o el fake fuera de dev/test, impide
+  arrancar.
+
+**match:**
+
+- Exige identidad aprobada al crear una reserva, con el subject tomado de la
+  propiedad almacenada y no de la solicitud.
+- `require_kyc_client_before_booking` (`IDENTITY_CLIENT_BOOKING_REQUIRED`) queda
+  activo por defecto al habilitar identidad. Es `DECISION_REQUIRED`, así que
+  solo un `false` explícito lo apaga.
+- Cancelar, leer reservas y aceptar no dependen de identidad.
+- Las aprobaciones todavía no se revocan, así que comprobar antes de la
+  transacción no compite con un retiro. Cuando P11 permita revocar, este punto
+  debe pasar a comprobación dentro de la transacción.
+
+`identity_standing.py` provisiona la audiencia solo si `identity=True` y solo
+para match. El enforcement queda apagado en todos los Compose hasta que D05
+apruebe un proveedor real.
+
+Frontend 834925b agrega S3 en `/identity`: por qué se pide, qué se guarda,
+proveedor externo, duración y que no constituye antecedentes. Muestra los
+estados none/pending/approved/rejected/needs_review/expired y abre la URL del
+proveedor fuera de la app. Con 503 (sin proveedor) informa que no está
+disponible, sin CTA que simule el trámite. Reserva y publicación compa
+reconocen el 428 de identidad y ofrecen verificar con el propósito
+correspondiente. El mismo código con otro estado HTTP no cuenta. Son 22
+claves ARB pending. El contrato OpenAPI documenta las tres rutas, el esquema
+`IdentityVerificationRequired` y el 428 de reserva y publicación.
+
+Pruebas y hallazgos:
+
+- Plataforma: race completo; Check y transporte con cuenta ajena, timestamp
+  viejo o futuro, campos extra, sin autenticación y ruta 503.
+- user: gate apagado y encendido en las tres rutas, consulta ligada al subject,
+  503 sin proveedor, aislamiento del listener por token y cliente, y
+  configuración inválida.
+- match: configuración y caso PostgreSQL real dentro de
+  `TestBookingDocumentsPostgres`. Una reserva sin identidad recibe 428 y no
+  crea fila; aprobada, sigue el flujo existente.
+- Keycloak real: idempotente; solo match recibe `rac-identity`; desactivarlo
+  la retira.
+- Frontend: 232 pruebas, análisis y build.
+- Hallazgos de las pruebas reales: el servicio de match traducía cualquier
+  error no previsto a `booking_unavailable`, ocultando el 428; ahora deja pasar
+  los errores de identidad. La prueba de Keycloak sobrescribía un secreto en
+  un bucle.
+
+Pendiente en P05: caso P1 por huella baneada (modelo de casos en P11),
+`DeleteSubjectData` dentro de la saga de supresión (P12), estrategia de rotación
+de la huella (D12), proveedor real y su contrato (D05), insignia pública solo
+derivada de proveedores reales (P08/S7) y Compose de rollout cuando haya
+proveedor aprobado.

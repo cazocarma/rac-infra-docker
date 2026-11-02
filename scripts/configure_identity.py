@@ -17,6 +17,7 @@ REALM = "rentacompa"
 ENV = os.environ["RAC_ENV"]
 STAFF_ENABLED = staff_client_enabled(os.environ)
 DOCUMENTS = os.environ.get('DOCUMENTS_ENFORCEMENT_ENABLED', 'false')
+IDENTITY = os.environ.get('IDENTITY_ENFORCEMENT_ENABLED', 'false')
 if DOCUMENTS not in ('true', 'false'):
     raise RuntimeError('Invalid document rollout configuration')
 if DOCUMENTS == 'true' and os.environ.get('STANDING_ENFORCEMENT_ENABLED') != 'true':
@@ -99,7 +100,7 @@ os.chmod(role_file, 0o644)
 os.replace(role_file, role_directory / 'role-id')
 configure_staff(admin, origin, enabled=STAFF_ENABLED)
 if os.environ.get('STANDING_ENFORCEMENT_ENABLED', 'false') == 'true':
-    configure_standing(admin, '/credentials/standing', documents=DOCUMENTS == 'true')
+    configure_standing(admin, '/credentials/standing', documents=DOCUMENTS == 'true', identity=IDENTITY == 'true')
     session_directory = Path('/credentials/standing/sessions')
     configure_sessions(admin, session_directory)
     # Only the dedicated non-root session worker mounts this private volume.
