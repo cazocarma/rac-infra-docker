@@ -18,11 +18,12 @@ versiones, reglas y spans para revisión autorizada. La API nueva
 el léxico propuesto ni convierte sus señales en denegaciones comerciales.
 Errores por cancelación o límite de entrada deben detener la escritura.
 
-Se preparó el tag local inmutable v0.15.0 en
+Se publicó el tag inmutable v0.15.0 en
 `bb7522deed8ec129a761d34f23b2979afc048aa5`. El script existente
 `scripts/vendor_platform.py v0.15.0` genera go.mod/go.sum/vendor de los cinco
 consumidores desde ese tag, sin credenciales privadas dentro de Docker.
-La publicación remota se registrará por separado; un tag local no prueba push.
+El push atómico de la rama `feat/content-signals` y el tag terminó correctamente
+después de las pruebas locales del módulo; no se fusionó main.
 
 ## Integración user-service y Flutter
 
@@ -49,8 +50,17 @@ que activa léxico privado sin ser una infracción de contacto.
 `user-service`, `match-service`, `chat-service`, `alert-service` y `admin-service`:
 `go vet -mod=vendor ./...` y `go test -mod=vendor -race -count=1 ./...` pasaron.
 `scripts/check_go_vendor.py` confirmó la fuente compartida exacta en los cinco.
-Los resultados finales del frontend/navegador se añadirán al terminar sus
-ejecuciones. Las pruebas de handlers usan una BD nil para demostrar que el
+Frontend `f98e431935838a4e3de45603f4a77d0e69be0225`: snapshot Git fijo,
+`flutter analyze`, 243 pruebas y `flutter build web --release` pasaron
+(`.local/p07-public-contact-frontend-final.log`). La primera ejecución falló en
+cuatro pruebas nuevas que pulsaban Guardar antes de reconstruir el botón; se
+corrigió la sincronización y se repitió la suite completa, sin relajar aserciones.
+Los 15 casos focalizados incluyen es/en, 360/1200 px, conservación del borrador,
+corrección/reintento y clasificación de errores sin filtrar diagnóstico privado.
+
+`make test-workflows` pasó (`.local/p07-workflows.log`).
+Los resultados del navegador se añadirán al terminar su ejecución.
+Las pruebas de handlers usan una BD nil para demostrar que el
 rechazo se produce antes de intentar persistir. No sustituyen ensayos con roles
 reales de PostgreSQL ni navegación integrada.
 

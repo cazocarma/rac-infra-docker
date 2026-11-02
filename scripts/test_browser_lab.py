@@ -3,15 +3,28 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import subprocess
+import sys
 import unittest
 from unittest.mock import patch
 
 from browser_compose import command
 from browser_app_labels import app_label
-from browser_lab import APIS, SERVICES, TOOLS, WORKERS, validate_model
+from browser_lab import APIS, SERVICES, TOOLS, WORKERS, validate_model, python_environment
 
 
 class BrowserLabIsolation(unittest.TestCase):
+    def test_python_diagnostics_roundtrip_utf8_even_with_legacy_parent_settings(self):
+        environment = {**os.environ, 'PYTHONIOENCODING': 'ascii', 'PYTHONUTF8': '0'}
+        result = subprocess.run(
+            [sys.executable, '-c', "import sys; print('biograf\\u00eda'); print('tel\\u00e9fono', file=sys.stderr); sys.exit(1)"],
+            env=python_environment(environment), capture_output=True,
+            text=True, encoding='utf-8')
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout.strip(), 'biograf\u00eda')
+        self.assertEqual(result.stderr.strip(), 'tel\u00e9fono')
+        self.assertEqual(environment['PYTHONIOENCODING'], 'ascii')
+
     def test_model_rejects_existing_resources_and_host_mounts_before_mutation(self):
         project = 'rac-browser-e2e-0123456789ab'
         with tempfile.TemporaryDirectory() as temp:

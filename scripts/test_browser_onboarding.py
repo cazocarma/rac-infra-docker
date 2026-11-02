@@ -131,7 +131,7 @@ try:
         with page.expect_response(lambda r:r.url.endswith('/api/user/me') and r.request.method=='PUT') as contact_save:
             find('button','Guardar cambios').click()
         assert contact_save.value.status==400
-        expect(page.get_by_text(app_label(ROOT,'publicContactNotAllowed','es'),exact=True)).to_be_visible(timeout=30000)
+        expect(page.get_by_role('group',name=app_label(ROOT,'publicContactNotAllowed','es'),exact=True)).to_be_visible(timeout=30000)
         fill('Biografía pública (opcional)',personal['biografia'])
         with page.expect_response(lambda r:r.url.endswith('/api/user/me') and r.request.method=='PUT') as corrected_save:
             find('button','Guardar cambios').click()
