@@ -132,7 +132,9 @@ try:
             "-e", f"RAC_LISTING_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/listing_revisions?sslmode=disable",
             "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol ./internal/editorial ./internal/strictjson ./internal/listings" + (" ./internal/identity/..." if (onboarding_source / 'internal/identity').exists() else ""))
         assert '--- PASS: TestListingSubmitPostgres' in user_tests.stdout
+        assert '--- PASS: TestStoredPublicContactPostgres' in user_tests.stdout
         print('PASS: immutable listing preparation and owner-role submission, exact UTF-8 hash, ownership, rollback and concurrent version conflict')
+        print('PASS: stored public contacts cannot bypass either publication route; corrected profile with private phone can publish')
         assert '--- PASS: TestEditorialPostgresHTTP' in user_tests.stdout
         if (onboarding_source / 'internal/identity/store_test.go').exists():
             assert '--- PASS: TestIdentityVerificationPostgres' in user_tests.stdout

@@ -60,8 +60,21 @@ autorrevisión, revisión obsoleta y conservación de la aprobada
 dos revisiones/decisiones y sus digests, y rechazar punteros entre publicaciones.
 El ensayo Go sobre PostgreSQL real pasó con escritura como `rac_user`, pertenencia,
 rollback conjunto y dos envíos concurrentes sobre una versión
-(`.local/p08-listing-migrations-user.log`, exit 0). Se repetirá el conjunto desde
-archivos Git fijos después de actualizar la dependencia a v0.15.1.
+(`.local/p08-listing-migrations-user.log`, exit 0).
+El conjunto se repitió desde snapshots Git fijos de infra `bd6178b`, user
+`ded480c`, platform `5f1030f` y los demás pins candidatos: permisos/restauración y
+migraciones/user terminaron exit 0
+(`.local/rac-p08-db-proof-3d2b203f09a2/{revisions.json,permissions.log,migrations-user.log}`).
+Los cinco servicios pasaron vet y `-race` con v0.15.1
+(`.local/p08-rac-*-go-v0151.log`).
+
+La auditoría de rutas además cerró una omisión P07 en POST `/api/user/profile`
+y verificó los datos públicos guardados antes de ambas publicaciones, incluidos
+nombres heredados del login. Ese guard conserva `FOR NO KEY UPDATE` para no
+reintroducir el bloqueo FK contra sanciones. Tiene prueba PostgreSQL específica
+de nombre/bio/intereses almacenados, rollback y publicación tras corrección;
+se registra por separado después del primer snapshot para no atribuirle evidencia
+de un código anterior.
 
 ## Corte pendiente para completar P08
 

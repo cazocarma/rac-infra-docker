@@ -32,6 +32,13 @@ después de las pruebas locales del módulo; no se fusionó main.
 - PUT `/api/user/me/compa`: descripción y notas de actividades.
 - POST `/api/user/compas`: también valida la descripción, para que la ruta
   alternativa no eluda la regla.
+- La auditoría posterior de P08 detectó una omisión: POST `/api/user/profile`
+  seguía pudiendo escribir nombre/intereses. Se agregó el mismo guard y un límite
+  de cuerpo. Las dos rutas de publicación también revalidan nombre, biografía e
+  intereses guardados bajo el lock de usuario: el nombre de registro/OIDC no es
+  una fuente confiable. El login/lectura protectora no se bloquea por ese nombre.
+  Esta ampliación pertenece a la rama P08 y no está cubierta por la CI antigua
+  del PR #12; su prueba PostgreSQL explícita se registra en P08.
 - Rechazo 400 `public_contact_not_allowed` con identificador fijo del campo,
   sin fragmentos, reglas privadas, scores ni texto original en la respuesta.
 - Fallo de análisis: 503 `content_check_unavailable`; no escritura permisiva.
