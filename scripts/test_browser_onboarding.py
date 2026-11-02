@@ -131,7 +131,14 @@ try:
         with page.expect_response(lambda r:r.url.endswith('/api/user/me') and r.request.method=='PUT') as contact_save:
             find('button','Guardar cambios').click()
         assert contact_save.value.status==400
-        expect(page.get_by_role('group',name=app_label(ROOT,'publicContactNotAllowed','es'),exact=True)).to_be_visible(timeout=30000)
+        # Flutter merges the notice into the surrounding group's accessible
+        # name. Require the complete localized notice within that group.
+        try:
+            expect(page.get_by_role('group',name=re.compile(re.escape(app_label(ROOT,'publicContactNotAllowed','es'))))).to_be_visible(timeout=30000)
+        except Exception:
+            (ARTIFACTS/'public-contact-error-aria.txt').write_text(page.locator('body').aria_snapshot(),encoding='utf-8')
+            page.screenshot(path=str(ARTIFACTS/'public-contact-error.png'))
+            raise
         fill('Biografía pública (opcional)',personal['biografia'])
         with page.expect_response(lambda r:r.url.endswith('/api/user/me') and r.request.method=='PUT') as corrected_save:
             find('button','Guardar cambios').click()
