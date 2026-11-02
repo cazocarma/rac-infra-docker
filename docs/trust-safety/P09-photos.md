@@ -106,9 +106,25 @@ inmutables. No es un corpus humano, un benchmark de recall de OCR ni una prueba
 de recortes de fotos baneadas. Los PNG se versionan; regenerarlos requiere un
 font local con licencia y Pillow, pero ejecutarlos no requiere esos recursos.
 
+Desde infra, `make test-photo-processing` ejecuta el laboratorio CPU y
+`make test-photo-storage` el de PostgreSQL/RustFS. Son independientes de
+`storage-test`, que verifica el almacenamiento DEV configurado.
+
 Este componente aún no tiene claims/reintentos/fencing, persistencia de artefactos,
 promoción a buckets o conexión al stack/API. El worker debe incorporar esos
 controles y procedencia del release antes de completar P09.
+
+La regresión del procesador se repitió desde Git archives de infra `05becba`,
+user `b68c505`, platform `42dbb345` y los otros seis repos fijados. Migraciones/user,
+OCR real sin red y almacenamiento PostgreSQL/RustFS terminaron exit 0 en
+`.local/rac-p09-processing-proof-d12d1839d1c3/` (`revisions.json`,
+`migrations-user.log`, `photo-processing.log`, `photo-storage.log`). El laboratorio
+registró la imagen de prueba
+`sha256:df539a89a52cafb00b1193dbb6aa57969d3180c3cd7de1c07bed22142c9ef5a0`.
+No hubo cambios de esquema respecto de V044: sus permisos/restauración ya tienen
+la evidencia anterior. Esta ronda comprobó los consumidores Go del validador
+compartido y la ejecución real del adaptador OCR. No demuestra pHash, fencing,
+artefactos persistidos o publicación revisada; no activó un worker en DEV.
 
 ## Trabajo restante de P09
 

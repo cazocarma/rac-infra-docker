@@ -313,3 +313,9 @@ documents-lab-change:
 documents-lab-refresh:
 	$(PYTHON) scripts/documents_lab.py refresh-web --state "$(LAB_STATE)"
 .PHONY: documents-lab-change documents-lab-refresh
+
+.PHONY: test-photo-storage test-photo-processing
+test-photo-storage:
+	$(PYTHON) scripts/test_photo_storage.py
+test-photo-processing:
+	$(PYTHON) scripts/test_photo_processing.py
