@@ -72,12 +72,50 @@ el laboratorio S3 exigió explícitamente la variante PostgreSQL/RustFS y las
 pruebas de la API y migración. No se aplicó V044 a DEV y no hubo push ni cambio
 de los pins activos de CI. Los recursos desechables fueron retirados.
 
+## Procesamiento local preparado
+
+`photoassets.Processor` captura una sola lectura privada, comprueba sus bytes
+contra la fuente y entrega esa misma captura al decodificador. Reutiliza el
+reencode/orientación/alpha de `photos`, con `NormalizeFull` sin recorte y límite
+de 2048 por lado para OCR. El avatar cuadrado conserva su normalizador separado:
+recortarlo antes del análisis podría ocultar un teléfono escrito en un borde.
+
+El adaptador local Tesseract usa JPEG saneado por stdin, argumentos fijos,
+español/inglés y entorno mínimo sin credenciales ni configuración heredada. Tiene
+timeout y salida acotada: exceso de texto, error, cancelación o metadatos de
+versión inválidos no producen un resultado aparentemente limpio. El ejecutable
+y los modelos se hashean; se comprueba que no cambien durante la evaluación.
+Estos hashes no sustituyen el digest de la imagen, el SBOM ni P10/P15.
+
+La evaluación usa el analizador compartido. `internal/contentproof` unifica con
+listings la validación/congelación de scores, categorías, spans UTF-8, versiones
+y presupuesto JSON. No se persiste el texto OCR en la evaluación: se conservan
+metadatos técnicos, digest de imagen normalizada y señales privadas. La interfaz
+pública futura no debe devolver RuleID/spans ni volcar esta evaluación en logs.
+
+Contacto genera `contact_correction_required`; los demás resultados son
+`needs_review`. Nunca hay aprobación o sanción automática. Categorías sin
+evaluar siguen explícitas y la evaluación declara pendientes similitud de imagen
+baneada y revisión humana. El pHash todavía no está implementado.
+
+El laboratorio `test_photo_processing.py` instala versiones fijadas de
+Tesseract/modelos en una imagen de prueba, ejecuta con red deshabilitada y exige
+PASS reales para dos PNG sintéticos: teléfono en un borde y texto benigno.
+Incluye fallo de OCR/análisis, cambios de modelo, salida excesiva y copias
+inmutables. No es un corpus humano, un benchmark de recall de OCR ni una prueba
+de recortes de fotos baneadas. Los PNG se versionan; regenerarlos requiere un
+font local con licencia y Pillow, pero ejecutarlos no requiere esos recursos.
+
+Este componente aún no tiene claims/reintentos/fencing, persistencia de artefactos,
+promoción a buckets o conexión al stack/API. El worker debe incorporar esos
+controles y procedencia del release antes de completar P09.
+
 ## Trabajo restante de P09
 
 - API de subida/reanudación, autorización y estado, límites/observabilidad y
   reconciliación de operaciones inciertas; configuración de cuarentena separada.
-- Worker con claims/reintentos/fencing, decodificación y reencode sin EXIF,
-  pHash/OCR locales, señales compartidas y artefactos inmutables versionados.
+- Worker con claims/reintentos/fencing, integración del reencode/OCR locales
+  preparados, pHash y artefactos inmutables versionados.
 - Corpus de transformaciones y falsos positivos; una coincidencia es señal,
   nunca prueba de identidad ni sanción automática. Moderación externa sigue off.
 - Revisión humana, promoción verificada a `public-media` privado y referencias
