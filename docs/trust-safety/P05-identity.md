@@ -150,6 +150,16 @@ Pruebas y hallazgos:
   los errores de identidad. La prueba de Keycloak sobrescribía un secreto en
   un bucle.
 
+Laboratorio `rac-browser-e2e-0d4120e240fe` con los pins P05 (V039, platform
+v0.14.0, gates apagados por defecto): pasaron las siete suites reales (chat,
+reservas, onboarding, reseñas, inbox, administración y agenda) y se retiró sin
+recursos. El renombre `email_verified` no rompe login, perfil ni onboarding. La
+migración y las suites PostgreSQL de user, match y chat pasaron
+(`.local/p05-gates-migrations*.log`), al igual que el test real de Keycloak.
+Un primer intento cayó por falta de memoria del daemon Docker durante otra
+compilación y no por el código; se repitió aislado. Platform v0.14.0 y las
+ramas de los compañeros se publicaron antes de infra.
+
 Pendiente en P05: caso P1 por huella baneada (modelo de casos en P11),
 `DeleteSubjectData` dentro de la saga de supresión (P12), estrategia de rotación
 de la huella (D12), proveedor real y su contrato (D05), insignia pública solo
