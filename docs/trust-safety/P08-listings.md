@@ -76,6 +76,15 @@ de nombre/bio/intereses almacenados, rollback y publicación tras corrección;
 se registra por separado después del primer snapshot para no atribuirle evidencia
 de un código anterior.
 
+Esa segunda prueba terminó exit 0 desde infra `72b70fb` y user `6475294`, con
+platform v0.15.1 y el resto de pins fijos
+(`.local/rac-p08-db-proof-6971df4067ff/{revisions.json,migrations-user.log}`).
+Se exigió el PASS de `TestStoredPublicContactPostgres`: nombre, biografía e
+intereses guardados se rechazan antes de crear un perfil por ambas rutas, y una
+cuenta corregida con teléfono privado puede publicar. La suite de migraciones
+también mantuvo adopción legacy, preservación, checksums, documentos y standing.
+Todo ocurrió en contenedores desechables; los scripts retiraron sus recursos.
+
 ## Corte pendiente para completar P08
 
 1. API dueña de envío/lectura/decisión, autorización staff MFA/step-up y razones
