@@ -85,6 +85,48 @@ cuenta corregida con teléfono privado puede publicar. La suite de migraciones
 también mantuvo adopción legacy, preservación, checksums, documentos y standing.
 Todo ocurrió en contenedores desechables; los scripts retiraron sus recursos.
 
+## Lector privado en desarrollo
+
+La migración V042 incorpora una cola por riesgo y detalle de revisión mediante
+funciones privadas. Retira a `rac_user` la facultad de insertar decisiones o
+promover la revisión pública, incluidos sus permisos por columna. No provisiona
+por sí sola un login de revisión ni activa rutas en el router público.
+
+`internal/listingreview` exige audiencia `rac-user-listings`, permiso
+`listings.read` y sesión staff MFA. Consulta con un login separado, limitado a
+tres funciones; comprueba sus privilegios al iniciar y en cada lectura. La cola
+entrega metadatos; el detalle incorpora el snapshot y sus señales. El contenido
+se mantiene en memoria hasta confirmar la transacción de acceso y revalidar la
+sesión. Paginación y parámetros rechazan campos repetidos, desconocidos o
+incompletos. La integración de runtime y consola sigue pendiente.
+
+El evento de auditoría identifica al servicio. El humano delegado y el recurso
+consultado quedan correlacionados por ID en un registro append-only separado;
+esto no constituye evidencia externa inalterable ni vinculación criptográfica
+del contenido completo de ese registro. No reemplaza los trabajos P10/P15.
+
+La suite local de user-service pasó `go vet ./...` y `go test -race -count=1
+./...` (`.local/p08-reader-user-unit.log`). Las pruebas unitarias incluyen
+rechazo por rol/audiencia y consultas ambiguas. La prueba PostgreSQL nueva
+requiere `RAC_LISTING_REVIEW_TEST_DATABASE_URL` sobre una base desechable y está
+incluida explícitamente en `test_migrations.py --services user`; un test omitido
+por falta de variable no cuenta como evidencia de esa integración.
+
+La prueba aislada PostgreSQL terminó exit 0
+(`.local/p08-reader-role-probe-go.log`): cola sin contenido, detalle autorizado,
+404 auditado, lectura sin entrega ni commit al vencer MFA después del SQL y
+rechazo ante un permiso de columna agregado. La suite completa de permisos
+también terminó exit 0 (`.local/p08-reader-database-permissions.log`): migración
+sin superusuario fresh/V018, restauración y revocación efectiva de la autoridad
+de moderación del servicio público. Estas pruebas no activan el lector en dev.
+
+La regresión `test_migrations.py --services user` terminó exit 0
+(`.local/p08-reader-user-migrations.log`) y exigió el PASS del lector real,
+además de documentos, identidad, standing, envío de revisiones, preservación de
+datos y detección de cambios de checksum. El manifiesto candidato local fija
+estos commits y platform v0.16.0; el manifiesto activo de CI conserva P07 hasta
+publicar y verificar coordinadamente la siguiente entrega.
+
 ## Corte pendiente para completar P08
 
 1. API dueña de envío/lectura/decisión, autorización staff MFA/step-up y razones

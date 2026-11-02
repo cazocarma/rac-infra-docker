@@ -116,6 +116,8 @@ try:
         flyway("identity_verification", migration_dir)
         sql("fresh", "CREATE DATABASE listing_revisions;")
         flyway("listing_revisions", migration_dir)
+        sql('fresh', 'CREATE DATABASE listing_review_http;')
+        flyway('listing_review_http', migration_dir)
         from document_writer_fixture import seed as seed_attestations
         seed_attestations(lambda statement: sql('attestations', statement))
         user_tests = run("docker", "run", "--rm", "--network", NAME,
@@ -130,7 +132,10 @@ try:
             "-e", f"RAC_DOCUMENT_WRITES_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/document_writes?sslmode=disable",
             "-e", f"RAC_IDENTITY_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/identity_verification?sslmode=disable",
             "-e", f"RAC_LISTING_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/listing_revisions?sslmode=disable",
-            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol ./internal/editorial ./internal/strictjson ./internal/listings" + (" ./internal/identity/..." if (onboarding_source / 'internal/identity').exists() else ""))
+            "-e", f"RAC_LISTING_REVIEW_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/listing_review_http?sslmode=disable",
+            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol ./internal/editorial ./internal/strictjson ./internal/listings ./internal/listingreview" + (" ./internal/identity/..." if (onboarding_source / 'internal/identity').exists() else ""))
+        assert '--- PASS: TestReaderPostgresHTTP' in user_tests.stdout
+        print('PASS: private listing reader with scoped login, committed access audit, MFA expiry rollback and privilege-drift refusal')
         assert '--- PASS: TestListingSubmitPostgres' in user_tests.stdout
         assert '--- PASS: TestStoredPublicContactPostgres' in user_tests.stdout
         print('PASS: immutable listing preparation and owner-role submission, exact UTF-8 hash, ownership, rollback and concurrent version conflict')

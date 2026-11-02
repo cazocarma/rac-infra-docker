@@ -200,6 +200,19 @@ def main():
             assert sql(restored, 'SELECT count(*) FROM listing_revisions;', 'rac_user').stdout.strip() == '2'
             assert sql(restored, 'SELECT count(*) FROM listing_revision_decisions;', 'rac_user').stdout.strip() == '2'
             assert sql(restored, "SELECT bool_and(payload_hash=public.digest(payload_canonical,'sha256')) FROM listing_revisions;", 'rac_user').stdout.strip() == 't'
+        platform_source = ROOT.parent / 'rac-platform'
+        role_proof = run('docker', 'run', '--rm', '--network', name,
+            '--mount', f'type=bind,source={platform_source},target=/source,readonly',
+            '-v', 'rac-quota-go-cache:/go/pkg/mod', '-v', 'rac-quota-go-build:/root/.cache/go-build',
+            '-e', f'RAC_STAFF_ROLE_TEST_DATABASE_URL=postgres://postgres:test-only@postgres:5432/fresh?sslmode=disable',
+            'golang:1.27.2', 'sh', '-c',
+            'cp -a /source /tmp/platform && cd /tmp/platform && go test -race -count=1 -v ./staff/postgres', ok=False)
+        if role_proof.returncode:
+            details = '\n'.join(line for line in role_proof.stdout.splitlines()
+                                if '.go:' in line or 'FAIL' in line)
+            raise RuntimeError('Function-only role proof failed\n' + details + '\n' + role_proof.stderr[-1500:])
+        assert '--- PASS: TestFunctionRolePostgres' in role_proof.stdout
+        print('PASS: function-only ingress role rejects raw columns/tables/sequences, PUBLIC authority, extra functions, ownership, missing grants and role escalation')
         print('PASS: fresh and V018 upgrade, non-superuser migration, independent roles, negative permissions, trigger locks/outboxes/review and password-free backup dump')
     finally:
         run('docker', 'rm', '-f', name, ok=False)
