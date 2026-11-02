@@ -1,45 +1,106 @@
-"""Actual S3 + disposable Postgres tests; never uses the development database."""
+"""Hermetic photo/S3 proof: disposable RustFS/Postgres and synthetic identities.
+
+Never reads .env, joins a development network, exposes host ports or touches DEV.
+"""
 from pathlib import Path
-import os
 import subprocess
-import tempfile
 import time
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-name = "rac-photo-test-"+uuid.uuid4().hex[:12]
-network = "rac-dev-storage_default"
-credentials = dict(line.split("=",1) for line in (ROOT/"envs/.env.storage").read_text(encoding="utf-8").splitlines() if "=" in line and not line.startswith("#"))
+RUSTFS = 'rustfs/rustfs:1.0.3@sha256:9ca9559533b537d10482fe923288b676ad08f92a7069d9a17327fbae3cab688b'
 
-def run(*args,ok=True):
-    result = subprocess.run(list(args),cwd=ROOT,capture_output=True,text=True)
+
+def run(*args, ok=True):
+    result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True,
+                            encoding='utf-8', timeout=300)
     if ok and result.returncode:
-        # Commands never contain application secrets; SDK errors are not logged by handlers.
-        raise RuntimeError("\n".join(line for line in result.stdout.splitlines() if ".go:" in line or "FAIL" in line)+"\n"+result.stdout[-2000:]+result.stderr[-2000:])
+        failures = '\n'.join(line for line in result.stdout.splitlines()
+                             if '.go:' in line or 'FAIL' in line)
+        raise RuntimeError('Disposable photo proof failed\n' + failures + '\n'
+                           + result.stdout[-2000:] + result.stderr[-1500:])
     return result
 
-filename = None
-try:
-    run("docker","run","-d","--name",name,"--network",network,"--tmpfs","/var/lib/postgresql/data","-e","POSTGRES_PASSWORD=test-only","-e","POSTGRES_DB=photos","postgis/postgis:16-3.4")
-    for _ in range(60):
-        logs = run("docker","logs",name).stdout
-        if "PostgreSQL init process complete" in logs and run("docker","exec",name,"pg_isready","-U","postgres",ok=False).returncode==0:
-            break
-        time.sleep(1)
-    else:
-        raise RuntimeError("Disposable photo database did not start")
-    run("docker","run","--rm","--network",network,"--mount",f"type=bind,source={ROOT/'db/migrations'},target=/flyway/sql,readonly","-e",f"FLYWAY_URL=jdbc:postgresql://{name}:5432/photos","-e","FLYWAY_USER=postgres","-e","FLYWAY_PASSWORD=test-only","-e","FLYWAY_SCHEMAS=meta","-e","FLYWAY_DEFAULT_SCHEMA=meta","flyway/flyway:11.15.0-alpine","migrate")
-    env = {key:credentials[key] for key in ("PROFILE_S3_BUCKET","PROFILE_S3_ACCESS_KEY","PROFILE_S3_SECRET_KEY")}
-    env["GIN_MODE"] = "release"
-    env["RAC_PHOTO_TEST_S3_ENDPOINT"] = "http://rustfs:9000"
-    env["RAC_ONBOARDING_TEST_DATABASE_URL"] = f"postgres://postgres:test-only@{name}:5432/photos?sslmode=disable"
-    with tempfile.NamedTemporaryFile(mode="w",delete=False,encoding="utf-8") as output:
-        filename = output.name
-        output.write("".join(key+"="+value+"\n" for key,value in env.items()))
-    result=run("docker","run","--rm","--network",network,"--mount",f"type=bind,source={ROOT.parent/'rac-user-service'},target=/sources,readonly","--env-file",filename,"-v","rac-quota-go-cache:/go/pkg/mod","-v","rac-user-go-build:/root/.cache/go-build","golang:1.27.2","sh","-c","cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./cmd/migrate-photos")
-    print(result.stdout[-6000:])
-    print("PASS private/public photo API and verified migration against real RustFS + disposable database")
-finally:
-    run("docker","rm","-f",name,ok=False)
-    if filename:
-        os.unlink(filename)
+
+def main():
+    name = 'rac-photo-test-' + uuid.uuid4().hex[:12]
+    storage, database, tools = name+'-storage', name+'-database', name+'-tools'
+    # These identities exist only inside the isolated test network/container.
+    fixtures = {
+        'AWS_ACCESS_KEY_ID': 'synthetic-photo-root',
+        'AWS_SECRET_ACCESS_KEY': 'synthetic-photo-root-password-123456',
+        'PROFILE_S3_BUCKET': 'rac-photo-fixture',
+        'PROFILE_S3_ACCESS_KEY': 'synthetic-photo-app',
+        'PROFILE_S3_SECRET_KEY': 'synthetic-photo-app-password-123456',
+        'BACKUP_S3_ACCESS_KEY': 'synthetic-photo-backup',
+        'BACKUP_S3_SECRET_KEY': 'synthetic-photo-backup-password-123456',
+        'S3_ENDPOINT': 'http://photo-storage-fixture:9000',
+    }
+    flags = [item for key, value in fixtures.items() for item in ('-e', key+'='+value)]
+    try:
+        run('docker', 'network', 'create', name)
+        run('docker', 'run', '-d', '--name', storage, '--network', name,
+            '--network-alias', 'photo-storage-fixture',
+            '--tmpfs', '/data:rw,mode=1777', '--tmpfs', '/logs:rw,mode=1777',
+            '-e', 'RUSTFS_ACCESS_KEY='+fixtures['AWS_ACCESS_KEY_ID'],
+            '-e', 'RUSTFS_SECRET_KEY='+fixtures['AWS_SECRET_ACCESS_KEY'],
+            '-e', 'RUSTFS_VOLUMES=/data', '-e', 'RUSTFS_OBS_LOG_DIRECTORY=/logs',
+            '-e', 'RUSTFS_ADDRESS=:9000', '-e', 'RUSTFS_CONSOLE_ENABLE=true', RUSTFS)
+        for _ in range(60):
+            health = run('docker', 'exec', storage, 'curl', '--fail', '--silent',
+                         '--max-time', '2', 'http://localhost:9000/health', ok=False)
+            if health.returncode == 0:
+                break
+            time.sleep(1)
+        else:
+            raise RuntimeError('Disposable RustFS did not become healthy')
+        run('docker', 'build', '-q', '-t', tools, '-f', str(ROOT/'tools/storage/Dockerfile'), str(ROOT))
+        run('docker', 'run', '--rm', '--network', name, *flags,
+            '--entrypoint', 'python', tools, 'configure_storage.py')
+
+        run('docker', 'run', '-d', '--name', database, '--network', name,
+            '--tmpfs', '/var/lib/postgresql/data', '-e', 'POSTGRES_PASSWORD=test-only',
+            '-e', 'POSTGRES_DB=photos', 'postgis/postgis:16-3.4')
+        for _ in range(60):
+            ready = run('docker', 'exec', database, 'pg_isready', '-U', 'postgres', ok=False)
+            if ready.returncode == 0 and 'PostgreSQL init process complete' in run('docker', 'logs', database).stdout:
+                break
+            time.sleep(1)
+        else:
+            raise RuntimeError('Disposable photo database did not start')
+        run('docker','exec',database,'psql','-X','-v','ON_ERROR_STOP=1','-U','postgres','-d','photos','-c','CREATE DATABASE photo_sources')
+        run('docker','exec',database,'psql','-X','-v','ON_ERROR_STOP=1','-U','postgres','-d','photos','-c','CREATE DATABASE photo_migration')
+        for target in ('photos','photo_sources','photo_migration'):
+            run('docker', 'run', '--rm', '--network', name,
+                '--mount', f'type=bind,source={ROOT/"db/migrations"},target=/flyway/sql,readonly',
+                '-e', 'FLYWAY_URL=jdbc:postgresql://'+database+':5432/'+target,
+                '-e', 'FLYWAY_USER=postgres', '-e', 'FLYWAY_PASSWORD=test-only',
+                '-e', 'FLYWAY_SCHEMAS=meta', '-e', 'FLYWAY_DEFAULT_SCHEMA=meta',
+                'flyway/flyway:11.15.0-alpine', 'migrate')
+        go_flags = [item for key in ('PROFILE_S3_BUCKET', 'PROFILE_S3_ACCESS_KEY', 'PROFILE_S3_SECRET_KEY')
+                    for item in ('-e', key+'='+fixtures[key])]
+        result = run('docker', 'run', '--rm', '--network', name,
+            '--mount', f'type=bind,source={ROOT.parent/"rac-user-service"},target=/sources,readonly',
+            '-v', 'rac-quota-go-cache:/go/pkg/mod', '-v', 'rac-user-go-build:/root/.cache/go-build',
+            *go_flags, '-e', 'GIN_MODE=release',
+            '-e', 'RAC_PHOTO_TEST_S3_ENDPOINT='+fixtures['S3_ENDPOINT'],
+            '-e', 'RAC_PHOTO_CREATE_TEST_ENDPOINT='+fixtures['S3_ENDPOINT'],
+            '-e', 'RAC_ONBOARDING_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/photos?sslmode=disable',
+            '-e', 'RAC_PHOTO_ASSET_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/photo_sources?sslmode=disable',
+            '-e', 'RAC_PHOTO_MIGRATION_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/photo_migration?sslmode=disable',
+            'golang:1.27.2', 'sh', '-c',
+            'cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v '
+            "-run '^(TestS3CreateOnlyIntegration|TestPhotoSourcePostgres|TestProfilePhotosOwnershipAndPublication|TestCopyPhotosIntegrityAndRetry)$' "
+            './internal/photostore ./internal/photoassets ./internal/http ./cmd/migrate-photos')
+        for required in ('TestS3CreateOnlyIntegration', 'TestPhotoSourcePostgres/s3', 'TestProfilePhotosOwnershipAndPublication/s3', 'TestCopyPhotosIntegrityAndRetry'):
+            if '--- PASS: '+required not in result.stdout:
+                raise RuntimeError('Required photo proof skipped: '+required)
+        print('PASS: real RustFS conditional creation and concurrent single winner; private profile IAM; owner-scoped raw-source readback and atomic analysis intent; photo API and integrity-preserving migration', flush=True)
+    finally:
+        run('docker', 'rm', '-f', database, storage, ok=False)
+        run('docker', 'network', 'rm', name, ok=False)
+        run('docker', 'image', 'rm', tools, ok=False)
+
+
+if __name__ == '__main__':
+    main()

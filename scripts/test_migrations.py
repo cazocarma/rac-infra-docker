@@ -120,6 +120,8 @@ try:
         flyway('listing_review_http', migration_dir)
         sql('fresh', 'CREATE DATABASE listing_corrector_http;')
         flyway('listing_corrector_http', migration_dir)
+        sql('fresh', 'CREATE DATABASE photo_sources;')
+        flyway('photo_sources', migration_dir)
         from document_writer_fixture import seed as seed_attestations
         seed_attestations(lambda statement: sql('attestations', statement))
         user_tests = run("docker", "run", "--rm", "--network", NAME,
@@ -136,7 +138,10 @@ try:
             "-e", f"RAC_LISTING_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/listing_revisions?sslmode=disable",
             "-e", f"RAC_LISTING_REVIEW_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/listing_review_http?sslmode=disable",
             "-e", f"RAC_LISTING_CORRECTION_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/listing_corrector_http?sslmode=disable",
-            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol ./internal/editorial ./internal/strictjson ./internal/listings ./internal/listingreview" + (" ./internal/identity/..." if (onboarding_source / 'internal/identity').exists() else ""))
+            "-e", f"RAC_PHOTO_ASSET_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/photo_sources?sslmode=disable",
+            "golang:1.27.2", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol ./internal/editorial ./internal/strictjson ./internal/listings ./internal/listingreview ./internal/photoassets" + (" ./internal/identity/..." if (onboarding_source / 'internal/identity').exists() else ""))
+        assert '--- PASS: TestPhotoSourcePostgres/memory' in user_tests.stdout
+        print('PASS: private immutable photo sources as owner role, verified bytes, ownership, concurrent confirmation, atomic analysis intent and outbox-fault rollback')
         assert '--- PASS: TestReaderPostgresHTTP' in user_tests.stdout
         assert '--- PASS: TestCorrectionPostgresHTTP' in user_tests.stdout
         print('PASS: scoped negative listing decisions, sealed reason catalogs, exact-hash/version guards, audit/outbox rollback, MFA expiry, concurrent retry and preserved public snapshot')

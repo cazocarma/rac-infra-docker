@@ -196,6 +196,8 @@ prueba entrega de avisos, el catálogo de motivos real ni aprobación positiva.
    mientras D07 no los defina. No usar "Publicar" para un envío a revisión.
 5. Resolver referencias de foto/P09 antes del corte: cambiar/borrar una foto
    personal no puede sustituir un objeto aprobado ni dejar una URL pública viva.
+   La base de fuentes privadas y sus límites consta en [P09-photos.md](P09-photos.md);
+   no se confunde confirmar bytes de una subida con aprobar una foto.
 6. Laboratorio integrado y matriz de autorización de cada ruta, versión obsoleta,
    rechazo, retirada de categoría, política de precio, KYC/standing y medios.
 

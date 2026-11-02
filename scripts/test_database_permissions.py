@@ -166,6 +166,8 @@ def main():
             sql(database, f"INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('{client}','Fixture','client@example.test','cliente','kc-c'),('{compa}','Fixture','compa@example.test','compa','kc-p');", 'rac_user')
             from listing_revision_fixture import verify as verify_listing_revisions
             verify_listing_revisions(sql, database, compa)
+            from photo_source_fixture import verify as verify_photo_sources
+            verify_photo_sources(sql,database,client)
             # Replacing catalog activities requires DELETE even when the profile
             # is new. Other owners retain no delete permission on them.
             sql(database, 'DELETE FROM compa_activities WHERE false;', 'rac_user')
@@ -200,6 +202,10 @@ def main():
             assert sql(restored, 'SELECT count(*) FROM listing_revisions;', 'rac_user').stdout.strip() == '2'
             assert sql(restored, 'SELECT count(*) FROM listing_revision_decisions;', 'rac_user').stdout.strip() == '2'
             assert sql(restored, "SELECT bool_and(payload_hash=public.digest(payload_canonical,'sha256')) FROM listing_revisions;", 'rac_user').stdout.strip() == 't'
+            assert sql(restored,'SELECT count(*) FROM photo.sources;','rac_user').stdout.strip()=='1'
+            assert sql(restored,'SELECT count(*) FROM photo.upload_confirmations;','rac_user').stdout.strip()=='1'
+            assert sql(restored,'SELECT count(*) FROM photo.analysis_outbox;','rac_user').stdout.strip()=='1'
+            assert sql(restored,'SELECT bool_and(s.source_sha256=c.verified_sha256 AND s.source_size=c.verified_size) FROM photo.sources s JOIN photo.upload_confirmations c ON c.asset_id=s.id;','rac_user').stdout.strip()=='t'
         platform_source = ROOT.parent / 'rac-platform'
         role_proof = run('docker', 'run', '--rm', '--network', name,
             '--mount', f'type=bind,source={platform_source},target=/source,readonly',
