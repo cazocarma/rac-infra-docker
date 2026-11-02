@@ -90,9 +90,10 @@ No incluir teléfonos de emergencia definitivos sin validar fuente oficial/juris
 
 Fase A: P01–P15, decisiones aplicables resueltas y matriz de aceptación con evidencia; bloqueante para usuarios reales. No anunciar prevención total de ilícitos. Fase B antes de cobros: proveedor de pagos, impuestos, retracto/cancelación, suscripción, disputas y señales de contracargo, todo tras decisión y textos aprobados. Fase C: DPIA y revisión adicional antes de imágenes externas, chat en servidor o scoring avanzado. El chat privado seguirá fuera del análisis servidor por defecto.
 
-P01 y P02 tienen evidencia local separada. La implementación ha avanzado hasta
-P08; su estado y las pruebas de snapshots, lectura privada y decisiones negativas
-están en [P08-listings.md](P08-listings.md). Esto no declara cerradas las unidades
+P01 y P02 tienen evidencia local separada. La implementación trabaja P08 y la
+base de fuentes privadas de P09; sus estados y pruebas están en
+[P08-listings.md](P08-listings.md) y [P09-photos.md](P09-photos.md).
+Esto no declara cerradas las unidades
 anteriores ni sustituye sus gates de salida. P08 continúa abierto: aprobación con
 precondiciones vigentes, medios/P09, corte de todas las lecturas públicas y flujos
 Flutter siguen pendientes. El despliegue de la app conserva el comportamiento

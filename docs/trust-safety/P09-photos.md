@@ -61,6 +61,17 @@ la futura cuarentena o `public-media` ya esté provisionado. El primer ensayo
 terminó exit 0 (`.local/p09-hermetic-photo-storage.log`), al igual que vet y race
 de user-service (`.local/p09-user-unit.log`).
 
+Se repitieron permisos/restauración, migraciones/user y almacenamiento desde
+Git archives de infra `825f521`, user `264551c`, platform `42dbb345` (v0.16.0)
+y los otros seis repos fijados. Los tres comandos terminaron exit 0 en
+`.local/rac-p09-source-proof-d778fa1cd93e/`:
+`revisions.json`, `permissions.log`, `migrations-user.log`, `photo-storage.log`.
+La restauración conservó fuente, digest/tamaño, confirmación e intención de
+análisis. El ensayo Go sin S3 exigió el PASS de la variante PostgreSQL/memoria;
+el laboratorio S3 exigió explícitamente la variante PostgreSQL/RustFS y las
+pruebas de la API y migración. No se aplicó V044 a DEV y no hubo push ni cambio
+de los pins activos de CI. Los recursos desechables fueron retirados.
+
 ## Trabajo restante de P09
 
 - API de subida/reanudación, autorización y estado, límites/observabilidad y
