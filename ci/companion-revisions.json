@@ -1,10 +1,10 @@
 {
-  "rac-auth-service": "cdbe0792ad148396cd020a7de6b22076e272ba1d",
-  "rac-user-service": "48e0efac650a8bccd9007fb94e966c7e660fda88",
-  "rac-match-service": "48374e1c42724c38cda61a2e6f0f837c45ff74db",
-  "rac-chat-service": "3a98906f0fd41bb8fc5342de6d113a36d1706feb",
+  "rac-auth-service": "15957ee492a2325dbcf3d73f748d882ec29cd359",
+  "rac-user-service": "3d500ac094b23e6918448821b113c30ce9704073",
+  "rac-match-service": "c4bf647e0b482cfa2538e8005a9fefb741a50e34",
+  "rac-chat-service": "3558ad2b5d49252075df5ddd05a0b8ea961fbae5",
   "rac-frontend-flutter": "f98e431935838a4e3de45603f4a77d0e69be0225",
-  "rac-alert-service": "0452e5917a7c7b3157c3a91bf156e92e4c62bbf3",
-  "rac-admin-service": "4b73564af701c4dce9bbd3456ebdf0beaca294a2",
-  "rac-platform": "bb7522deed8ec129a761d34f23b2979afc048aa5"
+  "rac-alert-service": "b638890b0e1f2000c2e9d20478d2934a8cb77b9c",
+  "rac-admin-service": "4531cdecedbd0c868d7b52c381b792442f26e6a7",
+  "rac-platform": "40fb847be7abee7d62c6394495065aca2b6d248d"
 }

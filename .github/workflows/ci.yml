@@ -90,6 +90,32 @@ jobs:
         with:
           persist-credentials: false
           path: rac-infra-docker
+      - name: Verify GitHub App configuration
+        env:
+          RAC_CI_APP_CLIENT_ID: ${{ vars.RAC_CI_APP_CLIENT_ID }}
+          RAC_CI_APP_PRIVATE_KEY: ${{ secrets.RAC_CI_APP_PRIVATE_KEY }}
+        run: python scripts/check_ci_access.py --app-config
+      # The function-only role proof runs the pinned platform's PostgreSQL test.
+      - name: Create temporary platform read token
+        id: repository-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
+        with:
+          client-id: ${{ vars.RAC_CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RAC_CI_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: rac-platform
+          permission-contents: read
+          skip-token-revoke: 'false'
+      - name: Read pinned companion revisions
+        id: revisions
+        run: python scripts/ci_revisions.py
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          repository: ${{ github.repository_owner }}/rac-platform
+          ref: ${{ fromJSON(steps.revisions.outputs.repositories)['rac-platform'] }}
+          path: rac-platform
+          token: ${{ steps.repository-token.outputs.token }}
       - run: python scripts/test_migrations.py
       - name: Audit chain permissions and concurrency (disposable PostgreSQL)
         run: python scripts/test_audit_foundation.py
