@@ -265,8 +265,11 @@ y cuenta sin perfil compa.
 3. Corte coordinado de TODAS las lecturas públicas, descubrimiento y medios a
    snapshots aprobados, y retirada de rutas mutables alternativas. Cambiar un
    nombre, biografía o foto no puede alterar una publicación ya aprobada.
-4. Flujo Flutter de envío/estado/cambios y consola de cola, sin plazos prometidos
-   mientras D07 no los defina. No usar "Publicar" para un envío a revisión.
+4. Flutter del dueño hecho en desarrollo (`/listing-review`, frontend `dbd93fd`):
+   envía el perfil guardado, muestra pendiente/aprobado/rechazado/cambios, no
+   promete plazos (D07) ni usa "Publicar". Suite completa 249 tests, analyze y
+   build web en `.local/p08-listing-review-flutter.log`. Falta la consola de cola
+   y decisión para staff (A4) y una prueba de navegador del flujo completo.
 5. Resolver referencias de foto/P09 antes del corte: cambiar/borrar una foto
    personal no puede sustituir un objeto aprobado ni dejar una URL pública viva.
    La base de fuentes privadas y sus límites consta en [P09-photos.md](P09-photos.md);
