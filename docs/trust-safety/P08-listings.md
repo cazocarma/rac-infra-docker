@@ -182,13 +182,55 @@ Se retiraron los contenedores desechables; no se migró ni modificó DEV.
 Este ensayo no publica platform v0.16.0, no cambia los pins activos de CI y no
 prueba entrega de avisos, el catálogo de motivos real ni aprobación positiva.
 
+## Aprobación positiva en desarrollo
+
+V045 agrega `listing_review.approval_context` y `listing_review.approve`. No
+provisiona un login, no aprueba categorías D04 ni conecta lecturas públicas.
+`NewApprover` usa un tercer login limitado a `ready`, contexto y aprobación: sin
+lectura de contenido, tablas ni corrección. POST
+`/internal/listings/revisions/{id}/approval` exige `listings.review` y MFA, ID de
+evento, versión esperada decimal y hash exacto; no admite motivo, nota ni
+requisitos enviados por el cliente.
+
+La transacción de aprobación bloquea primero la publicación. Después user-service
+evalúa documentos, declaración compa e identidad del dueño con su propia
+credencial, en otra transacción que conserva sus bloqueos compartidos (registro
+de documentos) hasta el commit de la aprobación. La función revalida bajo el
+mismo bloqueo: revisión pendiente, versión y hash, autorrevisión, estado de la
+publicación, misma versión de política de publicación que el envío, standing
+activo sin restricción `publish_listing` (bloqueado FOR SHARE), cada actividad
+activa, sin verificación adicional pendiente y aprobada, y ninguna foto. Las
+actividades `proposed` solo se aceptan si la configuración del servidor lo
+permite (dev/test). Una foto referenciada falla con `listing_photo_unapproved`
+hasta que P09 promueva medios revisados. Cada fallo de estado responde 409 con su
+código y no escribe nada.
+
+En la misma transacción se escriben decisión `approved`, punteros publicados,
+evento con los requisitos efectivamente evaluados (un control desactivado queda
+`false`, no aprobado), outbox mínimo y `listing.reviewed` en auditoría. Un
+reintento exacto devuelve el resultado original sin reevaluar al dueño; otro
+humano, login, política o comando con el mismo evento produce conflicto. Dos
+instancias con eventos distintos producen una sola aprobación; la publicación
+aprobada anterior sigue pública mientras un nuevo envío está pendiente.
+
+`TestApprovalPostgresHTTP` pasó dentro de `test_migrations.py --services user`
+(`.local/p08-approval-migrations-user.log`, exit 0): foto, hash/versión, autorrevisión,
+rol sin revisión, catálogo propuesto fuera de dev, cambio de política, requisitos
+del dueño ausentes/no disponibles, restricción, suspensión, actividad retirada,
+fallo de auditoría tras las escrituras, MFA vencido tras el SQL, replay, carrera
+de dos instancias y deriva de privilegios. El ensayo sin superusuario fresh/V018
+también terminó exit 0 (`.local/p08-approval-database-permissions.log`) y comprueba
+que ningún rol de servicio puede ejecutar las funciones de aprobación. Nada se
+aplicó a DEV.
+
 ## Corte pendiente para completar P08
 
-1. API dueña de envío/lectura/decisión, autorización staff MFA/step-up y razones
-   versionadas; auditoría/eventos en la misma transacción. Una fila de decisión
+1. API dueña de envío/lectura para el compa (la decisión staff ya existe), con
+   auditoría/eventos en la misma transacción. Una fila de decisión
    SQL no prueba por sí sola que un humano autorizado la emitió.
-2. Revalidación de standing, identidad, documentos, catálogo y foto/política
-   efectiva al aprobar, con carreras entre dos instancias y rollback completo.
+2. Hecho en desarrollo (V045, sección anterior): revalidación al aprobar con
+   carreras y rollback. Falta provisionar el login de aprobación y la foto
+   aprobada de P09; hoy cualquier foto bloquea la aprobación.
 3. Corte coordinado de TODAS las lecturas públicas, descubrimiento y medios a
    snapshots aprobados, y retirada de rutas mutables alternativas. Cambiar un
    nombre, biografía o foto no puede alterar una publicación ya aprobada.

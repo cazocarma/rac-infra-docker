@@ -56,6 +56,11 @@ def verify(sql, database, compa_user):
     for role in ('rac_match', 'rac_chat', 'rac_alert', 'rac_admin'):
         for table in ('listings', 'listing_revisions', 'listing_revision_decisions'):
             assert execute('SELECT * FROM ' + table + ';', role, ok=False).returncode != 0
+    # Approval is a scoped staff entrypoint; no service role inherits it.
+    for role in ('rac_user', 'rac_match', 'rac_chat', 'rac_alert', 'rac_seed'):
+        for function in ('listing_review.approval_context(audit.reference,audit.reference,bigint,audit.digest)',
+                         'listing_review.approve(audit.reference,audit.reference,audit.reference,audit.reference,bigint,audit.digest,text,jsonb,boolean)'):
+            assert execute(f"SELECT has_function_privilege('{role}','{function}','EXECUTE');", 'rac_migrator').stdout.strip() == 'f', role + ' can approve listings'
     # Even the owner cannot supply a forged generated digest.
     assert execute(f"INSERT INTO listing_revisions(listing_id,revision_no,payload_canonical,payload_hash,assessment,risk_score,policy_version) VALUES('{listing}',3,'{{}}',decode(repeat('00',32),'hex'),'{{}}',0,'fixture-1');", ok=False).returncode != 0
     print('PASS: listing owner permissions, UTF-8 digest, append-only revisions/decisions, stale/self review and approved snapshot preservation', flush=True)
