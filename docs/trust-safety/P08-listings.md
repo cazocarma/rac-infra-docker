@@ -223,11 +223,42 @@ también terminó exit 0 (`.local/p08-approval-database-permissions.log`) y comp
 que ningún rol de servicio puede ejecutar las funciones de aprobación. Nada se
 aplicó a DEV.
 
+## Envío y estado del dueño en desarrollo
+
+POST `/api/user/me/listing/submissions` (rol compa, mismos gates de documentos e
+identidad que `PUT /me/compa`) recibe versión esperada y borrador. Analiza fuera
+de cualquier bloqueo; contacto público es un rechazo corregible con el campo, el
+resto de señales solo prioriza revisión. Dentro de la transacción del dueño
+aplica standing, guarda la revisión con `listings.Submit`, revalida documentos y
+el permiso de standing antes del commit. Nunca publica: la publicación aprobada
+anterior sigue vigente hasta que un humano apruebe la nueva. Responde 202
+`submitted`, sin la palabra "publicar".
+
+La política de publicación (`LISTING_POLICY_VERSION`, límites de precio, áreas)
+no tiene valores por defecto porque D04 sigue pendiente, y el léxico propuesto
+solo se admite en dev/test (D13); fuera de eso el envío responde 503
+`listing_submission_unavailable`. La aprobación debe configurarse con la misma
+versión de política. Una foto se rechaza con 409 `listing_photo_unavailable`
+hasta que P09 promueva medios revisados. El envío no agrega un evento de
+auditoría: el vocabulario de `audit.log` no tiene acción para envíos y la
+revisión append-only es el registro del acto del dueño.
+
+GET `/api/user/me/listing` devuelve estado, versión, snapshots pendiente y
+publicado del propio dueño y la última decisión (código de motivo y clave de
+nota). No expone señales, riesgo ni identidad del revisor. Contrato en
+`rac-shared-contracts` `4284002`.
+
+`TestListingOwnerPostgres` pasó como `rac_user` dentro de
+`test_migrations.py --services user` (`.local/p08-owner-migrations-user.log`,
+exit 0): política ausente, foto, contacto, actividad fuera de catálogo, precio,
+versión mal formada, campo desconocido, envío y reenvío con conflicto de
+versión, ausencia de publicación directa, estado del dueño sin campos privados
+y cuenta sin perfil compa.
+
 ## Corte pendiente para completar P08
 
-1. API dueña de envío/lectura para el compa (la decisión staff ya existe), con
-   auditoría/eventos en la misma transacción. Una fila de decisión
-   SQL no prueba por sí sola que un humano autorizado la emitió.
+1. Hecho en desarrollo: envío y estado del dueño (sección anterior). Una fila de
+   decisión SQL no prueba por sí sola que un humano autorizado la emitió.
 2. Hecho en desarrollo (V045, sección anterior): revalidación al aprobar con
    carreras y rollback. Falta provisionar el login de aprobación y la foto
    aprobada de P09; hoy cualquier foto bloquea la aprobación.

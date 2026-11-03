@@ -122,6 +122,8 @@ try:
         flyway('listing_corrector_http', migration_dir)
         sql('fresh', 'CREATE DATABASE listing_approver_http;')
         flyway('listing_approver_http', migration_dir)
+        sql('fresh', 'CREATE DATABASE listing_owner_http;')
+        flyway('listing_owner_http', migration_dir)
         sql('fresh', 'CREATE DATABASE photo_sources;')
         flyway('photo_sources', migration_dir)
         from document_writer_fixture import seed as seed_attestations
@@ -141,6 +143,7 @@ try:
             "-e", f"RAC_LISTING_REVIEW_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/listing_review_http?sslmode=disable",
             "-e", f"RAC_LISTING_CORRECTION_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/listing_corrector_http?sslmode=disable",
             "-e", f"RAC_LISTING_APPROVAL_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/listing_approver_http?sslmode=disable",
+            "-e", f"RAC_LISTING_OWNER_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/listing_owner_http?sslmode=disable",
             "-e", f"RAC_PHOTO_ASSET_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/photo_sources?sslmode=disable",
             "golang:1.27.3", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol ./internal/editorial ./internal/strictjson ./internal/listings ./internal/listingreview ./internal/photoassets" + (" ./internal/identity/..." if (onboarding_source / 'internal/identity').exists() else ""))
         assert '--- PASS: TestPhotoSourcePostgres/memory' in user_tests.stdout
@@ -149,6 +152,8 @@ try:
         assert '--- PASS: TestCorrectionPostgresHTTP' in user_tests.stdout
         print('PASS: scoped negative listing decisions, sealed reason catalogs, exact-hash/version guards, audit/outbox rollback, MFA expiry, concurrent retry and preserved public snapshot')
         assert '--- PASS: TestApprovalPostgresHTTP' in user_tests.stdout
+        assert '--- PASS: TestListingOwnerPostgres' in user_tests.stdout
+        print('PASS: compa submits immutable listing snapshots for review as rac_user; no direct publication, version conflict, contact/catalog/price/photo refusal and private review fields hidden')
         print('PASS: scoped listing approval revalidates owner prerequisites, standing, catalog, photo and policy; audit rollback, MFA expiry, replay and two-instance race')
         print('PASS: private listing reader with scoped login, committed access audit, MFA expiry rollback and privilege-drift refusal')
         assert '--- PASS: TestListingSubmitPostgres' in user_tests.stdout
