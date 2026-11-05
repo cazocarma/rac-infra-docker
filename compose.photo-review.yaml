@@ -1,0 +1,20 @@
+# Opt-in DEV only, layered after compose.listings.yaml. Existing private buckets
+# and a dedicated GetObject-only identity must be provisioned separately.
+services:
+  backend-user:
+    environment:
+      RAC_PHOTO_PREVIEW_ENABLED: "true"
+      RAC_PHOTO_S3_ENDPOINT: ${RAC_PHOTO_S3_ENDPOINT:?Configurar endpoint privado de fotos}
+      RAC_PHOTO_S3_REGION: ${RAC_PHOTO_S3_REGION:?Configurar region de fotos}
+      RAC_PHOTO_QUARANTINE_BUCKET: ${RAC_PHOTO_QUARANTINE_BUCKET:?Configurar cuarentena separada}
+      RAC_PHOTO_STAGING_BUCKET: ${RAC_PHOTO_STAGING_BUCKET:?Configurar staging privado}
+      RAC_PHOTO_PREVIEW_ACCESS_KEY_FILE: /run/secrets/rac_photo_preview_access_key
+      RAC_PHOTO_PREVIEW_SECRET_KEY_FILE: /run/secrets/rac_photo_preview_secret_key
+    secrets:
+      - rac_photo_preview_access_key
+      - rac_photo_preview_secret_key
+secrets:
+  rac_photo_preview_access_key:
+    file: ${PHOTO_PREVIEW_ACCESS_KEY_PATH:?Indicar archivo de acceso de lectura de staging}
+  rac_photo_preview_secret_key:
+    file: ${PHOTO_PREVIEW_SECRET_KEY_PATH:?Indicar archivo secreto de lectura de staging}

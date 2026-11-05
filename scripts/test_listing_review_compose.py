@@ -26,6 +26,9 @@ class ListingReviewCompose(unittest.TestCase):
         for arguments in (
             ['ENV=qa', 'LISTING_PREVIEW=1', 'STANDING_PREVIEW=1'],
             ['ENV=dev', 'LISTING_PREVIEW=1', 'STANDING_PREVIEW=0'],
+            ['ENV=dev', 'PHOTO_REVIEW_PREVIEW=1', 'LISTING_PREVIEW=0'],
+            ['ENV=qa', 'PHOTO_REVIEW_PREVIEW=1'],
+            ['ENV=dev', 'PHOTO_REVIEW_PREVIEW=yes'],
         ):
             result = subprocess.run([make, '-n', 'config', *arguments], cwd=ROOT, capture_output=True, text=True, timeout=10)
             self.assertNotEqual(result.returncode, 0, 'Invalid preview combination accepted')
@@ -38,6 +41,11 @@ class ListingReviewCompose(unittest.TestCase):
         self.assertIn('listing_review_database.py', result.stdout)
         result = subprocess.run([make, '-n', 'config', 'ENV=dev', 'LISTING_PREVIEW=0'], cwd=ROOT, capture_output=True, text=True, timeout=10)
         self.assertNotIn('-f compose.listings.yaml', result.stdout)
+        self.assertNotIn('-f compose.photo-review.yaml', result.stdout)
+        result = subprocess.run([make, '-n', 'config', 'ENV=dev', 'STANDING_PREVIEW=1', 'LISTING_PREVIEW=1', 'PHOTO_REVIEW_PREVIEW=1'],
+                                cwd=ROOT, capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn('-f compose.photo-review.yaml', result.stdout)
 
     def test_opt_in_keeps_listener_private_and_requires_every_value(self):
         values = dict(line.split('=', 1) for line in (ROOT / 'envs/.env.dev.example').read_text(encoding='utf-8').splitlines()
@@ -73,6 +81,24 @@ class ListingReviewCompose(unittest.TestCase):
         for variable in ('LISTING_REVIEW_APPROVER_DATABASE_URL', 'LISTING_POLICY_VERSION', 'LISTING_MAX_PRICE_CLP'):
             missing = {key: value for key, value in environment.items() if key != variable}
             self.assertNotEqual(render(['-f', 'compose.listings.yaml'], missing)[0], 0, variable + ' was optional')
+        preview = {**environment, 'RAC_PHOTO_S3_ENDPOINT': 'http://rustfs:9000', 'RAC_PHOTO_S3_REGION': 'us-east-1',
+                   'RAC_PHOTO_QUARANTINE_BUCKET': 'synthetic-quarantine', 'RAC_PHOTO_STAGING_BUCKET': 'synthetic-staging',
+                   'PHOTO_PREVIEW_ACCESS_KEY_PATH': './synthetic-preview-access',
+                   'PHOTO_PREVIEW_SECRET_KEY_PATH': './synthetic-preview-secret'}
+        overlays = ['-f', 'compose.listings.yaml', '-f', 'compose.photo-review.yaml']
+        status, photo_services = render(overlays, preview)
+        self.assertEqual(status, 0, 'Explicit photo preview config failed')
+        self.assertEqual(photo_services['backend-user']['environment']['RAC_PHOTO_PREVIEW_ENABLED'], 'true')
+        self.assertNotIn('RAC_PHOTO_PREVIEW_ACCESS_KEY', photo_services['backend-user']['environment'])
+        self.assertEqual({item['source'] for item in photo_services['backend-user']['secrets']},
+                         {'rac_photo_preview_access_key', 'rac_photo_preview_secret_key'})
+        for name in photo_services:
+            self.assertEqual(photo_services[name].get('ports', []), services[name].get('ports', []))
+            if name != 'backend-user':
+                self.assertEqual(photo_services[name].get('secrets', []), services[name].get('secrets', []))
+        for variable in ('RAC_PHOTO_STAGING_BUCKET', 'RAC_PHOTO_S3_ENDPOINT', 'PHOTO_PREVIEW_SECRET_KEY_PATH'):
+            missing = {key: value for key, value in preview.items() if key != variable}
+            self.assertNotEqual(render(overlays, missing)[0], 0, variable + ' was optional')
 
 
 if __name__ == '__main__':
