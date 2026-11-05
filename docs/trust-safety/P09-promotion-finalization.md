@@ -57,7 +57,7 @@ Datos sintéticos, recursos desechables, sin .env, puertos publicados o cambios 
 | Race y vet listingreview | ejecución Docker Go1.27.3 sobre d0da150 | exit 0; DB condicionadas no cuentan aquí |
 | SQL/S3/OCR/IAM/worker y finalización con proveedor real | `.local/p09-finalization-rustfs-2026-11-05.log` | exit 0, user d0da150 limpio |
 | Migraciones completas/user fresh/upgrade/repetición/checksum y regresión P08 | `.local/p09-finalization-migrations-2026-11-05.log` | en ejecución |
-| Flyway sin superusuario, ACL y backup/restore del laboratorio existente | `.local/p09-finalization-permissions-2026-11-05.log` | en ejecución |
+| Flyway sin superusuario, ACL y backup/restore del laboratorio existente | `.local/p09-finalization-permissions-2026-11-05.log` | exit 0 |
 
 Se exige PASS de `TestReaderPostgresHTTP/photo-finalization` y, en S3,
 `TestReaderPostgresHTTP/photo-finalization/rustfs-complete-no-recopy`.
