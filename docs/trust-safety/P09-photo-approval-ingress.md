@@ -78,7 +78,32 @@ Registros relativos a raíz RAC:
 - `.local/p09-photo-ingress-migrations-2026-11-05.log`: exit 0, fresh/upgrade,
   repetición/checksums y regresión user/P08, con el nuevo staff HTTP exigido.
 
-Pendiente de UI: usar capabilities para habilitar la acción, mostrar las señales
+## Recuperación del comando Flutter
+
+El frontend incorpora comandos cerrados para aprobación de publicaciones, con
+evento, revisión, hash y versión decimal de PostgreSQL sin conversión a double.
+El intento durable guarda el comando antes del envío y exige un recibo con el
+mismo evento/revisión, decisión aprobada y versión siguiente antes de borrarlo.
+Un `staff_step_up_required` recibido después de un POST conserva el resultado
+como incierto: el proxy puede haberlo emitido después del commit del owner.
+Un cambio de cuenta antes del envío impide despachar; después del envío conserva
+la recuperación para la identidad original. El journal admite un namespace
+separado del editorial y mantiene el aislamiento por issuer, subject y origen.
+
+Esta base todavía no está conectada a ListingReviewConsole: no implica que la
+consola actual ya sobreviva una recarga ni habilita la aprobación de fotos.
+Las pruebas focalizadas cubren reinicio con MFA, aislamiento, recibo exacto y
+versiones mayores al entero seguro de JavaScript. La prueba no usa Keycloak real.
+
+Validación local del frontend `bf8a92f9413dbbbc928df130d95370382e7e8853`,
+exportado desde Git limpio a Linux con Flutter 3.44.0:
+`.local/p09-frontend-bf8a92f941.log`, exit 0. Formato, análisis sin avisos,
+281 pruebas y build web release completados. La primera ejecución
+`.local/p09-frontend-eab6634898.log` terminó con exit 1 por cinco avisos de
+llaves en el análisis estático; se conserva como fallo, corregido en el commit
+validado. Los manifiestos fijan el SHA validado, sin push ni CI remoto.
+
+Pendiente de UI: conectar la recuperación durable, usar capabilities para habilitar la acción, mostrar las señales
 de la foto y su vista exacta, confirmación humana explícita y vínculo del comando
 a la cuenta staff. Renovar MFA puede ocurrir después de que el owner ya haya
 confirmado; esa respuesta debe tratarse como incierta y conservar el evento para
