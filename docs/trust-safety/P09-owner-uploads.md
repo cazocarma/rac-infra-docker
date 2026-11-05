@@ -84,9 +84,11 @@ dependencias jurídicas/retención antes de usuarios reales siguen pendientes.
 
 ## Evidencia local
 
-- user `bb80a0b523bdd065fa3fb66fc8dbddc2b8db6474`:
+- Ensayo preliminar del árbol de trabajo, consolidado después en user
+  `bb80a0b523bdd065fa3fb66fc8dbddc2b8db6474`:
   `test_migrations.py --services user`, exit 0, registro
   `.local/p09-owner-api-migrations-2026-11-05.log`.
+  Es un ensayo exploratorio, no un manifiesto congelado de revisiones.
   El candidato posterior `1dae264452c0de40b99a0a28edfe525128371354`
   agrega no-store también a denegaciones de autenticación y la prueba de header
   de idempotencia ambiguo. Su regresión congelada se registra por separado.
