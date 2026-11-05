@@ -283,8 +283,14 @@ la respuesta repita revisión y evento y solo dejan pasar códigos de error de u
 lista cerrada (el resto es 503). El cliente Keycloak `rac-staff` agrega la
 audiencia `rac-user-listings` y reconcilia mappers en clientes existentes; la
 prueba con Keycloak real lo verificó
-(`.local/p08-identity-listings-audience.log`, exit 0). La consola Flutter de cola
-y decisión sigue pendiente.
+(`.local/p08-identity-listings-audience.log`, exit 0).
+
+La consola staff de Flutter muestra la cola y el detalle con `listings.read` y
+aprueba con `listings.review`. Las señales se presentan como orden de revisión,
+no como prueba. La aprobación envía un único comando congelado; ante un
+resultado incierto, reintentar reenvía el mismo evento. Rechazar o pedir cambios
+queda sin interfaz hasta tener un catálogo de motivos revisado (D06). Suite
+completa 254 tests, analyze y build web en `.local/p08-listing-console-flutter.log`.
 
 ## Corte pendiente para completar P08
 
@@ -300,7 +306,8 @@ y decisión sigue pendiente.
    envía el perfil guardado, muestra pendiente/aprobado/rechazado/cambios, no
    promete plazos (D07) ni usa "Publicar". Suite completa 249 tests, analyze y
    build web en `.local/p08-listing-review-flutter.log`. Falta la consola de cola
-   y decisión para staff (A4) y una prueba de navegador del flujo completo.
+   y decisión para staff (A4, hecha para aprobar; falta rechazo con motivos) y
+   una prueba de navegador del flujo completo.
 5. Resolver referencias de foto/P09 antes del corte: cambiar/borrar una foto
    personal no puede sustituir un objeto aprobado ni dejar una URL pública viva.
    La base de fuentes privadas y sus límites consta en [P09-photos.md](P09-photos.md);
