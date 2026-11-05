@@ -135,6 +135,8 @@ def main():
             raise RuntimeError('Durable photo promotion preparation proof skipped')
         if '--- PASS: TestReaderPostgresHTTP/durable-photo-promotion-intent/rustfs-copy-readback' not in result.stdout:
             raise RuntimeError('Committed intent to versioned RustFS copy/readback proof skipped')
+        if '--- PASS: TestReaderPostgresHTTP/photo-finalization/rustfs-complete-no-recopy' not in result.stdout:
+            raise RuntimeError('Atomic photo finalization with real RustFS and no-copy replay proof skipped')
         if '--- PASS: TestVersionedMediaS3Integration' not in result.stdout:
             raise RuntimeError('Versioned S3 destination adapter proof skipped')
         print('PASS: real RustFS conditional creation and concurrent single winner; private profile IAM; owner-scoped raw-source readback and atomic analysis intent; photo API and integrity-preserving migration', flush=True)
@@ -142,6 +144,7 @@ def main():
         print('PASS: authenticated staff preview of exact pending JPEG from real RustFS with dedicated read-only IAM and two committed SQL access audits',flush=True)
         print('PASS: durable immutable photo promotion intent before I/O, fresh audited retry attempts, event/actor/policy conflicts, concurrency, expiry/fault rollback and closed publication gate',flush=True)
         print('PASS: committed SQL intent to real RustFS staging read, conditional private media copy and exact-version readback; prepared retry reuses the same verified version without publication',flush=True)
+        print('PASS: atomic receipt/approval/reference/audit/outbox/pointer with real RustFS; expired commit, policy/standing/catalog change, prerequisites, rollback and concurrent winner; finalized retry performs no S3 I/O',flush=True)
         print('PASS: separate private versioned media destination and promotion IAM; Go adapter conditional creation, non-null VersionId capture, exact-version readback and recovery without overwrite',flush=True)
         print('PASS: authenticated owner HTTP upload and request recovery to real RustFS/SQL/native OCR; contact correction and benign awaiting-review status, no public photo or private signals exposed',flush=True)
         from photo_worker_runtime_fixture import prove

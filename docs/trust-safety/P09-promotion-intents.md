@@ -4,6 +4,11 @@ V050 y user `2488ecbd0a1622c93be6365799d1438f2e752b1e`, preparación y copia
 interna. No hay ruta HTTP para este comando, flags activos, finalización/recibos
 durables o modificación del bloqueo de fotos de V045.
 
+Actualización posterior: [V051, finalización atómica](P09-promotion-finalization.md)
+agrega el recibo/decisión/referencia en una transacción interna, sin activar rutas.
+Las limitaciones de finalización de esta entrega V050 se resuelven allí; quedan
+sus gates de integración, visibilidad y retirada.
+
 El operador debe registrar un destino privado (ID, hash de localizador de origen,
 bucket y región) y una política inmutable que une política de publicación,
 pipeline y destino. Cada política tiene un gate separado, falso por defecto.

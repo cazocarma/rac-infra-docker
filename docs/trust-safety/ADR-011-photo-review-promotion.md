@@ -3,8 +3,9 @@
 Estado: implementación parcial: V048 liga el envío al resultado inmutable y
 V049 prepara la [previsualización privada](P09-private-preview.md); V050 fija
 [intentos auditados antes de I/O](P09-promotion-intents.md). No se activaron flags.
-La copia y readback exactos ya se prueban desde el intento confirmado. La
-integración/recibo durable/finalización, visibilidad pública y retirada siguen pendientes.
+La copia/readback y [finalización atómica V051](P09-promotion-finalization.md) ya
+se prueban con proveedor real. Integración runtime/consola, señales de imagen,
+visibilidad pública y retirada siguen pendientes.
 Complementa ADR-002 y M4/M6. No modifica las decisiones de negocio/jurídicas
 D04–D14, no habilita flags ni cambia el snapshot público actual.
 
