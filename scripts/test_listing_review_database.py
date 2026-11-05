@@ -47,7 +47,9 @@ class ListingReviewDatabaseTarget(unittest.TestCase):
 
     def test_capabilities_are_disjoint_beyond_readiness(self):
         signatures = {role: set(entry[1]) for role, entry in INGRESSES.items()}
-        self.assertTrue(all(len(s) == 3 and 'listing_review.ready()' in s for s in signatures.values()))
+        self.assertEqual({k: len(v) for k, v in signatures.items()},
+                         {'rac_listing_reader': 4, 'rac_listing_corrector': 3, 'rac_listing_approver': 3})
+        self.assertTrue(all('listing_review.ready()' in s for s in signatures.values()))
         self.assertFalse(any('approve' in s or 'approval' in s for s in signatures['rac_listing_reader'] | signatures['rac_listing_corrector']))
         self.assertFalse(any('queue' in s or 'revision(' in s for s in signatures['rac_listing_approver'] | signatures['rac_listing_corrector']))
         self.assertFalse(any('correct(' in s for s in signatures['rac_listing_approver'] | signatures['rac_listing_reader']))

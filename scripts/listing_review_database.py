@@ -15,6 +15,7 @@ INGRESSES = {
         READY,
         'listing_review.queue(audit.reference,audit.reference,audit.reference,integer,integer,timestamp with time zone,uuid)',
         'listing_review.revision(audit.reference,audit.reference,audit.reference,audit.reference)',
+        'listing_review.photo(audit.reference,audit.reference,audit.reference,audit.reference)',
     )),
     'rac_listing_corrector': ('LISTING_REVIEW_CORRECTOR_DATABASE_URL', (
         READY,

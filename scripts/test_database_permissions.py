@@ -119,9 +119,13 @@ def main():
                 assert sql(database, 'SELECT listing_review.ready();', role).stdout.strip() == 't'
                 assert sql(database, f"SELECT count(*) FROM audit.writer_principals WHERE database_role='{role}';").stdout.strip() == '1'
                 granted = sql(database, f"SELECT count(*)::text||' '||string_agg(p.oid::regprocedure::text,' ' ORDER BY 1) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='listing_review' AND has_function_privilege('{role}',p.oid,'EXECUTE');").stdout.strip()
-                assert allowed in granted and granted.startswith('3 '), role + ' has unexpected listing review functions: ' + granted
+                expected_count = 4 if role == 'rac_listing_reader' else 3
+                assert allowed in granted and granted.startswith(str(expected_count)+' '), role + ' has unexpected listing review functions: ' + granted
+                can_preview = sql(database, f"SELECT has_function_privilege('{role}','listing_review.photo(audit.reference,audit.reference,audit.reference,audit.reference)','EXECUTE');").stdout.strip()
+                assert can_preview == ('t' if role == 'rac_listing_reader' else 'f'), role + ' has unexpected photo authority'
                 for forbidden in ('SELECT * FROM listings;', 'SELECT * FROM listing_revisions;', 'SELECT * FROM listing_review.decision_events;',
-                                  'SELECT * FROM standing.account;', 'SELECT * FROM legal_documents;'):
+                                  'SELECT * FROM standing.account;', 'SELECT * FROM legal_documents;',
+                                  'SELECT * FROM photo.processing_results;', 'SELECT * FROM photo.listing_references;'):
                     assert sql(database, forbidden, role, ok=False).returncode != 0, role + ' read ' + forbidden
             print('PASS: listing review DEV provisioning creates three separate function-only logins, is idempotent and refuses extra column/function authority', flush=True)
             assert sql(database, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname='standing';").stdout.strip() == 'rac_migrator'
