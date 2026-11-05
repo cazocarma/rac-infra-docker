@@ -97,6 +97,33 @@ def main():
                               'UPDATE notificacion SET titulo=titulo;',
                               "SELECT documents.editorial_record(gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),'document.drafted','{}');"):
                 assert sql(database, forbidden, 'rac_documents_editorial', ok=False).returncode != 0
+            listing_flags = list(editorial_flags)
+            for role, variable in (('rac_listing_reader', 'LISTING_REVIEW_READER_DATABASE_URL'),
+                                   ('rac_listing_corrector', 'LISTING_REVIEW_CORRECTOR_DATABASE_URL'),
+                                   ('rac_listing_approver', 'LISTING_REVIEW_APPROVER_DATABASE_URL')):
+                listing_flags += ['-e', variable + '=postgresql://' + role + ':synthetic-listing-' + role + '-123456@postgres:5432/' + database + '?sslmode=disable']
+            for _ in range(2):
+                run('docker', 'run', '--rm', '--network', name, *listing_flags, tools, 'python', 'listing_review_database.py')
+            sql(database, 'GRANT SELECT(state) ON listings TO rac_listing_approver;')
+            refused = run('docker', 'run', '--rm', '--network', name, *listing_flags, tools, 'python', 'listing_review_database.py', ok=False)
+            assert refused.returncode != 0, 'Listing review provisioning accepted column authority'
+            assert 'synthetic-listing' not in refused.stdout + refused.stderr
+            sql(database, 'REVOKE SELECT(state) ON listings FROM rac_listing_approver;')
+            sql(database, 'GRANT EXECUTE ON FUNCTION listing_review.approve(audit.reference,audit.reference,audit.reference,audit.reference,bigint,audit.digest,text,jsonb,boolean) TO rac_listing_reader;')
+            refused = run('docker', 'run', '--rm', '--network', name, *listing_flags, tools, 'python', 'listing_review_database.py', ok=False)
+            assert refused.returncode != 0, 'Reader login accepted approval authority'
+            sql(database, 'REVOKE EXECUTE ON FUNCTION listing_review.approve(audit.reference,audit.reference,audit.reference,audit.reference,bigint,audit.digest,text,jsonb,boolean) FROM rac_listing_reader;')
+            run('docker', 'run', '--rm', '--network', name, *listing_flags, tools, 'python', 'listing_review_database.py')
+            for role, allowed in (('rac_listing_reader', 'listing_review.queue'), ('rac_listing_corrector', 'listing_review.correct'),
+                                  ('rac_listing_approver', 'listing_review.approve')):
+                assert sql(database, 'SELECT listing_review.ready();', role).stdout.strip() == 't'
+                assert sql(database, f"SELECT count(*) FROM audit.writer_principals WHERE database_role='{role}';").stdout.strip() == '1'
+                granted = sql(database, f"SELECT count(*)::text||' '||string_agg(p.oid::regprocedure::text,' ' ORDER BY 1) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='listing_review' AND has_function_privilege('{role}',p.oid,'EXECUTE');").stdout.strip()
+                assert allowed in granted and granted.startswith('3 '), role + ' has unexpected listing review functions: ' + granted
+                for forbidden in ('SELECT * FROM listings;', 'SELECT * FROM listing_revisions;', 'SELECT * FROM listing_review.decision_events;',
+                                  'SELECT * FROM standing.account;', 'SELECT * FROM legal_documents;'):
+                    assert sql(database, forbidden, role, ok=False).returncode != 0, role + ' read ' + forbidden
+            print('PASS: listing review DEV provisioning creates three separate function-only logins, is idempotent and refuses extra column/function authority', flush=True)
             assert sql(database, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname='standing';").stdout.strip() == 'rac_migrator'
             if (ROOT / 'db/migrations/V029__document_registry.sql').exists():
                 from document_registry_checks import check as check_document_registry

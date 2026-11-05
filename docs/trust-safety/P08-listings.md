@@ -255,13 +255,33 @@ versión mal formada, campo desconocido, envío y reenvío con conflicto de
 versión, ausencia de publicación directa, estado del dueño sin campos privados
 y cuenta sin perfil compa.
 
+## Activación privada DEV de los ingresses de revisión
+
+`listingreview.FromEnvironment` sirve lector, corrector y aprobador en `:8084`
+solo con `LISTING_REVIEW_ENABLED=true`; un valor ambiguo detiene el servicio.
+Exige tres URLs distintas, una por login, y `/ready` requiere las tres (sin
+catálogo de motivos efectivo queda no listo). El puerto no se publica.
+
+`make listing-review-db-config ENV=dev STANDING_PREVIEW=1 LISTING_PREVIEW=1`
+provisiona `rac_listing_reader`, `rac_listing_corrector` y
+`rac_listing_approver` solo en DEV, con secretos independientes entre sí y de
+los roles existentes, exactamente tres funciones cada uno y principal de
+auditoría propio. Rechaza un rol existente con columnas, tablas u otras
+funciones. `compose.listings.yaml` exige además política técnica, versión de
+política de publicación y precios sintéticos elegidos por el operador: no son
+D04. No crea cuentas staff, no siembra motivos ni aprueba categorías.
+
+`test_database_permissions.py` lo comprobó fresh/V018 sin superusuario
+(`.local/p08-listing-provision-permissions.log`, exit 0); el render de compose y
+la puerta del Makefile tienen pruebas unitarias. No se activó en DEV.
+
 ## Corte pendiente para completar P08
 
 1. Hecho en desarrollo: envío y estado del dueño (sección anterior). Una fila de
    decisión SQL no prueba por sí sola que un humano autorizado la emitió.
 2. Hecho en desarrollo (V045, sección anterior): revalidación al aprobar con
-   carreras y rollback. Falta provisionar el login de aprobación y la foto
-   aprobada de P09; hoy cualquier foto bloquea la aprobación.
+   carreras y rollback. Logins DEV provisionables (sección anterior). Falta la
+   foto aprobada de P09; hoy cualquier foto bloquea la aprobación.
 3. Corte coordinado de TODAS las lecturas públicas, descubrimiento y medios a
    snapshots aprobados, y retirada de rutas mutables alternativas. Cambiar un
    nombre, biografía o foto no puede alterar una publicación ya aprobada.

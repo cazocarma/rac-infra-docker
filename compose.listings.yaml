@@ -1,0 +1,15 @@
+# Explicit DEV preview of P08 listing review after migration, DB provisioning
+# (make listing-review-db-config) and operator review. Does not create staff
+# users, seed a reason catalog, approve D04 categories or publish port 8084.
+# Prices/policy are synthetic DEV values chosen by the operator, not D04.
+services:
+  backend-user:
+    environment:
+      LISTING_REVIEW_ENABLED: "true"
+      LISTING_REVIEW_READER_DATABASE_URL: ${LISTING_REVIEW_READER_DATABASE_URL:?Provisionar lector de revisión separado}
+      LISTING_REVIEW_CORRECTOR_DATABASE_URL: ${LISTING_REVIEW_CORRECTOR_DATABASE_URL:?Provisionar corrector de revisión separado}
+      LISTING_REVIEW_APPROVER_DATABASE_URL: ${LISTING_REVIEW_APPROVER_DATABASE_URL:?Provisionar aprobador de revisión separado}
+      LISTING_REVIEW_POLICY_VERSION: ${LISTING_REVIEW_POLICY_VERSION:?Seleccionar politica técnica de revisión}
+      LISTING_POLICY_VERSION: ${LISTING_POLICY_VERSION:?Seleccionar versión sintética de política de publicación}
+      LISTING_MIN_PRICE_CLP: ${LISTING_MIN_PRICE_CLP:?Fijar precio mínimo sintético DEV}
+      LISTING_MAX_PRICE_CLP: ${LISTING_MAX_PRICE_CLP:?Fijar precio máximo sintético DEV}

@@ -47,6 +47,15 @@ $(error EDITORIAL_PREVIEW requiere STANDING_PREVIEW=1)
 endif
 COMPOSE_FILES += -f compose.editorial.yaml
 endif
+ifeq ($(LISTING_PREVIEW),1)
+ifneq ($(ENV),dev)
+$(error LISTING_PREVIEW solo admite DEV)
+endif
+ifneq ($(STANDING_PREVIEW),1)
+$(error LISTING_PREVIEW requiere STANDING_PREVIEW=1)
+endif
+COMPOSE_FILES += -f compose.listings.yaml
+endif
 ifeq ($(ENV),dev)
 ifneq ($(wildcard envs/.env.photos-s3),)
 COMPOSE_FILES += -f compose.photos-s3.yaml
@@ -78,6 +87,7 @@ help:
 	@echo make storage-up / storage-activate / storage-test / storage-test-persistence / storage-stop
 	@echo make backup-enable / backup-now / backup-status / backup-restore-test
 	@echo make database-init / test-database-permissions / test-identity-permissions
+	@echo make listing-review-db-config - logins DEV separados de revision de publicaciones (LISTING_PREVIEW=1)
 	@echo STANDING_PREVIEW=1 habilita solo el preview DEV de standing. Ver docs/trust-safety/P03-standing.md
 config:
 	$(COMPOSE) config --quiet
@@ -254,6 +264,14 @@ ifneq ($(ENV),dev)
 	$(error La provision editorial disponible es solo DEV; QA/PRD requieren su adaptador revisado)
 else
 	$(COMPOSE) run --rm --no-deps --build -e RAC_ENV=dev -e DOCUMENT_EDITORIAL_DATABASE_URL database-config python editorial_database.py
+endif
+
+.PHONY: listing-review-db-config
+listing-review-db-config:
+ifneq ($(ENV),dev)
+	$(error La provision de revision de publicaciones es solo DEV; QA/PRD requieren su adaptador revisado)
+else
+	$(COMPOSE) run --rm --no-deps --build -e RAC_ENV=dev -e LISTING_REVIEW_READER_DATABASE_URL -e LISTING_REVIEW_CORRECTOR_DATABASE_URL -e LISTING_REVIEW_APPROVER_DATABASE_URL database-config python listing_review_database.py
 endif
 
 .PHONY: test-standing-authority
