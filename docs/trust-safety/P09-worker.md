@@ -85,3 +85,22 @@ Pendientes de P09: despliegue controlado y operación de IAM/cola/proceso, subid
 estado para el propietario, reconciliación operativa/observabilidad, revisión
 humana, promoción, URLs autorizadas, retirada y corte público de P08. No se
 debe activar con datos reales antes de las dependencias de privacidad/retención.
+
+## Evidencia local de runtime — 2026-11-05
+
+`test_photo_storage.py` ahora ejecuta también
+`photo_worker_runtime_fixture.py`: construye `Dockerfile.photo-worker`, registra
+el commit de user y descriptor OCI exactos, siembra una fuente sintética y arranca
+el ejecutable real con el LOGIN aislado. Usa tres identidades IAM distintas,
+secretos por archivos, UID/GID 10001, raíz de solo lectura, tmpfs acotado,
+capabilities vacías, no-new-privileges y límites de CPU/memoria/pids. Requiere que
+OCR nativo genere `contact_correction_required` con revisión humana pendiente;
+los logs solo admiten los dos mensajes fijos esperados. No promueve objetos.
+
+El ensayo local terminó exit 0 con user `dfb83d2127acc1f2db29b7983fc6e209bd6ec62d`
+y descriptor de worker
+`sha256:015a3fddbac4edb3df06b308cbea0463b15ca8b2d3b7c1ba57d8fdc9425c75b0`.
+Registro: `.local/p09-worker-daemon-2026-11-05.log`. Las fuentes son sintéticas;
+la reserva/confirmación del ledger se siembra como fixture, no prueba una API
+de subida del propietario. El laboratorio crea redes/bases/buckets desechables,
+sin leer `.env`, usar redes DEV o publicar puertos. V046 no se aplicó a DEV.

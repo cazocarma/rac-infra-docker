@@ -116,6 +116,8 @@ def main():
                 raise RuntimeError('Required photo proof skipped: '+required)
         print('PASS: real RustFS conditional creation and concurrent single winner; private profile IAM; owner-scoped raw-source readback and atomic analysis intent; photo API and integrity-preserving migration', flush=True)
         print('PASS: three pipeline IAM identities with negative permissions; worker reads quarantine, runs native OCR, writes/verifies staging and commits contact-correction result using function-only PostgreSQL login',flush=True)
+        from photo_worker_runtime_fixture import prove
+        prove(run, ROOT, name, database, tools, fixtures)
     finally:
         run('docker', 'rm', '-f', database, storage, ok=False)
         run('docker', 'network', 'rm', name, ok=False)
