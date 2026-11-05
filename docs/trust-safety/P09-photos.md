@@ -114,9 +114,10 @@ Desde infra, `make test-photo-processing` ejecuta el laboratorio CPU y
 `make test-photo-storage` el de PostgreSQL/RustFS. Son independientes de
 `storage-test`, que verifica el almacenamiento DEV configurado.
 
-Este componente aún no tiene claims/reintentos/fencing, persistencia de artefactos,
-promoción a buckets o conexión al stack/API. El worker debe incorporar esos
-controles y procedencia del release antes de completar P09.
+En esa entrega inicial el procesador no incluía cola ni persistencia. La entrega
+de V046 y su coordinador se describe en [P09-worker.md](P09-worker.md): incorpora
+claims/reintentos/fencing y resultados privados. La promoción, revisión humana
+y conexión al stack/API siguen pendientes antes de completar P09.
 
 La regresión del procesador se repitió desde Git archives de infra `05becba`,
 user `b68c505`, platform `42dbb345` y los otros seis repos fijados. Migraciones/user,
@@ -147,14 +148,16 @@ el trabajo. Un error al confirmar conserva el archivo: puede ser una respuesta
 perdida de una transacción que sí se confirmó. No hay borrado compensatorio,
 aprobación, sanción ni promoción pública en este componente.
 
-**Alcance actual:** el puerto `WorkQueue` define el contrato de claim confirmado,
+**Alcance de la primera entrega del coordinador:** el puerto `WorkQueue` define el contrato de claim confirmado,
 lease con reloj de base de datos, fencing, reintento acotado e idempotencia; aún
-no existe su adaptador PostgreSQL ni un proceso del stack que lo ejecute. Las
+no existía su adaptador PostgreSQL ni un proceso del stack que lo ejecutara. Las
 pruebas de intercalado usan una cola simulada: prueban que el coordinador conserva
 los archivos separados y respeta `ErrClaimLost`, no que PostgreSQL imponga esas
-condiciones. Tampoco hay IAM de staging aprovisionado. `test_photo_processing.py`
+condiciones. `test_photo_processing.py`
 exige estas pruebas además de las existentes de OCR real. Este avance no cierra
-P09 ni habilita el corte público de P08.
+P09 ni habilita el corte público de P08. La entrega posterior V046 agrega el
+adaptador real y el ejecutable opt-in DEV, sin agregarlo al stack; consultar
+[P09-worker.md](P09-worker.md) para el alcance vigente y la validación de IAM.
 
 Validación local del coordinador en user `69c5eb39`: `go test -race` y `go vet`
 de `internal/photoassets`, más el laboratorio completo de procesamiento con
@@ -166,8 +169,8 @@ roles ni recursos DEV; la siguiente entrega debe probar la cola PostgreSQL real.
 
 - API de subida/reanudación, autorización y estado, límites/observabilidad y
   reconciliación de operaciones inciertas; configuración de cuarentena separada.
-- Worker con claims/reintentos/fencing, integración de reencode/OCR/similitud
-  preparados y artefactos inmutables versionados; catálogo vinculado a casos.
+- Activación controlada y observabilidad del worker/cola preparados en V046,
+  reconciliación de intentos inciertos y catálogo de similitud vinculado a casos.
 - Corpus de transformaciones y falsos positivos; una coincidencia es señal,
   nunca prueba de identidad ni sanción automática. Moderación externa sigue off.
 - Revisión humana, promoción verificada a `public-media` privado y referencias

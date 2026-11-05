@@ -25,6 +25,7 @@ def run(*args, ok=True):
 def main():
     name = 'rac-photo-test-' + uuid.uuid4().hex[:12]
     storage, database, tools = name+'-storage', name+'-database', name+'-tools'
+    processing_image = name+'-processing'
     # These identities exist only inside the isolated test network/container.
     fixtures = {
         'AWS_ACCESS_KEY_ID': 'synthetic-photo-root',
@@ -35,6 +36,15 @@ def main():
         'BACKUP_S3_ACCESS_KEY': 'synthetic-photo-backup',
         'BACKUP_S3_SECRET_KEY': 'synthetic-photo-backup-password-123456',
         'S3_ENDPOINT': 'http://photo-storage-fixture:9000',
+        'RAC_ENV': 'dev',
+        'PHOTO_QUARANTINE_BUCKET': 'rac-photo-quarantine-fixture',
+        'PHOTO_STAGING_BUCKET': 'rac-photo-staging-fixture',
+        'PHOTO_INGEST_ACCESS_KEY': 'synthetic-photo-ingest',
+        'PHOTO_INGEST_SECRET_KEY': 'synthetic-photo-ingest-password-123456',
+        'PHOTO_READER_ACCESS_KEY': 'synthetic-photo-reader',
+        'PHOTO_READER_SECRET_KEY': 'synthetic-photo-reader-password-123456',
+        'PHOTO_STAGING_ACCESS_KEY': 'synthetic-photo-staging',
+        'PHOTO_STAGING_SECRET_KEY': 'synthetic-photo-staging-password-123456',
     }
     flags = [item for key, value in fixtures.items() for item in ('-e', key+'='+value)]
     try:
@@ -55,8 +65,13 @@ def main():
         else:
             raise RuntimeError('Disposable RustFS did not become healthy')
         run('docker', 'build', '-q', '-t', tools, '-f', str(ROOT/'tools/storage/Dockerfile'), str(ROOT))
+        run('docker', 'build', '-q', '-t', processing_image, '-f', str(ROOT/'tools/photo-processing/Dockerfile'), str(ROOT))
         run('docker', 'run', '--rm', '--network', name, *flags,
             '--entrypoint', 'python', tools, 'configure_storage.py')
+        pipeline_iam = run('docker', 'run', '--rm', '--network', name, *flags,
+            '--entrypoint', 'python', tools, 'configure_photo_pipeline.py')
+        if 'PASS: separate ingest/read-only quarantine/staging IAM' not in pipeline_iam.stdout:
+            raise RuntimeError('Pipeline IAM proof did not run')
 
         run('docker', 'run', '-d', '--name', database, '--network', name,
             '--tmpfs', '/var/lib/postgresql/data', '-e', 'POSTGRES_PASSWORD=test-only',
@@ -70,7 +85,8 @@ def main():
             raise RuntimeError('Disposable photo database did not start')
         run('docker','exec',database,'psql','-X','-v','ON_ERROR_STOP=1','-U','postgres','-d','photos','-c','CREATE DATABASE photo_sources')
         run('docker','exec',database,'psql','-X','-v','ON_ERROR_STOP=1','-U','postgres','-d','photos','-c','CREATE DATABASE photo_migration')
-        for target in ('photos','photo_sources','photo_migration'):
+        run('docker','exec',database,'psql','-X','-v','ON_ERROR_STOP=1','-U','postgres','-d','photos','-c','CREATE DATABASE photo_processing')
+        for target in ('photos','photo_sources','photo_migration','photo_processing'):
             run('docker', 'run', '--rm', '--network', name,
                 '--mount', f'type=bind,source={ROOT/"db/migrations"},target=/flyway/sql,readonly',
                 '-e', 'FLYWAY_URL=jdbc:postgresql://'+database+':5432/'+target,
@@ -79,6 +95,7 @@ def main():
                 'flyway/flyway:11.15.0-alpine', 'migrate')
         go_flags = [item for key in ('PROFILE_S3_BUCKET', 'PROFILE_S3_ACCESS_KEY', 'PROFILE_S3_SECRET_KEY')
                     for item in ('-e', key+'='+fixtures[key])]
+        go_flags += [item for key,value in fixtures.items() if key.startswith('PHOTO_') for item in ('-e',key+'='+value)]
         result = run('docker', 'run', '--rm', '--network', name,
             '--mount', f'type=bind,source={ROOT.parent/"rac-user-service"},target=/sources,readonly',
             '-v', 'rac-quota-go-cache:/go/pkg/mod', '-v', 'rac-user-go-build:/root/.cache/go-build',
@@ -88,18 +105,22 @@ def main():
             '-e', 'RAC_ONBOARDING_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/photos?sslmode=disable',
             '-e', 'RAC_PHOTO_ASSET_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/photo_sources?sslmode=disable',
             '-e', 'RAC_PHOTO_MIGRATION_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/photo_migration?sslmode=disable',
-            'golang:1.27.3', 'sh', '-c',
+            '-e', 'RAC_PHOTO_QUEUE_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/photo_processing?sslmode=disable',
+            '-e', 'RAC_PHOTO_PIPELINE_TEST_ENDPOINT='+fixtures['S3_ENDPOINT'],
+            processing_image, 'sh', '-c',
             'cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v '
-            "-run '^(TestS3CreateOnlyIntegration|TestPhotoSourcePostgres|TestProfilePhotosOwnershipAndPublication|TestCopyPhotosIntegrityAndRetry)$' "
+            "-run '^(TestS3CreateOnlyIntegration|TestPhotoSourcePostgres|TestPhotoQueuePostgres|TestProfilePhotosOwnershipAndPublication|TestCopyPhotosIntegrityAndRetry)$' "
             './internal/photostore ./internal/photoassets ./internal/http ./cmd/migrate-photos')
-        for required in ('TestS3CreateOnlyIntegration', 'TestPhotoSourcePostgres/s3', 'TestProfilePhotosOwnershipAndPublication/s3', 'TestCopyPhotosIntegrityAndRetry'):
+        for required in ('TestS3CreateOnlyIntegration', 'TestPhotoSourcePostgres/s3', 'TestPhotoQueuePostgres/rustfs-worker', 'TestPhotoQueuePostgres/completed-replay-after-expiry', 'TestProfilePhotosOwnershipAndPublication/s3', 'TestCopyPhotosIntegrityAndRetry'):
             if '--- PASS: '+required not in result.stdout:
                 raise RuntimeError('Required photo proof skipped: '+required)
         print('PASS: real RustFS conditional creation and concurrent single winner; private profile IAM; owner-scoped raw-source readback and atomic analysis intent; photo API and integrity-preserving migration', flush=True)
+        print('PASS: three pipeline IAM identities with negative permissions; worker reads quarantine, runs native OCR, writes/verifies staging and commits contact-correction result using function-only PostgreSQL login',flush=True)
     finally:
         run('docker', 'rm', '-f', database, storage, ok=False)
         run('docker', 'network', 'rm', name, ok=False)
         run('docker', 'image', 'rm', tools, ok=False)
+        run('docker', 'image', 'rm', processing_image, ok=False)
 
 
 if __name__ == '__main__':

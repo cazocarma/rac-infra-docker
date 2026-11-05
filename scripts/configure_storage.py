@@ -3,16 +3,14 @@ import json
 import os
 import uuid
 import urllib.error
-import xml.etree.ElementTree as ET
-import urllib.parse
 import urllib.request
+from functools import partial
 
 import boto3
-from botocore.auth import S3SigV4Auth
-from botocore.awsrequest import AWSRequest
 from botocore.config import Config
 from botocore.credentials import Credentials
 from botocore.exceptions import ClientError
+from storage_admin import admin as signed_admin
 
 endpoint = os.environ.get("S3_ENDPOINT", "http://rustfs:9000")
 root = Credentials(os.environ["AWS_ACCESS_KEY_ID"], os.environ["AWS_SECRET_ACCESS_KEY"])
@@ -22,20 +20,7 @@ secret = os.environ["PROFILE_S3_SECRET_KEY"]
 if access == root.access_key or secret == root.secret_key:
     raise RuntimeError("Application credentials must differ from administrator")
 
-def admin(path, body=None, method="PUT", **query):
-    url = endpoint + "/rustfs/admin/v3/" + path
-    if query:
-        url += "?" + urllib.parse.urlencode(query)
-    data = json.dumps(body).encode() if body is not None else b""
-    request = AWSRequest(method=method, url=url, data=data, headers={"Content-Type": "application/json"})
-    S3SigV4Auth(root, "s3", "us-east-1").add_auth(request)
-    signed = request.prepare()
-    try:
-        with urllib.request.urlopen(urllib.request.Request(signed.url, data=data, method=method, headers=dict(signed.headers)), timeout=15) as response:
-            response.read()
-    except urllib.error.HTTPError as error:
-        body = ET.fromstring(error.read())
-        raise RuntimeError("Storage admin failure: " + str(error.code) + " " + str(body.findtext("Code"))) from None
+admin = partial(signed_admin, endpoint, root)
 
 client = boto3.client("s3", endpoint_url=endpoint, region_name="us-east-1", config=Config(signature_version="s3v4",s3={"addressing_style":"path"}))
 try:
