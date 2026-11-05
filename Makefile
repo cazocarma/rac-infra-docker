@@ -338,6 +338,10 @@ test-photo-storage:
 test-photo-processing:
 	$(PYTHON) scripts/test_photo_processing.py
 
+.PHONY: test-evidence-storage
+test-evidence-storage:
+	$(PYTHON) scripts/test_evidence_storage_capabilities.py
+
 .PHONY: test-go-security
 test-go-security:
 	$(PYTHON) scripts/test_go_security.py

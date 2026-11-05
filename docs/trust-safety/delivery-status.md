@@ -11,7 +11,7 @@ fase cerrada. Los gates originales siguen en [plan.md](plan.md) y
 | P01–P07 | Integradas según el cierre previo; documentos y ensayos por fase | Revalidar sus gates transversales al cerrar P15; proveedores y decisiones pendientes no se consideran resueltos |
 | P08 | Revisión de snapshots, envío del compa y consola de aprobación integrados en main (infra #15) | Fotos aprobadas, lectura pública del snapshot aprobado, retirada de bypasses y matriz de navegador/autorización; motivos negativos pendientes de catálogo revisado |
 | P09 | Fuentes privadas, normalización/OCR, pHash, cola PostgreSQL con rol aislado y ejecutable DEV; recorrido completo del worker con IAM/OCR reales probado en local | API de subida y estado; revisión humana, promoción, referencias/retirada y URLs autorizadas; reconciliación y observabilidad |
-| P10 | Pendiente | EvidenceStore, claves/cifrado, snapshot y gate de capacidades COMPLIANCE; sin afirmar WORM por disponer de S3 |
+| P10 | Gate local de capacidades RustFS probado: COMPLIANCE, versiones, hold, force-delete y persistencia tras reinicio; [evidencia](P10-evidence.md) | EvidenceStore, claves/cifrado, snapshots, IAM y gate de activación; prueba del proveedor no equivale a fase cerrada |
 | P11 | Pendiente de integración del modelo unificado | Reportes/casos/acciones/apelaciones, conflictos de interés, avisos y retirada del modelo anterior |
 | P12 | Pendiente | Derechos, retenciones/holds aprobados, sagas, export y restauración con supresiones antes de tráfico |
 | P13 | Pendiente del plan T&S; reservas funcionales anteriores no cierran esta fase | Política temporal/geográfica, aceptación de seguridad, check-in y escenarios de protección |
