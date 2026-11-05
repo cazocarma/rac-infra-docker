@@ -157,7 +157,7 @@ try:
             "golang:1.27.3", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol ./internal/editorial ./internal/strictjson ./internal/listings ./internal/listingreview ./internal/photoassets" + (" ./internal/identity/..." if (onboarding_source / 'internal/identity').exists() else ""))
         assert '--- PASS: TestPhotoSourcePostgres/memory' in user_tests.stdout
         assert '--- PASS: TestListingPhotoReferencePostgres' in user_tests.stdout
-          assert '--- PASS: TestReaderPostgresHTTP/private-photo-preview' in user_tests.stdout
+        assert '--- PASS: TestReaderPostgresHTTP/private-photo-preview' in user_tests.stdout
         print('PASS: exact immutable listing/photo reference, owner/pipeline checks, contact/unprocessed refusal, photo risk triage, atomic rollback and no customer promotion authority')
         assert '--- PASS: TestPhotoQueuePostgres' in user_tests.stdout
         assert '--- PASS: TestPrivatePhotoUploadsPostgresHTTP' in user_tests.stdout

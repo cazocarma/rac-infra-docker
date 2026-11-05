@@ -42,7 +42,16 @@ V048, navegación con Keycloak real ni gates finales de P08/P09/P15.
 La build web conserva la advertencia previa de fuente CupertinoIcons; analyze no
 reportó observaciones. Los textos nuevos conservan `legal_review: pending`.
 
-La regresión integrada congelada está en
+La primera regresión integrada congelada está en
 `.local/rac-p09-queue-proof-a071dedfa511/`: `revisions.json` fija infra
-`46aee54f0e7ec98e43972f8dd67969ec5688f3b0` y los ocho companions. Mientras
-`results.json` no contenga las cinco etapas terminadas no se afirma su éxito.
+`46aee54f0e7ec98e43972f8dd67969ec5688f3b0` y los ocho companions. Permisos terminó
+exit 0; migraciones terminó exit 1 por una indentación añadida al assert obligatorio
+después de iniciar el ensayo preliminar. No se ejecutaron las otras tres etapas.
+Se conserva el fallo; no se reporta la regresión como verde.
+
+El script se corrigió y `make test-workflows` ahora comienza compilando en memoria
+los fuentes Python de scripts/tools, sin ejecutar herramientas ni generar pyc.
+Dos casos comprueban el error de indentación, ausencia de ejecución de top-level
+y checkout vacío. La comprobación de 110 fuentes y el gate de workflows completo
+pasaron, registro `.local/p09-python-preflight-workflows-2026-11-05.log`.
+La siguiente regresión usa un nuevo snapshot; no se modifica el expediente fallido.
