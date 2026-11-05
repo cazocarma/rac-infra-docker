@@ -31,14 +31,17 @@ def main():
         for required in ('TestPhotoProcessingTesseract/contact_border','TestPhotoProcessingTesseract/benign',
                          'TestPhotoProcessingPreservesFrameAndPrivateProof','TestPhotoProcessingFailsClosed',
                          'TestFreezeBoundsAndSnapshotsAnalysis','TestPerceptualSimilaritySyntheticCorpus',
-                         'TestFingerprintExclusionsAndImmutablePolicy','TestFingerprintConcurrencyAndSignalOnlyDisposition'):
+                         'TestFingerprintExclusionsAndImmutablePolicy','TestFingerprintConcurrencyAndSignalOnlyDisposition',
+                         'TestWorkerVerifiesStoredArtifactBeforeAcknowledging','TestWorkerIdleAndInvalidClaim',
+                         'TestWorkerProcessingFailureCannotAcknowledge','TestWorkerRejectsUnboundRelease',
+                         'TestWorkerLeaseLossDoesNotOverwriteNewAttempt'):
             if '--- PASS: '+required not in result.stdout:
                 raise RuntimeError('Required photo analysis proof skipped: '+required)
         print('IMAGE '+image_id,flush=True)
         for line in result.stdout.splitlines():
             if 'synthetic corpus:' in line:
                 print(line.strip(),flush=True)
-        print('PASS: local OCR, full-frame normalization, shared signals and versioned perceptual similarity; synthetic corpus, exclusions, concurrent hashing and human-review-only outcomes',flush=True)
+        print('PASS: local OCR, full-frame normalization, shared signals and versioned perceptual similarity; synthetic corpus, exclusions, concurrent hashing, verified worker artifacts and human-review-only outcomes (durable queue fencing not covered)',flush=True)
     finally:
         run('docker','image','rm',image,ok=False)
 

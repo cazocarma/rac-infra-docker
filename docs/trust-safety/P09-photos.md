@@ -132,6 +132,38 @@ artefactos persistidos o publicación revisada; no activó un worker en DEV.
 
 ## Trabajo restante de P09
 
+### Coordinador de procesamiento (2026-11-05)
+
+`photoassets.Worker` conecta el procesador existente con dos puertos privados:
+cola durable y almacenamiento de staging. Cada intento debe tener un ID aleatorio
+nuevo, persistido antes de escribir objetos; el nombre del JPEG deriva de ese ID.
+El release exige versión de pipeline, commit exacto y digest de imagen, sin tags
+mutables. El constructor comprueba que el procesador use ese mismo pipeline.
+
+El coordinador verifica por lectura el tamaño y SHA-256 del JPEG guardado antes
+de entregar el recibo a la cola. Un objeto ya existente también se verifica. Un
+error de OCR, escritura o lectura, contenido distinto o cancelación no confirma
+el trabajo. Un error al confirmar conserva el archivo: puede ser una respuesta
+perdida de una transacción que sí se confirmó. No hay borrado compensatorio,
+aprobación, sanción ni promoción pública en este componente.
+
+**Alcance actual:** el puerto `WorkQueue` define el contrato de claim confirmado,
+lease con reloj de base de datos, fencing, reintento acotado e idempotencia; aún
+no existe su adaptador PostgreSQL ni un proceso del stack que lo ejecute. Las
+pruebas de intercalado usan una cola simulada: prueban que el coordinador conserva
+los archivos separados y respeta `ErrClaimLost`, no que PostgreSQL imponga esas
+condiciones. Tampoco hay IAM de staging aprovisionado. `test_photo_processing.py`
+exige estas pruebas además de las existentes de OCR real. Este avance no cierra
+P09 ni habilita el corte público de P08.
+
+Validación local del coordinador en user `69c5eb39`: `go test -race` y `go vet`
+de `internal/photoassets`, más el laboratorio completo de procesamiento con
+Tesseract real y red deshabilitada, terminaron exit 0. Evidencia local:
+`.local/p09-worker-processing-2026-11-05.log`. El laboratorio exige cinco pruebas
+del coordinador: readback/fallos/ACK incierto, cola vacía y claim inválido, fallo
+de OCR, release inválido y dos intentos intercalados. No se cambiaron migraciones,
+roles ni recursos DEV; la siguiente entrega debe probar la cola PostgreSQL real.
+
 - API de subida/reanudación, autorización y estado, límites/observabilidad y
   reconciliación de operaciones inciertas; configuración de cuarentena separada.
 - Worker con claims/reintentos/fencing, integración de reencode/OCR/similitud
