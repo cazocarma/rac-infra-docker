@@ -275,6 +275,17 @@ D04. No crea cuentas staff, no siembra motivos ni aprueba categorías.
 (`.local/p08-listing-provision-permissions.log`, exit 0); el render de compose y
 la puerta del Makefile tienen pruebas unitarias. No se activó en DEV.
 
+El mismo overlay habilita en admin `LISTING_REVIEW_PROXY_ENABLED` hacia
+`http://backend-user:8084` (admin `6b017a1`). Las rutas
+`/api/admin/staff/listings/{queue,revisions/:id,revisions/:id/decisions,revisions/:id/approval}`
+reenvían solo `limit`/`cursor` y la autorización; validan `event_id`, exigen que
+la respuesta repita revisión y evento y solo dejan pasar códigos de error de una
+lista cerrada (el resto es 503). El cliente Keycloak `rac-staff` agrega la
+audiencia `rac-user-listings` y reconcilia mappers en clientes existentes; la
+prueba con Keycloak real lo verificó
+(`.local/p08-identity-listings-audience.log`, exit 0). La consola Flutter de cola
+y decisión sigue pendiente.
+
 ## Corte pendiente para completar P08
 
 1. Hecho en desarrollo: envío y estado del dueño (sección anterior). Una fila de

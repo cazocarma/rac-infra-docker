@@ -13,3 +13,8 @@ services:
       LISTING_POLICY_VERSION: ${LISTING_POLICY_VERSION:?Seleccionar versión sintética de política de publicación}
       LISTING_MIN_PRICE_CLP: ${LISTING_MIN_PRICE_CLP:?Fijar precio mínimo sintético DEV}
       LISTING_MAX_PRICE_CLP: ${LISTING_MAX_PRICE_CLP:?Fijar precio máximo sintético DEV}
+  backend-admin:
+    environment:
+      STAFF_ACCESS_ENABLED: "true"
+      LISTING_REVIEW_PROXY_ENABLED: "true"
+      LISTING_REVIEW_URL: http://backend-user:8084

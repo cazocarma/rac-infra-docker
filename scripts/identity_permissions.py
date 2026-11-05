@@ -87,13 +87,20 @@ def configure_staff(admin, origin, *, enabled=False):
             {'name': 'rac-staff-api-audience', 'protocol': 'openid-connect', 'protocolMapper': 'oidc-audience-mapper',
              'config': {'included.custom.audience': 'rac-admin-staff', 'access.token.claim': 'true', 'id.token.claim': 'false'}},
             {'name': 'rac-staff-document-owner-audience', 'protocol': 'openid-connect', 'protocolMapper': 'oidc-audience-mapper',
-             'config': {'included.custom.audience': 'rac-user-documents', 'access.token.claim': 'true', 'id.token.claim': 'false'}}]}
+             'config': {'included.custom.audience': 'rac-user-documents', 'access.token.claim': 'true', 'id.token.claim': 'false'}},
+            {'name': 'rac-staff-listing-owner-audience', 'protocol': 'openid-connect', 'protocolMapper': 'oidc-audience-mapper',
+             'config': {'included.custom.audience': 'rac-user-listings', 'access.token.claim': 'true', 'id.token.claim': 'false'}}]}
     existing = admin('GET', '/clients?clientId=rac-staff')
     if existing:
         admin('PUT', '/clients/' + existing[0]['id'], payload)
     else:
         admin('POST', '/clients', payload)
     ident = admin('GET', '/clients?clientId=rac-staff')[0]['id']
+    # A client update does not add mappers to an existing client: reconcile them.
+    present = {mapper['name'] for mapper in admin('GET', '/clients/' + ident + '/protocol-mappers/models')}
+    for mapper in payload['protocolMappers']:
+        if mapper['name'] not in present:
+            admin('POST', '/clients/' + ident + '/protocol-mappers/models', mapper)
     for name in ('ts_agent', 'ts_lead', 'legal', 'support', 'business_admin'):
         try:
             admin('GET', '/clients/' + ident + '/roles/' + name)

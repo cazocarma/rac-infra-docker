@@ -65,6 +65,7 @@ class ListingReviewCompose(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(set(services), set(baseline), 'Preview must not add fixture/provisioning services')
         self.assertEqual(services['backend-user']['environment']['LISTING_REVIEW_ENABLED'], 'true')
+        self.assertEqual(services['backend-admin']['environment']['LISTING_REVIEW_URL'], 'http://backend-user:8084')
         for name in services:
             self.assertEqual(services[name].get('ports', []), baseline[name].get('ports', []))
             for port in services[name].get('ports', []):
