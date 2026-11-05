@@ -1,0 +1,24 @@
+# Explicit DEV-only promotion, after listings + private photo preview overlays.
+# Does not seed/enable a registry policy or expose the owner listener.
+services:
+  backend-user:
+    environment:
+      RAC_PHOTO_PROMOTION_ENABLED: "true"
+      LISTING_REVIEW_PHOTO_APPROVER_DATABASE_URL: ${LISTING_REVIEW_PHOTO_APPROVER_DATABASE_URL:?Provisionar aprobador de fotos separado}
+      RAC_PHOTO_PIPELINE_VERSION: ${RAC_PHOTO_PIPELINE_VERSION:?Seleccionar pipeline de fotos registrado}
+      RAC_PHOTO_MEDIA_TARGET_ID: ${RAC_PHOTO_MEDIA_TARGET_ID:?Seleccionar destino privado registrado}
+      RAC_PHOTO_MEDIA_BUCKET: ${RAC_PHOTO_MEDIA_BUCKET:?Configurar bucket privado versionado de medios}
+      RAC_PHOTO_PROMOTER_ACCESS_KEY_FILE: /run/secrets/rac_photo_promoter_access_key
+      RAC_PHOTO_PROMOTER_SECRET_KEY_FILE: /run/secrets/rac_photo_promoter_secret_key
+    secrets:
+      - rac_photo_promoter_access_key
+      - rac_photo_promoter_secret_key
+  database-config:
+    environment:
+      RAC_PHOTO_PROMOTION_ENABLED: "true"
+      LISTING_REVIEW_PHOTO_APPROVER_DATABASE_URL: ${LISTING_REVIEW_PHOTO_APPROVER_DATABASE_URL:?Provisionar aprobador de fotos separado}
+secrets:
+  rac_photo_promoter_access_key:
+    file: ${PHOTO_PROMOTER_ACCESS_KEY_PATH:?Indicar archivo de acceso de promocion}
+  rac_photo_promoter_secret_key:
+    file: ${PHOTO_PROMOTER_SECRET_KEY_PATH:?Indicar archivo secreto de promocion}

@@ -29,6 +29,9 @@ class ListingReviewCompose(unittest.TestCase):
             ['ENV=dev', 'PHOTO_REVIEW_PREVIEW=1', 'LISTING_PREVIEW=0'],
             ['ENV=qa', 'PHOTO_REVIEW_PREVIEW=1'],
             ['ENV=dev', 'PHOTO_REVIEW_PREVIEW=yes'],
+            ['ENV=dev', 'PHOTO_PROMOTION_PREVIEW=1', 'PHOTO_REVIEW_PREVIEW=0'],
+            ['ENV=prd', 'PHOTO_PROMOTION_PREVIEW=1'],
+            ['ENV=dev', 'PHOTO_PROMOTION_PREVIEW=yes'],
         ):
             result = subprocess.run([make, '-n', 'config', *arguments], cwd=ROOT, capture_output=True, text=True, timeout=10)
             self.assertNotEqual(result.returncode, 0, 'Invalid preview combination accepted')
@@ -42,10 +45,14 @@ class ListingReviewCompose(unittest.TestCase):
         result = subprocess.run([make, '-n', 'config', 'ENV=dev', 'LISTING_PREVIEW=0'], cwd=ROOT, capture_output=True, text=True, timeout=10)
         self.assertNotIn('-f compose.listings.yaml', result.stdout)
         self.assertNotIn('-f compose.photo-review.yaml', result.stdout)
+        self.assertNotIn('-f compose.photo-promotion.yaml', result.stdout)
         result = subprocess.run([make, '-n', 'config', 'ENV=dev', 'STANDING_PREVIEW=1', 'LISTING_PREVIEW=1', 'PHOTO_REVIEW_PREVIEW=1'],
                                 cwd=ROOT, capture_output=True, text=True, timeout=10)
         self.assertEqual(result.returncode, 0)
         self.assertIn('-f compose.photo-review.yaml', result.stdout)
+        result = subprocess.run([make, '-n', 'config', 'ENV=dev', 'STANDING_PREVIEW=1', 'LISTING_PREVIEW=1', 'PHOTO_REVIEW_PREVIEW=1', 'PHOTO_PROMOTION_PREVIEW=1'], cwd=ROOT, capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn('-f compose.photo-promotion.yaml', result.stdout)
 
     def test_opt_in_keeps_listener_private_and_requires_every_value(self):
         values = dict(line.split('=', 1) for line in (ROOT / 'envs/.env.dev.example').read_text(encoding='utf-8').splitlines()
@@ -99,6 +106,25 @@ class ListingReviewCompose(unittest.TestCase):
         for variable in ('RAC_PHOTO_STAGING_BUCKET', 'RAC_PHOTO_S3_ENDPOINT', 'PHOTO_PREVIEW_SECRET_KEY_PATH'):
             missing = {key: value for key, value in preview.items() if key != variable}
             self.assertNotEqual(render(overlays, missing)[0], 0, variable + ' was optional')
+        promotion = {**preview, 'LISTING_REVIEW_PHOTO_APPROVER_DATABASE_URL': 'postgresql://rac_listing_photo_approver:synthetic-independent-photo-secret@postgres/'+values['POSTGRES_DB']+'?sslmode=disable',
+                     'RAC_PHOTO_PIPELINE_VERSION': 'synthetic-pipeline-1', 'RAC_PHOTO_MEDIA_TARGET_ID': '22222222-2222-4222-8222-222222222222',
+                     'RAC_PHOTO_MEDIA_BUCKET': 'synthetic-approved-media', 'PHOTO_PROMOTER_ACCESS_KEY_PATH': './synthetic-promoter-access',
+                     'PHOTO_PROMOTER_SECRET_KEY_PATH': './synthetic-promoter-secret'}
+        promoted_overlays = [*overlays, '-f', 'compose.photo-promotion.yaml']
+        status, promotion_services = render(promoted_overlays, promotion)
+        self.assertEqual(status, 0)
+        self.assertEqual(promotion_services['backend-user']['environment']['RAC_PHOTO_PROMOTION_ENABLED'], 'true')
+        self.assertNotIn('RAC_PHOTO_PROMOTER_SECRET_KEY', promotion_services['backend-user']['environment'])
+        self.assertEqual({item['source'] for item in promotion_services['backend-user']['secrets']},
+                         {'rac_photo_preview_access_key','rac_photo_preview_secret_key','rac_photo_promoter_access_key','rac_photo_promoter_secret_key'})
+        self.assertEqual(promotion_services['database-config']['environment']['RAC_PHOTO_PROMOTION_ENABLED'], 'true')
+        for name in promotion_services:
+            self.assertEqual(promotion_services[name].get('ports', []), photo_services[name].get('ports', []))
+            if name != 'backend-user':
+                self.assertEqual(promotion_services[name].get('secrets', []), photo_services[name].get('secrets', []))
+        for variable in ('LISTING_REVIEW_PHOTO_APPROVER_DATABASE_URL','RAC_PHOTO_MEDIA_TARGET_ID','PHOTO_PROMOTER_SECRET_KEY_PATH'):
+            missing = {key: value for key,value in promotion.items() if key != variable}
+            self.assertNotEqual(render(promoted_overlays, missing)[0], 0, variable+' was optional')
 
 
 if __name__ == '__main__':

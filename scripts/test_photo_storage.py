@@ -137,6 +137,8 @@ def main():
             raise RuntimeError('Committed intent to versioned RustFS copy/readback proof skipped')
         if '--- PASS: TestReaderPostgresHTTP/photo-finalization/rustfs-complete-no-recopy' not in result.stdout:
             raise RuntimeError('Atomic photo finalization with real RustFS and no-copy replay proof skipped')
+        if '--- PASS: TestReaderPostgresHTTP/photo-finalization/staff-http' not in result.stdout:
+            raise RuntimeError('Verified JWT photo approval ingress proof skipped')
         if '--- PASS: TestVersionedMediaS3Integration' not in result.stdout:
             raise RuntimeError('Versioned S3 destination adapter proof skipped')
         print('PASS: real RustFS conditional creation and concurrent single winner; private profile IAM; owner-scoped raw-source readback and atomic analysis intent; photo API and integrity-preserving migration', flush=True)

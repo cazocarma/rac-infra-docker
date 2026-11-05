@@ -5,6 +5,9 @@ con PostgreSQL/RustFS, todavía sin endpoint, configuración runtime, provisión
 login o botón de consola para ejecutarlo. No se activaron flags ni se concedieron
 permisos al migrar. P08/P09 no están cerrados.
 
+Entrega posterior: [endpoint/opt-in V052](P09-photo-approval-ingress.md), con un
+sexto permiso de readiness y proxy; la consola/activación sigue pendiente.
+
 ## Fronteras
 
 El coordinador usa exclusivamente estas funciones de un LOGIN aislado: ready,
@@ -56,7 +59,7 @@ Datos sintéticos, recursos desechables, sin .env, puertos publicados o cambios 
 | Flyway fresh V001–V051 + reader/intent/finalización SQL/HTTP de prueba | `.local/p09-finalization-sql-2026-11-05.log` | exit 0, ensayo preliminar del árbol luego consolidado en d0da150 |
 | Race y vet listingreview | ejecución Docker Go1.27.3 sobre d0da150 | exit 0; DB condicionadas no cuentan aquí |
 | SQL/S3/OCR/IAM/worker y finalización con proveedor real | `.local/p09-finalization-rustfs-2026-11-05.log` | exit 0, user d0da150 limpio |
-| Migraciones completas/user fresh/upgrade/repetición/checksum y regresión P08 | `.local/p09-finalization-migrations-2026-11-05.log` | en ejecución |
+| Migraciones completas/user fresh/upgrade/repetición/checksum y regresión P08 | `.local/p09-finalization-migrations-2026-11-05.log` | exit 0 |
 | Flyway sin superusuario, ACL y backup/restore del laboratorio existente | `.local/p09-finalization-permissions-2026-11-05.log` | exit 0 |
 
 Se exige PASS de `TestReaderPostgresHTTP/photo-finalization` y, en S3,

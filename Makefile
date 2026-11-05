@@ -72,6 +72,22 @@ $(error PHOTO_REVIEW_PREVIEW requiere LISTING_PREVIEW=1)
 endif
 COMPOSE_FILES += -f compose.photo-review.yaml
 endif
+PHOTO_PROMOTION_PREVIEW ?= 0
+ifneq ($(words $(PHOTO_PROMOTION_PREVIEW)),1)
+$(error PHOTO_PROMOTION_PREVIEW debe ser 0 o 1)
+endif
+ifeq ($(filter $(PHOTO_PROMOTION_PREVIEW),0 1),)
+$(error PHOTO_PROMOTION_PREVIEW debe ser 0 o 1)
+endif
+ifeq ($(PHOTO_PROMOTION_PREVIEW),1)
+ifneq ($(ENV),dev)
+$(error PHOTO_PROMOTION_PREVIEW solo admite DEV)
+endif
+ifneq ($(PHOTO_REVIEW_PREVIEW),1)
+$(error PHOTO_PROMOTION_PREVIEW requiere PHOTO_REVIEW_PREVIEW=1)
+endif
+COMPOSE_FILES += -f compose.photo-promotion.yaml
+endif
 ifeq ($(ENV),dev)
 ifneq ($(wildcard envs/.env.photos-s3),)
 COMPOSE_FILES += -f compose.photos-s3.yaml

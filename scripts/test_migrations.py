@@ -160,6 +160,7 @@ try:
         assert '--- PASS: TestReaderPostgresHTTP/private-photo-preview' in user_tests.stdout
         assert '--- PASS: TestReaderPostgresHTTP/durable-photo-promotion-intent' in user_tests.stdout
         assert '--- PASS: TestReaderPostgresHTTP/photo-finalization' in user_tests.stdout
+        assert '--- PASS: TestReaderPostgresHTTP/photo-finalization/staff-http' in user_tests.stdout
         print('PASS: exact immutable listing/photo reference, owner/pipeline checks, contact/unprocessed refusal, photo risk triage, atomic rollback and no customer promotion authority')
         assert '--- PASS: TestPhotoQueuePostgres' in user_tests.stdout
         assert '--- PASS: TestPrivatePhotoUploadsPostgresHTTP' in user_tests.stdout

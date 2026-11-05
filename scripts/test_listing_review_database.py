@@ -1,5 +1,5 @@
 import unittest
-from listing_review_database import INGRESSES, validate_target, validate_environment
+from listing_review_database import INGRESSES, PHOTO_INGRESSES, validate_target, validate_environment
 from database_roles import ROLES
 from urllib.parse import quote
 
@@ -16,6 +16,18 @@ def environment():
 
 
 class ListingReviewDatabaseTarget(unittest.TestCase):
+    def test_photo_authority_is_opt_in_and_requires_independent_secret(self):
+        values = environment()
+        role, (variable, signatures) = next(iter(PHOTO_INGRESSES.items()))
+        values[variable] = 'postgresql://' + role + ':' + role + '-' + 'z'*32 + '@postgres/rac_test?sslmode=disable'
+        self.assertEqual(set(validate_environment(values)[0]), set(INGRESSES))
+        values['RAC_PHOTO_PROMOTION_ENABLED'] = 'true'
+        self.assertEqual(set(validate_environment(values)[0]), set(INGRESSES) | {role})
+        self.assertEqual(len(signatures), 6)
+        self.assertFalse(any('listing_review.approve(' in s or 'listing_review.correct(' in s or 'listing_review.revision(' in s for s in signatures))
+        shared = values['LISTING_REVIEW_APPROVER_DATABASE_URL'].replace('rac_listing_approver:', role+':')
+        for changes in ({variable: ''}, {variable: shared}, {'RAC_PHOTO_PROMOTION_ENABLED': 'yes'}):
+            with self.assertRaises(RuntimeError): validate_environment({**values, **changes})
     def test_three_independent_credentials_before_connection(self):
         values = environment()
         targets, database = validate_environment(values)

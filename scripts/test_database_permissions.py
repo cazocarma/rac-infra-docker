@@ -128,6 +128,28 @@ def main():
                                   'SELECT * FROM photo.processing_results;', 'SELECT * FROM photo.listing_references;'):
                     assert sql(database, forbidden, role, ok=False).returncode != 0, role + ' read ' + forbidden
             print('PASS: listing review DEV provisioning creates three separate function-only logins, is idempotent and refuses extra column/function authority', flush=True)
+            if database == 'fresh':
+                assert sql(database, "SELECT count(*) FROM pg_roles WHERE rolname='rac_listing_photo_approver';").stdout.strip() == '0'
+            photo_flags = [*listing_flags, '-e', 'RAC_PHOTO_PROMOTION_ENABLED=true', '-e',
+                           'LISTING_REVIEW_PHOTO_APPROVER_DATABASE_URL=postgresql://rac_listing_photo_approver:synthetic-photo-approval-secret-123456@postgres/'+database+'?sslmode=disable']
+            for _ in range(2):
+                run('docker', 'run', '--rm', '--network', name, *photo_flags, tools, 'python', 'listing_review_database.py')
+            role = 'rac_listing_photo_approver'
+            assert sql(database, f"SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='listing_review' AND has_function_privilege('{role}',p.oid,'EXECUTE');").stdout.strip() == '6'
+            for denied_function in (
+                'listing_review.approve(audit.reference,audit.reference,audit.reference,audit.reference,bigint,audit.digest,text,jsonb,boolean)',
+                'listing_review.approve_core(audit.reference,audit.reference,audit.reference,audit.reference,bigint,audit.digest,text,jsonb,boolean,audit.reference)',
+                'listing_review.photo(audit.reference,audit.reference,audit.reference,audit.reference)',
+            ):
+                assert sql(database, f"SELECT has_function_privilege('{role}','{denied_function}','EXECUTE');").stdout.strip() == 'f'
+            for table in ('photo.promotion_receipts', 'photo.approved_references', 'photo.promotion_intents', 'listing_revision_decisions'):
+                assert sql(database, 'SELECT * FROM '+table, role, ok=False).returncode != 0
+            sql(database, 'GRANT SELECT(version_id) ON photo.promotion_receipts TO rac_listing_photo_approver;')
+            refused = run('docker', 'run', '--rm', '--network', name, *photo_flags, tools, 'python', 'listing_review_database.py', ok=False)
+            assert refused.returncode != 0, 'Photo provisioning accepted raw receipt column authority'
+            sql(database, 'REVOKE SELECT(version_id) ON photo.promotion_receipts FROM rac_listing_photo_approver;')
+            run('docker', 'run', '--rm', '--network', name, *photo_flags, tools, 'python', 'listing_review_database.py')
+            print('PASS: photo approval identity is explicit opt-in, six-function-only, idempotent and denies plain approval/core/preview/raw data authority', flush=True)
             assert sql(database, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname='standing';").stdout.strip() == 'rac_migrator'
             if (ROOT / 'db/migrations/V029__document_registry.sql').exists():
                 from document_registry_checks import check as check_document_registry

@@ -29,10 +29,21 @@ INGRESSES = {
     )),
 }
 SCHEMAS = ('public', 'listing_review', 'audit', 'standing', 'documents', 'photo')
+PHOTO_INGRESSES = {
+    'rac_listing_photo_approver': ('LISTING_REVIEW_PHOTO_APPROVER_DATABASE_URL', (
+        READY,
+        'listing_review.approval_context(audit.reference,audit.reference,bigint,audit.digest)',
+        'listing_review.prepare_photo_promotion(audit.reference,audit.reference,audit.reference,audit.reference,bigint,audit.digest,text,text,audit.reference)',
+        'listing_review.photo_promotion_result(audit.reference,audit.reference,audit.reference,audit.reference,bigint,audit.digest,text,text,audit.reference)',
+        'listing_review.finalize_photo_promotion(audit.reference,audit.reference,audit.reference,audit.reference,bigint,audit.digest,text,jsonb,boolean,audit.reference,audit.reference,text,bytea,integer,timestamp with time zone)',
+        'listing_review.photo_promotion_ready(audit.reference,text,text,audit.reference,audit.digest,text,text)',
+    )),
+}
+ALL_INGRESSES = {**INGRESSES, **PHOTO_INGRESSES}
 
 
 def validate_target(dsn, database, role):
-    if role not in INGRESSES or not re.fullmatch(r'[a-z][a-z0-9_]{0,62}', database) or database in ('postgres', 'keycloak'):
+    if role not in ALL_INGRESSES or not re.fullmatch(r'[a-z][a-z0-9_]{0,62}', database) or database in ('postgres', 'keycloak'):
         raise RuntimeError('Dedicated listing review database identity required')
     try:
         parsed = urlsplit(dsn)
@@ -58,8 +69,12 @@ def validate_environment(values):
     existing.update(values[key] for key in ('PGPASSWORD', 'POSTGRES_PASSWORD', 'KEYCLOAK_DB_PASSWORD') if values.get(key))
     if values.get('DOCUMENT_EDITORIAL_DATABASE_URL'):
         existing.add(unquote(urlsplit(values['DOCUMENT_EDITORIAL_DATABASE_URL']).password or ''))
+    flag = values.get('RAC_PHOTO_PROMOTION_ENABLED', '')
+    if flag not in ('', 'false', 'true'):
+        raise RuntimeError('Explicit photo promotion provisioning flag required')
+    configured = ALL_INGRESSES if flag == 'true' else INGRESSES
     targets = {}
-    for role, (variable, _) in INGRESSES.items():
+    for role, (variable, _) in configured.items():
         dsn = values.get(variable, '')
         password = validate_target(dsn, database, role)
         if password in existing:
@@ -73,7 +88,7 @@ def provision(db, dsn, database, role):
     """Caller owns the operator transaction; only exact capabilities are granted."""
     from psycopg import sql
     password = validate_target(dsn, database, role)
-    signatures = INGRESSES[role][1]
+    signatures = ALL_INGRESSES[role][1]
     current, superuser = db.execute('SELECT current_database(),rolsuper FROM pg_roles WHERE rolname=current_user').fetchone()
     if current != database or not superuser:
         raise RuntimeError('Matching listing review operator transaction required')
