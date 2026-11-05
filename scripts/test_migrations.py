@@ -130,6 +130,8 @@ try:
         flyway('photo_processing', migration_dir)
         sql('fresh', 'CREATE DATABASE photo_uploads;')
         flyway('photo_uploads', migration_dir)
+        sql('fresh', 'CREATE DATABASE listing_photos;')
+        flyway('listing_photos', migration_dir)
         from document_writer_fixture import seed as seed_attestations
         seed_attestations(lambda statement: sql('attestations', statement))
         user_tests = run("docker", "run", "--rm", "--network", NAME,
@@ -151,8 +153,11 @@ try:
             "-e", f"RAC_PHOTO_ASSET_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/photo_sources?sslmode=disable",
             "-e", f"RAC_PHOTO_QUEUE_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/photo_processing?sslmode=disable",
             "-e", f"RAC_PHOTO_UPLOAD_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/photo_uploads?sslmode=disable",
+            "-e", f"RAC_LISTING_PHOTO_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/listing_photos?sslmode=disable",
             "golang:1.27.3", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol ./internal/editorial ./internal/strictjson ./internal/listings ./internal/listingreview ./internal/photoassets" + (" ./internal/identity/..." if (onboarding_source / 'internal/identity').exists() else ""))
         assert '--- PASS: TestPhotoSourcePostgres/memory' in user_tests.stdout
+        assert '--- PASS: TestListingPhotoReferencePostgres' in user_tests.stdout
+        print('PASS: exact immutable listing/photo reference, owner/pipeline checks, contact/unprocessed refusal, photo risk triage, atomic rollback and no customer promotion authority')
         assert '--- PASS: TestPhotoQueuePostgres' in user_tests.stdout
         assert '--- PASS: TestPrivatePhotoUploadsPostgresHTTP' in user_tests.stdout
         assert '--- PASS: TestPrivatePhotoUploadsPostgresHTTP/quota-across-instances' in user_tests.stdout
