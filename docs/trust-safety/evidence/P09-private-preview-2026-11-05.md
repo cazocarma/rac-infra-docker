@@ -58,7 +58,10 @@ La siguiente regresión usa un nuevo snapshot; no se modifica el expediente fall
 
 Nuevo snapshot: `.local/rac-p09-queue-proof-0e586f661adc/`, infra
 `f30931f5b3e99be65c8121e62cd4d99a5175e62a`, user c983f89 y los otros siete pins.
-El preflight sintáctico pasó; permisos terminó exit 0. Migraciones y las otras
-etapas aún deben consultarse en results.json. No incluye el test de proveedor
+El preflight sintáctico y las cinco etapas terminaron exit 0: permisos,
+migraciones/user, almacenamiento, procesamiento y seguridad Go. Los códigos están
+en results.json y cada etapa conserva su log. No incluye el test de proveedor
 ca80ccc ni configure_photo_media, probados aparte en
 [P09-versioned-media.md](../P09-versioned-media.md).
+Tampoco incluye V050 o su preparación durable posterior. El scan Go no reemplaza
+un análisis de dependencias nativas de Tesseract ni los gates finales de P15.

@@ -1,8 +1,9 @@
 # ADR-011 — foto revisada y promoción ligada a la publicación
 
 Estado: implementación parcial: V048 liga el envío al resultado inmutable y
-V049 prepara la [previsualización privada](P09-private-preview.md), todavía sin
-activación runtime. Promoción, visibilidad pública y retirada siguen pendientes.
+V049 prepara la [previsualización privada](P09-private-preview.md); V050 fija
+[intentos auditados antes de I/O](P09-promotion-intents.md). No se activaron flags.
+El coordinador/recibo/finalización, visibilidad pública y retirada siguen pendientes.
 Complementa ADR-002 y M4/M6. No modifica las decisiones de negocio/jurídicas
 D04–D14, no habilita flags ni cambia el snapshot público actual.
 
