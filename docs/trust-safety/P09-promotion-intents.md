@@ -1,8 +1,8 @@
 # P09 — preparación durable de promoción
 
-V050 y user `5a28ead7887663ccc0b9d8672de1b39c90043c21`, preparación interna en
-desarrollo. No hay ruta HTTP para este comando, flags activos, copia automática,
-recibos/finalización o modificación del bloqueo de fotos de V045.
+V050 y user `2488ecbd0a1622c93be6365799d1438f2e752b1e`, preparación y copia
+interna. No hay ruta HTTP para este comando, flags activos, finalización/recibos
+durables o modificación del bloqueo de fotos de V045.
 
 El operador debe registrar un destino privado (ID, hash de localizador de origen,
 bucket y región) y una política inmutable que une política de publicación,
@@ -53,12 +53,48 @@ esa separación entre transacciones e I/O y añadir el recibo/versionado exactos
   E2E de Keycloak. La suite conserva pruebas separadas de JWT/HTTP/preview y S3.
 - Se añadió después el vínculo de política de publicación al registro y un caso
   que cambia snapshot y configuración de réplica sin autorización del registro.
-  Su migración/user completa y el gate no superusuario están en ejecución:
+  Su migración/user completa y el gate no superusuario terminaron exit 0:
   `.local/p09-promotion-intents-migrations-2026-11-05.log` y
-  `.local/p09-promotion-intents-permissions-2026-11-05.log`. No se infiere éxito
-  hasta comprobar ambos exit codes.
+  `.local/p09-promotion-intents-permissions-2026-11-05.log`, con user 5a28ead y V050
+  del árbol consolidado en infra ad8f79c. La copia posterior se prueba aparte.
 
-El ensayo no copia el intento a RustFS ni aprueba una foto. Falta coordinador,
-recibo durable, finalización atómica con comprobaciones vigentes y rollback,
-recuperación tras ACK perdido, lectura pública autorizada/retirada y restauración
+## Copia verificada posterior a la preparación
+
+`copyPreparedPhoto` no acepta un handle SQL o transacción. Requiere el marcador
+privado que prepare emite después del commit y la validación de metadatos; al
+serializar/deserializar el intento se pierde ese marcador y no puede copiarse sin
+prepararlo nuevamente. Es una protección de uso del código, no una firma contra un
+proceso comprometido. La función verifica sesión/actor y expiración, lee staging,
+comprueba digest/tamaño/JPEG, crea condicionalmente y lee siempre VersionId exacto.
+
+Si el destino ya existe, obtiene su versión y verifica sus bytes; no asume que
+exists equivale a correcto. Un ACK perdido conserva el objeto y permite otro
+intento auditado sobre la misma clave. Permisos y expiración se comprueban entre
+operaciones y después del readback. El contexto está acotado a 20 segundos. Los
+puertos carecen de Delete/ACL/URL pública; un error no borra compensatoriamente.
+El recibo que devuelve solo existe en memoria y no es todavía una decisión.
+
+Pruebas unitarias race y vet: `.local/p09-promotion-copy-unit-2026-11-05.log` y
+la ejecución posterior del paquete, exit 0. Cubren ACK perdido tras persistir,
+recovery de versión exacta, readback obligatorio incluso tras PUT exitoso,
+corrupción/truncamiento/error, versión nula, metadatos sin commit, roundtrip JSON,
+actor/permisos, expiración durante I/O y cancelación. Los tests DB condicionados
+del comando de unidad no sustituyen sus laboratorios.
+
+El laboratorio posterior exige
+`TestReaderPostgresHTTP/durable-photo-promotion-intent/rustfs-copy-readback`:
+intento SQL confirmado → lectura del JPEG saneado en staging → creación privada
+versionada → readback exacto → segundo intento preparado que recupera la misma
+versión. Registro `.local/p09-promotion-copy-rustfs-2026-11-05.log`, exit 0, con
+user 2488ecb limpio y herramientas del árbol consolidado en esta entrega. La
+imagen del worker fue
+`sha256:4b8d5fa137a306583a20d6defad9a333e482ca90290e6d89f4cad55fdc865782`.
+La prueba termina sin publicación, luego retira sus contenedores/red/tmpfs.
+
+Falta integrar al aprobador el recibo durable y la finalización atómica con
+decisión/auditoría/outbox/referencia/puntero, revalidar documentos/identidad,
+standing, catálogo, políticas y MFA vigentes, y recuperar una finalización con
+ACK perdido sin copiar otra vez. Debe comprobarse también el vencimiento al
+COMMIT con reloj DB (deadline derivado de la sesión verificada, no del cliente),
+no solo antes de invocar commit. Luego siguen URLs autorizadas/retirada y restore
 de registros con datos. P08/P09 siguen abiertos.
