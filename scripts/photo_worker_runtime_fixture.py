@@ -17,6 +17,9 @@ def prove(run, root, network, database, tools, fixtures):
         commit = json.loads(metadata.read_text(encoding='utf-8'))['rac-user-service']
     else:
         commit = subprocess.check_output(['git','-C',str(source),'rev-parse','HEAD'],text=True).strip()
+        dirty = subprocess.check_output(['git','-C',str(source),'status','--porcelain'],text=True).strip()
+        if dirty:
+            raise RuntimeError('Worker runtime proof requires committed clean user sources or a frozen snapshot')
     if not re.fullmatch('[a-f0-9]{40}',commit):
         raise RuntimeError('Exact source revision required')
     photo = source/'internal/photoassets/testdata/contact_border.png'

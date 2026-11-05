@@ -194,7 +194,7 @@ def main():
             from listing_revision_fixture import verify as verify_listing_revisions
             verify_listing_revisions(sql, database, compa)
             from photo_source_fixture import verify as verify_photo_sources
-            verify_photo_sources(sql,database,client)
+            verify_photo_sources(sql,database,client,compa)
             # Replacing catalog activities requires DELETE even when the profile
             # is new. Other owners retain no delete permission on them.
             sql(database, 'DELETE FROM compa_activities WHERE false;', 'rac_user')
@@ -232,6 +232,8 @@ def main():
             assert sql(restored,'SELECT count(*) FROM photo.sources;','rac_user').stdout.strip()=='1'
             assert sql(restored,'SELECT count(*) FROM photo.upload_confirmations;','rac_user').stdout.strip()=='1'
             assert sql(restored,'SELECT count(*) FROM photo.analysis_outbox;','rac_user').stdout.strip()=='1'
+            assert sql(restored,'SELECT count(*) FROM photo.upload_requests;','rac_user').stdout.strip()=='1'
+            assert sql(restored,'SELECT count(*) FROM photo.processing_jobs;').stdout.strip()=='1'
             assert sql(restored,'SELECT bool_and(s.source_sha256=c.verified_sha256 AND s.source_size=c.verified_size) FROM photo.sources s JOIN photo.upload_confirmations c ON c.asset_id=s.id;','rac_user').stdout.strip()=='t'
         platform_source = ROOT.parent / 'rac-platform'
         role_proof = run('docker', 'run', '--rm', '--network', name,

@@ -128,6 +128,8 @@ try:
         flyway('photo_sources', migration_dir)
         sql('fresh', 'CREATE DATABASE photo_processing;')
         flyway('photo_processing', migration_dir)
+        sql('fresh', 'CREATE DATABASE photo_uploads;')
+        flyway('photo_uploads', migration_dir)
         from document_writer_fixture import seed as seed_attestations
         seed_attestations(lambda statement: sql('attestations', statement))
         user_tests = run("docker", "run", "--rm", "--network", NAME,
@@ -148,9 +150,13 @@ try:
             "-e", f"RAC_LISTING_OWNER_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/listing_owner_http?sslmode=disable",
             "-e", f"RAC_PHOTO_ASSET_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/photo_sources?sslmode=disable",
             "-e", f"RAC_PHOTO_QUEUE_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/photo_processing?sslmode=disable",
+            "-e", f"RAC_PHOTO_UPLOAD_TEST_DATABASE_URL=postgres://postgres:test-only@{NAME}:5432/photo_uploads?sslmode=disable",
             "golang:1.27.3", "sh", "-c", "cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v ./internal/http ./internal/sessioncontrol ./internal/editorial ./internal/strictjson ./internal/listings ./internal/listingreview ./internal/photoassets" + (" ./internal/identity/..." if (onboarding_source / 'internal/identity').exists() else ""))
         assert '--- PASS: TestPhotoSourcePostgres/memory' in user_tests.stdout
         assert '--- PASS: TestPhotoQueuePostgres' in user_tests.stdout
+        assert '--- PASS: TestPrivatePhotoUploadsPostgresHTTP' in user_tests.stdout
+        assert '--- PASS: TestPrivatePhotoUploadsPostgresHTTP/quota-across-instances' in user_tests.stdout
+        print('PASS: private owner photo API, idempotency and lost-ACK recovery, cross-instance quota, ownership/redaction, transaction rollback, corrupt readback, revocation and protective status access')
         assert '--- PASS: TestPhotoQueuePostgres/completed-replay-after-expiry' in user_tests.stdout
         print('PASS: function-only photo queue, concurrent claim, release binding, result rollback/replay, expiry, stale-worker fencing, retry budget and commit-time expiry')
         print('PASS: private immutable photo sources as owner role, verified bytes, ownership, concurrent confirmation, atomic analysis intent and outbox-fault rollback')

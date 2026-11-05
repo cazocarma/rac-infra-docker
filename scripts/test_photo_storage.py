@@ -86,7 +86,8 @@ def main():
         run('docker','exec',database,'psql','-X','-v','ON_ERROR_STOP=1','-U','postgres','-d','photos','-c','CREATE DATABASE photo_sources')
         run('docker','exec',database,'psql','-X','-v','ON_ERROR_STOP=1','-U','postgres','-d','photos','-c','CREATE DATABASE photo_migration')
         run('docker','exec',database,'psql','-X','-v','ON_ERROR_STOP=1','-U','postgres','-d','photos','-c','CREATE DATABASE photo_processing')
-        for target in ('photos','photo_sources','photo_migration','photo_processing'):
+        run('docker','exec',database,'psql','-X','-v','ON_ERROR_STOP=1','-U','postgres','-d','photos','-c','CREATE DATABASE photo_uploads')
+        for target in ('photos','photo_sources','photo_migration','photo_processing','photo_uploads'):
             run('docker', 'run', '--rm', '--network', name,
                 '--mount', f'type=bind,source={ROOT/"db/migrations"},target=/flyway/sql,readonly',
                 '-e', 'FLYWAY_URL=jdbc:postgresql://'+database+':5432/'+target,
@@ -106,16 +107,20 @@ def main():
             '-e', 'RAC_PHOTO_ASSET_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/photo_sources?sslmode=disable',
             '-e', 'RAC_PHOTO_MIGRATION_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/photo_migration?sslmode=disable',
             '-e', 'RAC_PHOTO_QUEUE_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/photo_processing?sslmode=disable',
+            '-e', 'RAC_PHOTO_UPLOAD_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/photo_uploads?sslmode=disable',
             '-e', 'RAC_PHOTO_PIPELINE_TEST_ENDPOINT='+fixtures['S3_ENDPOINT'],
             processing_image, 'sh', '-c',
             'cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v '
-            "-run '^(TestS3CreateOnlyIntegration|TestPhotoSourcePostgres|TestPhotoQueuePostgres|TestProfilePhotosOwnershipAndPublication|TestCopyPhotosIntegrityAndRetry)$' "
+            "-run '^(TestS3CreateOnlyIntegration|TestPhotoSourcePostgres|TestPhotoQueuePostgres|TestPrivatePhotoUploadsPostgresHTTP|TestProfilePhotosOwnershipAndPublication|TestCopyPhotosIntegrityAndRetry)$' "
             './internal/photostore ./internal/photoassets ./internal/http ./cmd/migrate-photos')
         for required in ('TestS3CreateOnlyIntegration', 'TestPhotoSourcePostgres/s3', 'TestPhotoQueuePostgres/rustfs-worker', 'TestPhotoQueuePostgres/completed-replay-after-expiry', 'TestProfilePhotosOwnershipAndPublication/s3', 'TestCopyPhotosIntegrityAndRetry'):
             if '--- PASS: '+required not in result.stdout:
                 raise RuntimeError('Required photo proof skipped: '+required)
+        if '--- PASS: TestPrivatePhotoUploadsPostgresHTTP/s3-upload-worker-and-owner-status' not in result.stdout:
+            raise RuntimeError('Owner API to native worker proof skipped')
         print('PASS: real RustFS conditional creation and concurrent single winner; private profile IAM; owner-scoped raw-source readback and atomic analysis intent; photo API and integrity-preserving migration', flush=True)
         print('PASS: three pipeline IAM identities with negative permissions; worker reads quarantine, runs native OCR, writes/verifies staging and commits contact-correction result using function-only PostgreSQL login',flush=True)
+        print('PASS: authenticated owner HTTP upload and request recovery to real RustFS/SQL/native OCR; contact correction and benign awaiting-review status, no public photo or private signals exposed',flush=True)
         from photo_worker_runtime_fixture import prove
         prove(run, ROOT, name, database, tools, fixtures)
     finally:

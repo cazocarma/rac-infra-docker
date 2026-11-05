@@ -133,6 +133,10 @@ artefactos persistidos o publicación revisada; no activó un worker en DEV.
 
 ## Trabajo restante de P09
 
+Actualización de la preparación del propietario: [P09-owner-uploads.md](P09-owner-uploads.md)
+registra V047, API idempotente, recuperación, cuotas, estados mínimos y Flutter.
+La revisión/promoción pública sigue pendiente.
+
 ### Coordinador de procesamiento (2026-11-05)
 
 `photoassets.Worker` conecta el procesador existente con dos puertos privados:
@@ -167,8 +171,8 @@ del coordinador: readback/fallos/ACK incierto, cola vacía y claim inválido, fa
 de OCR, release inválido y dos intentos intercalados. No se cambiaron migraciones,
 roles ni recursos DEV; la siguiente entrega debe probar la cola PostgreSQL real.
 
-- API de subida/reanudación, autorización y estado, límites/observabilidad y
-  reconciliación de operaciones inciertas; configuración de cuarentena separada.
+- Operación/observabilidad y reconciliación de fuentes inciertas de la API de
+  subida/reanudación preparada en V047; activación controlada de cuarentena separada.
 - Activación controlada y observabilidad del worker/cola preparados en V046,
   reconciliación de intentos inciertos y catálogo de similitud vinculado a casos.
 - Corpus de transformaciones y falsos positivos; una coincidencia es señal,

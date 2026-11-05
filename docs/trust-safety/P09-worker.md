@@ -81,8 +81,10 @@ resultado, replay exacto/conflictivo, expiración, intento obsoleto, agotamiento
 y vencimiento al COMMIT. La prueba del coordinador con intercalado simulado
 se conserva, pero ya no sustituye la prueba de persistencia.
 
-Pendientes de P09: despliegue controlado y operación de IAM/cola/proceso, subida y
-estado para el propietario, reconciliación operativa/observabilidad, revisión
+La [preparación del propietario](P09-owner-uploads.md) agrega subida y estado
+privados en V047 y Flutter, con recuperación por clave de petición.
+Pendientes de P09: despliegue controlado y operación de IAM/cola/proceso,
+reconciliación operativa/observabilidad, revisión
 humana, promoción, URLs autorizadas, retirada y corte público de P08. No se
 debe activar con datos reales antes de las dependencias de privacidad/retención.
 
