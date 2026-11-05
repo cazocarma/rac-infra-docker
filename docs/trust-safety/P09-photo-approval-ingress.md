@@ -75,8 +75,8 @@ Registros relativos a raíz RAC:
   datos/otras funciones y rechazo de un grant extra de columna.
 - Render Compose y gates Make: 2 tests exit 0; provisión/configuración: 4 tests
   exit 0; parser de 111 fuentes Python exit 0.
-- `.local/p09-photo-ingress-migrations-2026-11-05.log`: ejecución completa pendiente
-  de recoger antes de afirmar su éxito.
+- `.local/p09-photo-ingress-migrations-2026-11-05.log`: exit 0, fresh/upgrade,
+  repetición/checksums y regresión user/P08, con el nuevo staff HTTP exigido.
 
 Pendiente de UI: usar capabilities para habilitar la acción, mostrar las señales
 de la foto y su vista exacta, confirmación humana explícita y vínculo del comando
