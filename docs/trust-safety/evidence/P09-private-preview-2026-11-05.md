@@ -17,6 +17,7 @@ registra al terminar, sin inferir éxito a partir de pruebas parciales.
 | Go user: race y vet de listingreview/photostore | ejecución Docker Go1.27.3, user df33bcb | exit 0; pruebas DB condicionadas no cuentan aquí |
 | Render Compose sintético y gates Make, sin arrancar servicios | `python -m unittest discover -s scripts -p test_listing_review_compose.py` | 2 pruebas, exit 0 |
 | Git archive frontend: formato, analyze, 278 pruebas y web release | `.local/p09-frontend-6a566a88dc.log` | exit 0 |
+| Archivo específico de preview desde el mismo Git archive, seis casos con nombres visibles | `.local/p09-private-preview-widgets-2026-11-05.log` | exit 0 |
 
 En el ensayo RustFS se exige PASS de
 `TestReaderPostgresHTTP/private-photo-preview/rustfs-read-only`. El JWT staff
@@ -40,3 +41,8 @@ No demuestra aprobación/promoción, retirada, restauración de referencias con 
 V048, navegación con Keycloak real ni gates finales de P08/P09/P15.
 La build web conserva la advertencia previa de fuente CupertinoIcons; analyze no
 reportó observaciones. Los textos nuevos conservan `legal_review: pending`.
+
+La regresión integrada congelada está en
+`.local/rac-p09-queue-proof-a071dedfa511/`: `revisions.json` fija infra
+`46aee54f0e7ec98e43972f8dd67969ec5688f3b0` y los ocho companions. Mientras
+`results.json` no contenga las cinco etapas terminadas no se afirma su éxito.
