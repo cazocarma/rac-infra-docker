@@ -47,6 +47,9 @@ def main():
         'PHOTO_STAGING_SECRET_KEY': 'synthetic-photo-staging-password-123456',
         'PHOTO_PREVIEW_ACCESS_KEY': 'synthetic-photo-preview',
         'PHOTO_PREVIEW_SECRET_KEY': 'synthetic-photo-preview-password-123456',
+        'PHOTO_MEDIA_BUCKET': 'rac-photo-approved-fixture',
+        'PHOTO_PROMOTER_ACCESS_KEY': 'synthetic-photo-promoter',
+        'PHOTO_PROMOTER_SECRET_KEY': 'synthetic-photo-promoter-password-123456',
     }
     flags = [item for key, value in fixtures.items() for item in ('-e', key+'='+value)]
     try:
@@ -74,6 +77,10 @@ def main():
             '--entrypoint', 'python', tools, 'configure_photo_pipeline.py')
         if 'PASS: separate ingest/read-only quarantine/staging IAM' not in pipeline_iam.stdout:
             raise RuntimeError('Pipeline IAM proof did not run')
+        media_iam = run('docker', 'run', '--rm', '--network', name, *flags,
+                        '--entrypoint', 'python', tools, 'configure_photo_media.py')
+        if 'PASS: private versioned media, exact older-version readback' not in media_iam.stdout:
+            raise RuntimeError('Versioned media IAM proof did not run')
 
         run('docker', 'run', '-d', '--name', database, '--network', name,
             '--tmpfs', '/var/lib/postgresql/data', '-e', 'POSTGRES_PASSWORD=test-only',
@@ -115,7 +122,7 @@ def main():
             '-e', 'RAC_LISTING_REVIEW_TEST_DATABASE_URL=postgres://postgres:test-only@'+database+':5432/listing_review_http?sslmode=disable',
             processing_image, 'sh', '-c',
             'cp -a /sources /tmp/rac && cd /tmp/rac && go test -race -count=1 -v '
-            "-run '^(TestS3CreateOnlyIntegration|TestPhotoSourcePostgres|TestPhotoQueuePostgres|TestPrivatePhotoUploadsPostgresHTTP|TestProfilePhotosOwnershipAndPublication|TestCopyPhotosIntegrityAndRetry|TestReaderPostgresHTTP)$' "
+            "-run '^(TestS3CreateOnlyIntegration|TestVersionedMedia.*|TestPhotoSourcePostgres|TestPhotoQueuePostgres|TestPrivatePhotoUploadsPostgresHTTP|TestProfilePhotosOwnershipAndPublication|TestCopyPhotosIntegrityAndRetry|TestReaderPostgresHTTP)$' "
             './internal/photostore ./internal/photoassets ./internal/http ./internal/listingreview ./cmd/migrate-photos')
         for required in ('TestS3CreateOnlyIntegration', 'TestPhotoSourcePostgres/s3', 'TestPhotoQueuePostgres/rustfs-worker', 'TestPhotoQueuePostgres/completed-replay-after-expiry', 'TestProfilePhotosOwnershipAndPublication/s3', 'TestCopyPhotosIntegrityAndRetry'):
             if '--- PASS: '+required not in result.stdout:
@@ -124,9 +131,12 @@ def main():
             raise RuntimeError('Owner API to native worker proof skipped')
         if '--- PASS: TestReaderPostgresHTTP/private-photo-preview/rustfs-read-only' not in result.stdout:
             raise RuntimeError('Audited reader to real RustFS preview proof skipped')
+        if '--- PASS: TestVersionedMediaS3Integration' not in result.stdout:
+            raise RuntimeError('Versioned S3 destination adapter proof skipped')
         print('PASS: real RustFS conditional creation and concurrent single winner; private profile IAM; owner-scoped raw-source readback and atomic analysis intent; photo API and integrity-preserving migration', flush=True)
         print('PASS: four pipeline IAM identities with negative permissions; worker reads quarantine, runs native OCR, writes/verifies staging and commits contact-correction result using function-only PostgreSQL login',flush=True)
         print('PASS: authenticated staff preview of exact pending JPEG from real RustFS with dedicated read-only IAM and two committed SQL access audits',flush=True)
+        print('PASS: separate private versioned media destination and promotion IAM; Go adapter conditional creation, non-null VersionId capture, exact-version readback and recovery without overwrite',flush=True)
         print('PASS: authenticated owner HTTP upload and request recovery to real RustFS/SQL/native OCR; contact correction and benign awaiting-review status, no public photo or private signals exposed',flush=True)
         from photo_worker_runtime_fixture import prove
         prove(run, ROOT, name, database, tools, fixtures)

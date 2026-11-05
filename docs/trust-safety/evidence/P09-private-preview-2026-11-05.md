@@ -55,3 +55,10 @@ Dos casos comprueban el error de indentación, ausencia de ejecución de top-lev
 y checkout vacío. La comprobación de 110 fuentes y el gate de workflows completo
 pasaron, registro `.local/p09-python-preflight-workflows-2026-11-05.log`.
 La siguiente regresión usa un nuevo snapshot; no se modifica el expediente fallido.
+
+Nuevo snapshot: `.local/rac-p09-queue-proof-0e586f661adc/`, infra
+`f30931f5b3e99be65c8121e62cd4d99a5175e62a`, user c983f89 y los otros siete pins.
+El preflight sintáctico pasó; permisos terminó exit 0. Migraciones y las otras
+etapas aún deben consultarse en results.json. No incluye el test de proveedor
+ca80ccc ni configure_photo_media, probados aparte en
+[P09-versioned-media.md](../P09-versioned-media.md).
