@@ -88,6 +88,9 @@ debe activar con datos reales antes de las dependencias de privacidad/retención
 
 ## Evidencia local de runtime — 2026-11-05
 
+El expediente de revisiones, comandos, permisos, regresión congelada y límites
+de esta entrega está en [evidence/P09-worker-2026-11-05.md](evidence/P09-worker-2026-11-05.md).
+
 `test_photo_storage.py` ahora ejecuta también
 `photo_worker_runtime_fixture.py`: construye `Dockerfile.photo-worker`, registra
 el commit de user y descriptor OCI exactos, siembra una fuente sintética y arranca
