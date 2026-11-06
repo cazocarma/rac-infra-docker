@@ -1,6 +1,7 @@
 """P11 effects consumer boundary on the user-owned standing. Synthetic data only."""
 import json
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 FUNCTIONS = ('standing.apply_ts_effect(uuid,jsonb,uuid)', 'standing.refresh_ts_standing(uuid,uuid,uuid)')
 
@@ -39,7 +40,8 @@ def verify(sql, database, subject):
     event = str(uuid.uuid4())
     assert apply(restrict, event)['status'] == 'restricted' and status() == 'restricted:publish_listing'
     assert apply(restrict, event)['duplicate'] is True, 'Replay applied twice'
-    assert apply(restrict)['duplicate'] is True, 'Redelivery under another event applied twice'
+    alias_event = str(uuid.uuid4())
+    assert apply(restrict, alias_event)['duplicate'] is True, 'Redelivery under another event applied twice'
     assert apply({**restrict, 'kind': 'ban'}, ok=False).returncode != 0, 'Conflicting redelivery accepted'
     for field, value in (
         ('case_id', str(uuid.uuid4())), ('policy_version', 'different-policy'),
@@ -58,6 +60,7 @@ def verify(sql, database, subject):
     ban_event = str(uuid.uuid4())
     assert apply(ban, ban_event)['status'] == 'banned' and status().startswith('banned')
     assert apply(restrict, ban_event, ok=False).returncode != 0, 'Event ID reused for another recorded action'
+    assert apply(ban, alias_event, ok=False).returncode != 0, 'Acknowledged alias reused for another action'
     assert apply(effect('revocation', revokes=ban['action_id']))['status'] == 'restricted', 'Ban revocation lost the restriction'
     assert apply(effect('warning'))['changed'] is False
     assert apply(effect('revocation', revokes=restrict['action_id']))['status'] == 'active' and status() == 'active:'
@@ -72,10 +75,22 @@ def verify(sql, database, subject):
                       f"DELETE FROM standing.ts_effects WHERE subject_id='{subject}';"):
         assert execute(statement, ok=False).returncode != 0, 'Effect history mutated'
     assert execute('SELECT count(*) FROM standing.ts_effect_receipts;').stdout.strip() == '6'
-    for operation in ('UPDATE standing.ts_effect_receipts SET payload=payload;', 'DELETE FROM standing.ts_effect_receipts;'):
+    assert execute('SELECT count(*) FROM standing.ts_effect_deliveries;').stdout.strip() == '7'
+    other_subject = str(uuid.uuid4())
+    execute(f"INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('{other_subject}','Fixture','{other_subject}@example.test','cliente','{other_subject}');")
+    collision = str(uuid.uuid4())
+    commands = [effect('warning'), {**effect('warning'), 'subject': other_subject}]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        delivered = list(pool.map(lambda body: apply(body, collision, ok=False), commands))
+    assert sum(result.returncode == 0 for result in delivered) == 1, 'Concurrent event collision has no unique winner'
+    assert execute('SELECT count(*) FROM standing.ts_effect_receipts;').stdout.strip() == '7'
+    assert execute('SELECT count(*) FROM standing.ts_effect_deliveries;').stdout.strip() == '8'
+    for operation in ('UPDATE standing.ts_effect_receipts SET payload=payload;', 'DELETE FROM standing.ts_effect_receipts;',
+                      'UPDATE standing.ts_effect_deliveries SET action_id=action_id;', 'DELETE FROM standing.ts_effect_deliveries;'):
         assert execute(operation, ok=False).returncode != 0, 'Command receipt history mutated'
     for other in ('rac_user', 'rac_match', 'rac_chat', 'rac_alert'):
         assert apply(effect('ban'), who=other, ok=False).returncode != 0, f'{other} applied a T&S effect'
         assert execute('SELECT * FROM standing.ts_effect_receipts;', other, ok=False).returncode != 0, 'Service read private receipts'
+        assert execute('SELECT * FROM standing.ts_effect_deliveries;', other, ok=False).returncode != 0, 'Service read private deliveries'
     print('PASS: T&S effects ledger applies once per action, derives standing through the single standing path, '
-          'rejects every altered command field and cross-action event reuse, handles revocation order and expiry, is append-only and denies other services', flush=True)
+          'rejects altered commands and event/alias reuse with one concurrent winner, handles revocation order and expiry, is append-only and denies other services', flush=True)

@@ -31,15 +31,37 @@ DO $$ BEGIN
  END IF;
 END $$;
 
+CREATE TABLE standing.ts_effect_deliveries (
+ event_id uuid PRIMARY KEY,
+ action_id uuid NOT NULL REFERENCES standing.ts_effect_receipts(action_id)
+);
+CREATE INDEX ts_effect_delivery_action ON standing.ts_effect_deliveries(action_id);
+INSERT INTO standing.ts_effect_deliveries(event_id,action_id)
+ SELECT received_event,action_id FROM standing.ts_effects;
+
 CREATE FUNCTION standing.preserve_ts_effect_receipt() RETURNS trigger
  LANGUAGE plpgsql SET search_path=pg_catalog AS $$ BEGIN
  RAISE EXCEPTION 'ts_effect_receipt_immutable' USING ERRCODE='55000';
 END $$;
 CREATE TRIGGER ts_effect_receipt_immutable BEFORE UPDATE OR DELETE ON standing.ts_effect_receipts
  FOR EACH ROW EXECUTE FUNCTION standing.preserve_ts_effect_receipt();
-REVOKE ALL ON standing.ts_effect_receipts FROM PUBLIC;
+CREATE TRIGGER ts_effect_delivery_immutable BEFORE UPDATE OR DELETE ON standing.ts_effect_deliveries
+ FOR EACH ROW EXECUTE FUNCTION standing.preserve_ts_effect_receipt();
+REVOKE ALL ON standing.ts_effect_receipts,standing.ts_effect_deliveries FROM PUBLIC;
 REVOKE ALL ON FUNCTION standing.preserve_ts_effect_receipt() FROM PUBLIC;
-GRANT SELECT ON standing.ts_effect_receipts TO rac_backup;
+GRANT SELECT ON standing.ts_effect_receipts,standing.ts_effect_deliveries TO rac_backup;
+
+-- Record every acknowledged delivery ID, including aliases for an identical
+-- action. A concurrent collision cannot silently retarget an existing event.
+CREATE FUNCTION standing.record_ts_effect_delivery(p_event uuid,p_action uuid) RETURNS void
+ LANGUAGE plpgsql SET search_path=pg_catalog AS $$ BEGIN
+ INSERT INTO standing.ts_effect_deliveries(event_id,action_id) VALUES(p_event,p_action)
+ ON CONFLICT(event_id) DO NOTHING;
+ IF NOT EXISTS(SELECT 1 FROM standing.ts_effect_deliveries WHERE event_id=p_event AND action_id=p_action) THEN
+  RAISE EXCEPTION 'ts_effect_conflict' USING ERRCODE='23505';
+ END IF;
+END $$;
+REVOKE ALL ON FUNCTION standing.record_ts_effect_delivery(uuid,uuid) FROM PUBLIC;
 
 CREATE OR REPLACE FUNCTION standing.apply_ts_effect(p_event uuid,p_payload jsonb,p_policy uuid)
  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
@@ -63,8 +85,12 @@ BEGIN
   RAISE EXCEPTION 'invalid_ts_effect' USING ERRCODE='22023';
  END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('ts-effect:'||e.subject_id::text,0));
- SELECT * INTO prior FROM standing.ts_effects WHERE action_id=e.action_id OR received_event=p_event
-  ORDER BY CASE WHEN received_event=p_event THEN 0 ELSE 1 END LIMIT 1;
+ SELECT effect.* INTO prior FROM standing.ts_effects effect
+ JOIN standing.ts_effect_deliveries delivery ON delivery.action_id=effect.action_id
+ WHERE delivery.event_id=p_event;
+ IF NOT FOUND THEN
+  SELECT * INTO prior FROM standing.ts_effects WHERE action_id=e.action_id;
+ END IF;
  IF FOUND THEN
   IF prior.action_id<>e.action_id OR NOT EXISTS (
    SELECT 1 FROM standing.ts_effect_receipts receipt
@@ -72,6 +98,7 @@ BEGIN
   ) THEN
    RAISE EXCEPTION 'ts_effect_conflict' USING ERRCODE='23505';
   END IF;
+  PERFORM standing.record_ts_effect_delivery(p_event,prior.action_id);
   RETURN jsonb_build_object('action_id',prior.action_id,'duplicate',true);
  END IF;
  IF e.kind='revocation' THEN
@@ -86,6 +113,7 @@ BEGIN
  INSERT INTO standing.ts_effects(action_id,received_event,subject_id,case_id,kind,revokes,policy_version,starts_at,ends_at)
  VALUES(e.action_id,e.received_event,e.subject_id,e.case_id,e.kind,e.revokes,e.policy_version,e.starts_at,e.ends_at);
  INSERT INTO standing.ts_effect_receipts(action_id,payload) VALUES(e.action_id,p_payload);
+ PERFORM standing.record_ts_effect_delivery(p_event,e.action_id);
  IF e.kind='revocation' AND target.revoked_at IS NULL THEN
   UPDATE standing.ts_effects SET revoked_at=clock_timestamp() WHERE action_id=e.revokes;
  END IF;
