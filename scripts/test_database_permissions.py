@@ -225,6 +225,8 @@ def main():
             verify_evidence(sql, database)
             from case_fixture import verify as verify_cases
             verify_cases(sql, database)
+            from standing_effects_fixture import verify as verify_effects
+            verify_effects(sql, database, client)
             # Replacing catalog activities requires DELETE even when the profile
             # is new. Other owners retain no delete permission on them.
             sql(database, 'DELETE FROM compa_activities WHERE false;', 'rac_user')
