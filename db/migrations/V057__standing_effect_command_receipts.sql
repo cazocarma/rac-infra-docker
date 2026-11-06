@@ -5,14 +5,15 @@ SET LOCAL lock_timeout='2s';
 
 CREATE TABLE standing.ts_effect_receipts (
  action_id uuid PRIMARY KEY REFERENCES standing.ts_effects(action_id),
+ origin text NOT NULL DEFAULT 'received' CHECK(origin IN('received','source_outbox_backfill')),
  payload jsonb NOT NULL CHECK(jsonb_typeof(payload)='object' AND octet_length(payload::text)<=4096)
 );
 
--- One-time upgrade from the immutable source outbox. Never manufacture a
+-- One-time upgrade from the original source outbox. Never manufacture a
 -- receipt from the lossy standing projection. A missing/conflicting source
 -- stops the migration for explicit reconciliation, without altering effects.
-INSERT INTO standing.ts_effect_receipts(action_id,payload)
- SELECT e.action_id,o.payload FROM standing.ts_effects e JOIN ts.outbox o
+INSERT INTO standing.ts_effect_receipts(action_id,payload,origin)
+ SELECT e.action_id,o.payload,'source_outbox_backfill' FROM standing.ts_effects e JOIN ts.outbox o
  ON o.event_id=e.received_event AND o.event_type='ts.action.effective.v1'
  WHERE o.payload->>'action_id'=e.action_id::text
  AND o.payload->>'subject'=e.subject_id::text

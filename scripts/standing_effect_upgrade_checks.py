@@ -27,6 +27,7 @@ def check(create, migrate, sql):
             assert sql(db, 'SELECT count(*) FROM standing.ts_effects;') == '1'
             continue
         assert json.loads(sql(db, 'SELECT payload FROM standing.ts_effect_receipts;')) == payload
+        assert sql(db, 'SELECT origin FROM standing.ts_effect_receipts;') == 'source_outbox_backfill'
         encoded = json.dumps(payload).replace("'", "''")
         assert json.loads(sql(db, f"SELECT standing.apply_ts_effect('{event}','{encoded}',gen_random_uuid());"))['duplicate'] is True
         assert sql(db, 'SELECT count(*) FROM standing.ts_effects;') == '1'

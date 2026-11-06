@@ -84,6 +84,7 @@ def verify(sql, database, subject):
         delivered = list(pool.map(lambda body: apply(body, collision, ok=False), commands))
     assert sum(result.returncode == 0 for result in delivered) == 1, 'Concurrent event collision has no unique winner'
     assert execute('SELECT count(*) FROM standing.ts_effect_receipts;').stdout.strip() == '7'
+    assert execute("SELECT bool_and(origin='received') FROM standing.ts_effect_receipts;").stdout.strip() == 't'
     assert execute('SELECT count(*) FROM standing.ts_effect_deliveries;').stdout.strip() == '8'
     for operation in ('UPDATE standing.ts_effect_receipts SET payload=payload;', 'DELETE FROM standing.ts_effect_receipts;',
                       'UPDATE standing.ts_effect_deliveries SET action_id=action_id;', 'DELETE FROM standing.ts_effect_deliveries;'):
