@@ -1,6 +1,9 @@
 # ADR-003 — Reportes, casos, acciones y apelaciones unificados
 
-Estado: dirección técnica aprobada; D02/D06/D07/D10 pendientes.
+Estado: dirección técnica y direcciones D02/D06/D07/D10 aprobadas; detalles
+operativos y jurídicos pendientes según el
+[registro de decisiones](decisions-2026-11-02.md). Las propuestas de este ADR
+no sustituyen ese registro ni autorizan por sí solas activaciones.
 
 ## Dueños y autorización
 

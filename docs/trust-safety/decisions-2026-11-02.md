@@ -5,6 +5,22 @@ aprobación permite desarrollar y ensayar con datos sintéticos; no acredita
 revisión jurídica, contratación, activación productiva ni cumplimiento legal.
 Complementa la tabla D01–D14 de plan.md; los pendientes concretos siguen abiertos.
 
+## Aclaración de estado — 6 de noviembre de 2026
+
+D04–D14 sí fueron respondidas: el usuario dio una dirección o delegó la propuesta
+técnica y después aceptó las recomendaciones. No deben describirse en traspasos
+como once decisiones sin responder ni volver a solicitar esas mismas respuestas.
+La tabla distingue la dirección aprobada de lo que falta concretar o verificar.
+
+Se puede continuar la implementación y sus pruebas sintéticas dentro de esa
+dirección. Aplazar KYC real (D05), mantener respaldos locales (D11) y empezar con
+diccionario versionado (D13) son decisiones vigentes, no falta de respuesta.
+La aprobación no proporciona importes/comisiones exactos, plazos legales,
+criterios de urgencia completos, proveedor KYC ni custodia externa de claves.
+Tampoco convierte los objetivos de recuperación D14 en resultados ya medidos.
+Solo esos detalles, las verificaciones y las activaciones indicadas en la tabla
+siguen pendientes; no bloquean globalmente el desarrollo local del plan.
+
 | ID | Dirección aprobada | Pendiente antes de activar con usuarios reales |
 |---|---|---|
 | D04 | Catálogo cerrado ampliable deliberadamente. Comisión por reserva completada propuesta como modelo comercial. Límites de precio por categoría/duración y experiencia verificable; pagar un plan no compra confianza. | Categorías/lugares definitivos, importes, porcentaje, reembolsos y si las tres reservas sin suscripción también pagan comisión. No implementar cobros por inferencia. |

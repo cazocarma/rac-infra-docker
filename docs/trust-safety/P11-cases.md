@@ -68,5 +68,9 @@ estables. Rutas bajo `/api/admin/staff/cases`, `/actions/:id/...` y
 - Inventario, backfill y retirada de `chat_reporte`, `chat_auditoria` y
   `reporte`, preservando los límites `hasta_version`/`hasta_numero_legacy`.
 - Provisión DEV opt-in de los logins de casos e intake.
-- Decisiones D06 (protección preventiva P0), D07 (SLA y plazo de apelación)
-  y D10 (roles y autoridad legal).
+- Concretar los criterios preventivos D06, la cobertura de atención D07 y los
+  procedimientos especializados D10. Las direcciones de producto ya fueron
+  respondidas: operador inicial Cris A, treinta días para presentar apelación
+  (no SLA), roles/MFA y decisiones humanas. Véase el
+  [registro aprobado](decisions-2026-11-02.md); no repetir el cuestionario ni
+  confundir aprobación de producto con una política jurídica activada.

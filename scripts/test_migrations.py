@@ -336,6 +336,18 @@ INSERT INTO compa_perfil_skill(perfil_id,skill_id) VALUES
     assert sql('standing_upgrade', "SELECT reconciled_at='-infinity'::timestamptz FROM match_standing_projection;") == 't'
     assert sql('standing_upgrade', f"SELECT event_id::text||':'||version||':'||status FROM match_standing_sanction WHERE subject_id='{subject}';") == event + ':2:suspended'
     print('PASS: V023 projection upgrade retains authenticated event provenance and schedules repair')
+    from standing_effect_upgrade_checks import check as check_effect_receipt_upgrade
+    def migrate_effect_checkpoint(database, maximum, ok=True):
+        if maximum is None:
+            return flyway(database, migration_dir, ok=ok)
+        with tempfile.TemporaryDirectory(prefix=NAME) as checkpoint:
+            for source in migration_dir.glob('V*.sql'):
+                if int(source.name.split('__')[0][1:]) <= maximum:
+                    shutil.copy2(source, Path(checkpoint) / source.name)
+            return flyway(database, Path(checkpoint), ok=ok)
+    check_effect_receipt_upgrade(
+        lambda database: sql('fresh', 'CREATE DATABASE ' + database + ';'),
+        migrate_effect_checkpoint, sql)
     with tempfile.TemporaryDirectory(prefix=NAME) as temp:
         for src in migration_dir.glob("*.sql"): shutil.copy2(src, Path(temp)/src.name)
         with (Path(temp)/"V003__identity_indexes.sql").open("a") as f: f.write("\n-- drift must be rejected\n")
