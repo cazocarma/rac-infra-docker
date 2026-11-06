@@ -85,6 +85,53 @@ Antes de publicar el lote deben estar accesibles los commits compañeros; una
 configuración de CI preparada no implica que refs todavía locales se puedan
 descargar ni que se haya ejecutado la CI remota.
 
+### Evidencia local — 6 de noviembre de 2026
+
+El primer ensayo del núcleo (`.local/p11-ts-relay-core-2026-11-06.log`) falló al
+compilar: el nuevo import de `staff/postgres` no estaba en vendor. Se regeneró
+desde el v0.18.0 ya fijado, sin cambiar la versión ni editar a mano el código
+generado. El reintento terminó exit 0 en
+`.local/p11-ts-relay-core-retry-2026-11-06.log`.
+
+El primer snapshot `rac-p11-relay-proof-0eb098097ecb` terminó en el gate de
+workflows: actionlint esperaba encontrar `.git`, ausente por diseño en la
+exportación. Make ahora proporciona todos los archivos yml/yaml explícitamente;
+no se deshabilitó la validación ni se fabricó un repositorio Git en la copia.
+Ese fallo se conserva y no se cuenta como prueba verde.
+
+La validación amplia está en
+`.local/rac-p11-relay-proof-ec1c76e1e0c8/results.json`, todos sus 16 gates exit 0:
+sintaxis, integridad de vendor, workflows, núcleo relay, permisos, migraciones
+completas user/match/chat, EvidenceStore/casos HTTP reales en PG/RustFS, escaneo
+y Go race de platform/auth/user/match/chat/alert/admin/payment. `revisions.json`
+identifica cada fuente; payment se incluyó como checkout opcional limpio, sin
+añadirle acceso al GitHub App ni cambiar sus fuentes. La revisión infra de esta
+base es `9d0c3049b49abc86a93f8b3580b2a655eac41717`, admin `ab63edb`.
+
+Después se agregó serialización del emisor entre casos antes del commit. La
+prueba final de ese cambio está en
+`.local/rac-p11-relay-order-proof-252eda92df2f/results.json`, cinco gates exit 0:
+sintaxis, vendor, Go relay/race/vet, permisos con migrador no superusuario y
+EvidenceStore/casos HTTP. Sus revisiones exactas son infra
+`629eeb14e97bed828aaf1d8455fc20ea3c7a796e` y admin
+`87cca3b91ac3754245c23dde802ebfe790309faf`. La producción Go del relay no cambió
+entre esas revisiones de admin; se añadió la prueba de dos productores. Esta
+prueba exige observar el segundo productor esperando el lock de principal,
+ausencia de trabajo visible antes del primer commit y publicación ordenada
+después de ambos commits. No se atribuye a la primera base una prueba que aún
+no contenía ese cambio SQL.
+
+El escaneo no encontró avisos alcanzables. Reportó avisos de módulos sin una
+ruta de llamada actual; no se ocultaron ni equivale a afirmar que todas las
+dependencias estén libres de avisos. El detalle del análisis queda en
+`go-security.log` de la base amplia; P15 debe revalidarlo al integrar nuevas rutas.
+
+También pasaron las pruebas de archivos congelados y el laboratorio SQL
+focalizado (`.local/p11-relay-sql-2026-11-06.log`). No se aplicaron migraciones
+al DEV habitual, no se ejecutó CI remoto y no hubo push. Los ensayos del relay
+usan publisher falso: estos resultados no acreditan publisher confirms, consumo
+o entrega de avisos en un broker real.
+
 ## Pendiente antes de integrar
 
 - Adapter real con mensajes persistentes, `mandatory`, confirmación positiva y
@@ -95,6 +142,9 @@ descargar ni que se haya ejecutado la CI remota.
 - Consumidor user con ready mínimo V058, commit antes de ack, clasificación de
   errores, reconexión y efectos correspondientes por tipo; `hide_listing` aún
   requiere aplicación por el dueño de publicaciones.
+- Confirmación de aplicación por el dueño y estado visible de enforcement
+  separado de la decisión/publicación. No anunciar una sanción aplicada ni un
+  aviso recibido basándose solo en una decisión en cola o `confirmed_at`.
 - Recovery/replay controlado desde eventos originales si se pierde el estado del
   broker; restauración/retenciones conforme al plan. No resetear confirmaciones
   ni regenerar IDs para ocultar trabajo pendiente.

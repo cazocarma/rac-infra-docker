@@ -85,6 +85,11 @@ duplicado ambiguo para superar ese gate.
 El relay, el consumidor y sus credenciales opt-in siguen pendientes. Estas
 garantías de BD no equivalen a un transporte integrado ni a P11 cerrado.
 
+V059 y `internal/tsrelay` añaden el [núcleo de publicación](P11-effect-relay.md):
+funciones mínimas, confirmaciones ligadas a la transacción, reintentos con el
+mismo evento y orden por principal desde el emisor. Se prueba con publisher
+falso; faltan adapter AMQP, worker, topología/credenciales y consumidor reales.
+
 ### Identidad de la recepción — V058
 
 El sujeto del comando nuevo es el `sub` UUID del realm RAC de Keycloak, igual que
