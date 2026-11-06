@@ -40,8 +40,8 @@ segundos. No se mantienen locks sobre casos, usuarios o reservas durante I/O.
 
 Confirmación y reintento exigen el token y el xid de la misma transacción que
 tomó la fila. Otro proceso/transacción no puede confirmar una toma abandonada ni
-reiniciar una confirmación posterior. Una toma accidentalmente confirmada en BD
-sin publicación no deja un lease permanente: la siguiente transacción puede
+reiniciar una confirmación posterior. Hacer commit de la toma sin registrar
+una publicación no deja un lease permanente: la siguiente transacción puede
 retomar el trabajo pendiente. Si la publicación o el commit es incierto, se
 conservan ID y cuerpo. El receptor debe confirmar solo después de su propio
 commit e impedir duplicación de efectos.

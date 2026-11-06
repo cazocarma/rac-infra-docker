@@ -12,6 +12,8 @@ import uuid
 from test_database_permissions import run
 from standing_effects_fixture import verify
 from standing_effect_upgrade_checks import check
+from case_fixture import verify as verify_cases
+from ts_effect_relay_fixture import verify as verify_relay
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -52,6 +54,8 @@ def main():
         for role in ('rac_user', 'rac_match', 'rac_chat', 'rac_alert'):
             sql('fresh', f'ALTER ROLE {role} LOGIN;')
             assert sql('fresh', 'SELECT 1;', role).stdout.strip() == '1', 'Negative role cannot connect'
+        verify_cases(sql, 'fresh')
+        verify_relay(sql, 'fresh')
         verify(sql, 'fresh')
         check(lambda database: sql('fresh', 'CREATE DATABASE ' + database + ';'), migrate,
               lambda database, statement: sql(database, statement).stdout.strip())
