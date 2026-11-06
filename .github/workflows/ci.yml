@@ -313,6 +313,9 @@ jobs:
       - name: S3 photo ownership and migration against disposable database
         working-directory: rac-infra-docker
         run: python scripts/test_photo_storage.py
+      - name: P10 EvidenceStore against disposable RustFS and PostgreSQL
+        working-directory: rac-infra-docker
+        run: python scripts/test_evidence_store.py
       - name: API and PKCE integration
         working-directory: rac-infra-docker
         run: make check test-integration
