@@ -11,6 +11,27 @@ Admin incorporará el dominio T&S y esquema/rol propios para reports, cases, cas
 
 Reportes contra usuario, revisión, foto, reseña, conversación o reserva. Objetivo tipado y snapshot fijado al recibir; descripción opcional cifrada de hasta 1000 caracteres. Un índice parcial impide más de un reporte abierto por reportante/objetivo, incluidos reintentos concurrentes. Agrupar casos por sujeto según política, no mezclar automáticamente identidades por una señal débil. `case_events` es append-only y registra asignación, cambio de severidad y actuación.
 
+### Identidad canónica
+
+En el realm RAC configurado, sujeto, reportante y operador se identifican por el
+`sub` UUID de Keycloak. El ID del recurso reportado es otro dato: no se usa como
+identidad del afectado. El intake debe obtener el principal del snapshot del
+dueño del recurso, no de un campo libre del cliente. Así los controles de
+autorreporte y autocaso comparan el mismo namespace que el token staff.
+
+`usuario.id` se genera independientemente. El evento `ts.action.effective.v1`
+transporta el principal canónico y user lo resuelve por `usuario.keycloak_id`
+dentro de su dominio. No se intenta `usuario.id` como alternativa, incluso si
+coincide con el principal de otra cuenta. Los eventos de standing derivados
+conservan el ID interno que esperan match y los demás consumidores existentes.
+Otro issuer o namespace requeriría una versión explícita del contrato.
+
+V058 anota los recibos anteriores como `user_id` sin cambiar su cuerpo ni los
+efectos históricos. Un reintento idéntico solo reconoce la acción ya registrada;
+las acciones nuevas requieren `keycloak_sub`. No hay una ruta alternativa para
+escribir sanciones nuevas con IDs internos ni se reinterpreta un recibo antiguo
+usando la vinculación actual de la cuenta.
+
 AccessGuard combina rol, MFA/step-up verificable, asignación/propósito, conflicto de interés y justificación temporal ligada a sujeto/caso/alcance. Auditoría duradera antes de entregar contenido. Una descripción de reporte también es privada. Ni `admin` comercial ni `ts_agent` reciben acceso general a chats. Participantes conservan su acceso legítimo según la reserva; el acceso staff solo ve el contexto evidenciado y autorizado. El token de servicio no sustituye la identidad del actor delegado.
 
 Roles de consola: ts_agent, ts_lead, legal, support, business_admin, sin heredar del admin actual. Verificar ACR/amr y antigüedad de autenticación; no basta tener rol o estar matriculado en MFA. Políticas y permisos negativos se prueban antes de exponer la consola. Sin autoasignación de caso propio ni revisión de apelación por quien decidió la acción.

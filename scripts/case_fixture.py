@@ -43,6 +43,7 @@ def verify(sql, database):
     assert first['duplicate'] is False and 'case_id' not in first, 'Reporter learned the case'
     assert report(r1, target) == {**first, 'duplicate': True}, 'Duplicate open report created another'
     assert call(intake, 'report_submit', subject, policy, 'account', subject, subject, 'fraud', None, ok=False).returncode != 0, 'Self report accepted'
+    assert call(intake, 'report_submit', subject, policy, 'account', str(uuid.uuid4()), subject, 'fraud', None, ok=False).returncode != 0, 'Self report accepted when resource and realm subject IDs differ'
     assert report(r2, str(uuid.uuid4()), category='unknown', ok=False).returncode != 0, 'Unknown category accepted'
     report(r2, str(uuid.uuid4()))
     report(r2, str(uuid.uuid4()), category='harassment')

@@ -310,6 +310,10 @@ endif
 test-standing-authority:
 	$(PYTHON) scripts/test_standing_authority.py
 
+.PHONY: test-standing-effects
+test-standing-effects:
+	$(PYTHON) scripts/test_standing_effects.py
+
 .PHONY: test-session-control
 test-session-control:
 	$(PYTHON) scripts/test_session_control.py

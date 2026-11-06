@@ -85,6 +85,35 @@ duplicado ambiguo para superar ese gate.
 El relay, el consumidor y sus credenciales opt-in siguen pendientes. Estas
 garantías de BD no equivalen a un transporte integrado ni a P11 cerrado.
 
+### Identidad de la recepción — V058
+
+El sujeto del comando nuevo es el `sub` UUID del realm RAC de Keycloak, igual que
+los actores staff y reportantes de T&S. User lo resuelve exclusivamente por
+`usuario.keycloak_id` bajo bloqueo de la relación; el ledger y el evento de
+standing derivado siguen usando `usuario.id`. No hay búsqueda alternativa por
+ID interno. El caso de colisión intencional entre el ID interno de A y el
+principal de B debe resolver B, sin modificar el standing de A.
+
+Los recibos anteriores reciben `subject_namespace=user_id` sin reescribir su
+cuerpo ni el ledger. Un reintento histórico exacto reconoce solo la acción ya
+aplicada, incluso si cambió la vinculación actual de Keycloak; nunca crea una
+acción nueva mediante esa interpretación histórica. Los recibos nuevos usan
+`keycloak_sub`. `subject_namespace` describe la identidad y `origin` distingue
+recepción de reconstrucción: son propiedades diferentes e inmutables.
+
+El contrato preparado está en `rac-shared-contracts`, commit
+`f0b3c26a7339b38039cbcf880eeca8e32849d2bf`, archivo
+`events/ts.action.effective.v1.schema.json`. El cuerpo cerrado no permite elegir
+namespace ni aportar tokens o identidad del reportante. Sus límites de forma
+coinciden con los campos del productor; no aprueban plazos de sanción ni criterios
+jurídicos. La identidad del sujeto debe venir del snapshot del dueño del objetivo
+en el intake pendiente, nunca de un campo libre del cliente.
+
+`make test-standing-effects` ejecuta una prueba SQL focalizada sin copiar ni
+compilar servicios Go: migraciones, IDs distintos/colisionados, reintentos,
+revocación y actualización poblada. No sustituye la prueba general de permisos
+con migrador no superusuario, dump/restore ni la integración con el broker.
+
 ### Validación local — 6 de noviembre de 2026
 
 Referencia previa a V057: ensayos completos de migraciones (user/match/chat),
@@ -96,7 +125,7 @@ descartables. Registros relativos a raíz RAC:
 Los intentos iniciales sin `-retry` fallaron antes del ensayo porque el motor
 Docker estaba apagado; se conservaron y no cuentan como pruebas de código.
 
-La versión final V057 se probó desde Git limpio, infra
+V057 se probó desde Git limpio, infra
 `f5d963db3f33fa1983fcf9544efe6852ddd927a1`, con los compañeros exactos indicados
 en `.local/rac-p11-receipt-proof-b726c5bf7c7e/revisions.json`.
 `results.json` registra exit 0 para sintaxis (116 fuentes Python), permisos y
@@ -126,13 +155,10 @@ no demuestran todavía un flujo completo Keycloak→caso→broker→standing.
   cifrada mediante EvidenceStore.
 - Consumidores de `ts.action.effective.v1` en user (standing), match y chat, y
   avisos versionados en alert (S13/S14) sin revelar al reportante.
-- Antes de conectar intake y efectos, fijar y probar el namespace de sujeto:
-  staff usa el `sub` de Keycloak, pero `usuario.id` se genera independientemente
-  y `standing.account.subject_id` referencia ese ID interno. T&S debe comparar
-  reportante, sujeto y operadores en una identidad canónica para impedir
-  autorreportes y autocasos; user debe resolver esa identidad en su propio
-  dominio antes de aplicar standing. Probar IDs deliberadamente diferentes,
-  nunca asumir igualdad ni intentar ambos namespaces como fallback.
+- En el intake, obtener el principal canónico desde el snapshot autorizado del
+  dueño del objetivo y verificar el recorrido completo desde el token del
+  reportante hasta la recepción V058. La resolución del receptor y el contrato
+  están implementados; el flujo público completo aún no lo está.
 - Consolas Flutter A1–A3/A5 y pantallas S12–S15.
 - Inventario, backfill y retirada de `chat_reporte`, `chat_auditoria` y
   `reporte`, preservando los límites `hasta_version`/`hasta_numero_legacy`.

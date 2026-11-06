@@ -28,11 +28,23 @@ def check(create, migrate, sql):
             continue
         assert json.loads(sql(db, 'SELECT payload FROM standing.ts_effect_receipts;')) == payload
         assert sql(db, 'SELECT origin FROM standing.ts_effect_receipts;') == 'source_outbox_backfill'
+        assert sql(db, 'SELECT subject_namespace FROM standing.ts_effect_receipts;') == 'user_id'
+        principal = str(uuid.uuid4())
+        sql(db, f"UPDATE usuario SET keycloak_id='{principal}' WHERE id='{subject}';")
         encoded = json.dumps(payload).replace("'", "''")
         assert json.loads(sql(db, f"SELECT standing.apply_ts_effect('{event}','{encoded}',gen_random_uuid());"))['duplicate'] is True
         assert sql(db, 'SELECT count(*) FROM standing.ts_effects;') == '1'
         altered = json.dumps({**payload, 'notice_key': 'alteredNotice'}).replace("'", "''")
         sql(db, f"DO $$ BEGIN PERFORM standing.apply_ts_effect('{event}','{altered}',gen_random_uuid()); "
             "RAISE EXCEPTION 'altered replay accepted'; EXCEPTION WHEN unique_violation THEN NULL; END $$;")
+        internal = json.dumps({**payload, 'action_id': str(uuid.uuid4())}).replace("'", "''")
+        sql(db, f"DO $$ BEGIN PERFORM standing.apply_ts_effect(gen_random_uuid(),'{internal}',gen_random_uuid()); "
+            "RAISE EXCEPTION 'legacy ID accepted for new action'; EXCEPTION WHEN no_data_found THEN NULL; END $$;")
+        canonical = {**payload, 'action_id': str(uuid.uuid4()), 'subject': principal}
+        encoded = json.dumps(canonical).replace("'", "''")
+        sql(db, f"SELECT standing.apply_ts_effect(gen_random_uuid(),'{encoded}',gen_random_uuid());")
+        assert sql(db, f"SELECT subject_id::text FROM standing.ts_effects WHERE action_id='{canonical['action_id']}';") == subject
+        assert sql(db, f"SELECT subject_namespace FROM standing.ts_effect_receipts WHERE action_id='{canonical['action_id']}';") == 'keycloak_sub'
+        assert sql(db, 'SELECT count(*) FROM standing.ts_effects;') == '2'
         migrate(db, None)
-    print('PASS: V056 receipt upgrade preserves source commands and history; missing/conflicting provenance aborts atomically; exact replay remains idempotent')
+    print('PASS: V056 receipt upgrade preserves source commands and namespace history; missing/conflicting provenance aborts atomically; historical replay acknowledges without reinterpreting identity; new actions resolve only realm principals')

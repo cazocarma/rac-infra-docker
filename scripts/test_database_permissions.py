@@ -226,7 +226,7 @@ def main():
             from case_fixture import verify as verify_cases
             verify_cases(sql, database)
             from standing_effects_fixture import verify as verify_effects
-            verify_effects(sql, database, client)
+            verify_effects(sql, database)
             # Replacing catalog activities requires DELETE even when the profile
             # is new. Other owners retain no delete permission on them.
             sql(database, 'DELETE FROM compa_activities WHERE false;', 'rac_user')
@@ -258,8 +258,8 @@ def main():
             assert sql(restored, "SELECT has_table_privilege('rac_chat','sesion','UPDATE');").stdout.strip() == 'f'
             assert sql(restored, "SELECT has_table_privilege('rac_chat','mensaje','INSERT');").stdout.strip() == 't'
             assert sql(restored, 'SELECT count(*) FROM reserva_resena;', 'rac_user').stdout.strip() == '1'
-            assert sql(restored, 'SELECT count(*) FROM standing.ts_effect_receipts;').stdout.strip() == '7'
-            assert sql(restored, 'SELECT count(*) FROM standing.ts_effect_deliveries;').stdout.strip() == '8'
+            assert sql(restored, 'SELECT count(*) FROM standing.ts_effect_receipts;').stdout.strip() == '9'
+            assert sql(restored, 'SELECT count(*) FROM standing.ts_effect_deliveries;').stdout.strip() == '10'
             assert sql(restored, "SELECT bool_and(r.payload->>'action_id'=e.action_id::text) FROM standing.ts_effect_receipts r JOIN standing.ts_effects e USING(action_id);").stdout.strip() == 't'
             assert sql(restored, 'SELECT count(*) FROM listing_revisions;', 'rac_user').stdout.strip() == '2'
             assert sql(restored, 'SELECT count(*) FROM listing_revision_decisions;', 'rac_user').stdout.strip() == '2'
