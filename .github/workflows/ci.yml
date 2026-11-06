@@ -279,6 +279,9 @@ jobs:
       - name: Database policies against companion services
         working-directory: rac-infra-docker
         run: python scripts/test_migrations.py
+      - name: T&S relay transaction and function-only authority
+        working-directory: rac-infra-docker
+        run: python -u scripts/test_ts_effect_relay.py
       - name: Document owner SQL against scoped disposable PostgreSQL
         working-directory: rac-infra-docker
         run: python scripts/test_document_source.py

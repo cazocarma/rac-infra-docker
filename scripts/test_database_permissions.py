@@ -225,6 +225,8 @@ def main():
             verify_evidence(sql, database)
             from case_fixture import verify as verify_cases
             verify_cases(sql, database)
+            from ts_effect_relay_fixture import verify as verify_effect_relay
+            verify_effect_relay(sql, database)
             from standing_effects_fixture import verify as verify_effects
             verify_effects(sql, database)
             # Replacing catalog activities requires DELETE even when the profile
@@ -261,6 +263,8 @@ def main():
             assert sql(restored, 'SELECT count(*) FROM standing.ts_effect_receipts;').stdout.strip() == '9'
             assert sql(restored, 'SELECT count(*) FROM standing.ts_effect_deliveries;').stdout.strip() == '10'
             assert sql(restored, "SELECT bool_and(r.payload->>'action_id'=e.action_id::text) FROM standing.ts_effect_receipts r JOIN standing.ts_effects e USING(action_id);").stdout.strip() == 't'
+            assert sql(restored, 'SELECT count(*) FROM ts.effect_delivery_state WHERE confirmed_at IS NULL;').stdout.strip() == '0'
+            assert sql(restored, 'SELECT count(*) FROM ts.outbox o LEFT JOIN ts.effect_delivery_state d USING(event_id) WHERE d.event_id IS NULL;').stdout.strip() == '0'
             assert sql(restored, 'SELECT count(*) FROM listing_revisions;', 'rac_user').stdout.strip() == '2'
             assert sql(restored, 'SELECT count(*) FROM listing_revision_decisions;', 'rac_user').stdout.strip() == '2'
             assert sql(restored, "SELECT bool_and(payload_hash=public.digest(payload_canonical,'sha256')) FROM listing_revisions;", 'rac_user').stdout.strip() == 't'

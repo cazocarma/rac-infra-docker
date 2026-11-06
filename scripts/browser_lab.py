@@ -1,5 +1,6 @@
 """Start/stop a frozen, loopback-only browser regression lab; no DEV secrets."""
 import argparse
+import hashlib
 import io
 import json
 import os
@@ -76,6 +77,7 @@ def validate_model(model, project, web_port, identity_port, sources_root):
 def snapshot(directory):
     pins = json.loads((ROOT / 'ci/p04-companion-candidate.json').read_text(encoding='utf-8'))
     revisions = {}
+    archives = {}
     for name in (*pins, ROOT.name):
         checkout = ROOT.parent / name
         revision = subprocess.check_output(['git', '-C', str(checkout), 'rev-parse', 'HEAD'], text=True).strip()
@@ -85,9 +87,13 @@ def snapshot(directory):
         target = directory / 'sources' / name
         target.mkdir(parents=True)
         archive = subprocess.check_output(['git', '-C', str(checkout), 'archive', '--format=tar', revision])
+        (directory / 'archives').mkdir(exist_ok=True)
+        (directory / 'archives' / (name + '.tar')).write_bytes(archive)
+        archives[name] = {'revision': revision, 'sha256': hashlib.sha256(archive).hexdigest()}
         with tarfile.open(fileobj=io.BytesIO(archive)) as source:
             source.extractall(target, filter='data')
         revisions[name] = revision
+    (directory / 'archive-manifest.json').write_text(json.dumps(archives, indent=2), encoding='utf-8')
     return revisions
 
 
