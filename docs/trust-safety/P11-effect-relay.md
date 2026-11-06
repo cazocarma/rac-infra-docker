@@ -35,6 +35,10 @@ de otro dueño; el futuro consumidor debe comprobar V058 en su propia frontera.
 
 La toma bloquea una fila operativa con `SKIP LOCKED`. Una fila anterior sin
 confirmar bloquea sucesoras del mismo principal; otros principales progresan.
+El emisor toma un lock transaccional por principal antes de asignar el ID del
+outbox, incluso entre casos distintos: una transacción posterior no puede
+publicar primero mientras su predecesora aún es invisible por no haber hecho
+commit. No se infiere orden de commit de un contador asignado sin serialización.
 La llamada del publisher tiene cinco segundos dentro de una transacción de ocho
 segundos. No se mantienen locks sobre casos, usuarios o reservas durante I/O.
 

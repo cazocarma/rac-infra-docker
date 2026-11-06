@@ -61,6 +61,7 @@ def main():
         for test in ('TestRelayPostgres', 'TestRelayPostgres/ordering-retry-and-independent-subject',
                      'TestRelayPostgres/transaction-fence-and-abandoned-claim',
                      'TestRelayPostgres/confirmation-followed-by-database-cancellation',
+                     'TestRelayPostgres/producer-order-across-cases-before-commit',
                      'TestRelayPostgres/source-and-authority-boundary'):
             assert '--- PASS: ' + test in output, 'Mandatory relay case did not execute: ' + test
         print('PASS: function-only Go relay, per-subject order, independent progress, exact retry, backoff, transaction fencing, abandoned claim recovery, cancellation and immutable source; race/vet clean', flush=True)

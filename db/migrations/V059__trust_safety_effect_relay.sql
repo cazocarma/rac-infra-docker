@@ -105,3 +105,19 @@ REVOKE ALL ON FUNCTION ts.create_effect_delivery_state(),ts.preserve_effect_comm
  ts.effect_relay_ready(),ts.claim_effect(audit.reference),ts.confirm_effect(audit.reference),
  ts.retry_effect(audit.reference),ts.effect_relay_backlog() FROM PUBLIC;
 GRANT SELECT ON ts.effect_delivery_state TO rac_backup;
+
+CREATE OR REPLACE FUNCTION ts.effect(p_action ts.actions) RETURNS void
+ LANGUAGE plpgsql SET search_path=pg_catalog AS $$
+BEGIN
+ -- Serialize before allocating the outbox ID, across different cases of the
+ -- same principal. A visible successor cannot overtake an uncommitted source.
+ PERFORM pg_advisory_xact_lock(hashtextextended('ts-effect-source:'||p_action.subject::text,0));
+ INSERT INTO ts.outbox(event_type,payload) VALUES('ts.action.effective.v1',jsonb_build_object(
+  'action_id',p_action.id,'case_id',p_action.case_id,'subject',p_action.subject,'kind',p_action.kind,
+  'reason_code',p_action.reason_code,'policy_version',p_action.policy_version,
+  'duration_hours',p_action.duration_hours,'notice_key',p_action.notice_key,'revokes',p_action.revokes,
+  'effective_at',to_char(p_action.effective_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')));
+ INSERT INTO ts.case_events(case_id,kind,actor,resource)
+ VALUES(p_action.case_id,CASE WHEN p_action.kind='revocation' THEN 'action_revoked' ELSE 'action_effective' END,
+  COALESCE(p_action.approved_by,p_action.proposed_by),p_action.id);
+END $$;
