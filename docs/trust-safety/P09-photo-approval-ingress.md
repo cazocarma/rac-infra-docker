@@ -90,8 +90,14 @@ Un cambio de cuenta antes del envío impide despachar; después del envío conse
 la recuperación para la identidad original. El journal admite un namespace
 separado del editorial y mantiene el aislamiento por issuer, subject y origen.
 
-Esta base todavía no está conectada a ListingReviewConsole: no implica que la
-consola actual ya sobreviva una recarga ni habilita la aprobación de fotos.
+ListingReviewConsole usa el journal antes de cada envío. Al recargar, recupera
+los comandos de la cuenta y ofrece un reintento explícito aunque la revisión ya
+no esté en la cola; nunca reenvía durante la carga. Un fallo de almacenamiento o
+recuperación bloquea nuevas escrituras. StaffScreen comparte el store seguro,
+pero separa el namespace de documentos y publicaciones. Los rechazos definitivos
+del primer intento permiten una decisión nueva; tras un resultado incierto solo
+un recibo exacto permite resolver el evento. El doble clic no inicia otro envío.
+La aprobación de fotos sigue cerrada hasta completar las señales y confirmación.
 Las pruebas focalizadas cubren reinicio con MFA, aislamiento, recibo exacto y
 versiones mayores al entero seguro de JavaScript. La prueba no usa Keycloak real.
 
@@ -101,9 +107,12 @@ exportado desde Git limpio a Linux con Flutter 3.44.0:
 281 pruebas y build web release completados. La primera ejecución
 `.local/p09-frontend-eab6634898.log` terminó con exit 1 por cinco avisos de
 llaves en el análisis estático; se conserva como fallo, corregido en el commit
-validado. Los manifiestos fijan el SHA validado, sin push ni CI remoto.
+validado. La conexión del journal a la consola se validó igual en
+`4910d783b7c35f7941257a66c70132b4487edaef`:
+`.local/p09-frontend-4910d783b7.log`, exit 0, 282 pruebas y build web release.
+Los manifiestos fijan ese SHA.
 
-Pendiente de UI: conectar la recuperación durable, usar capabilities para habilitar la acción, mostrar las señales
+Pendiente de UI: usar capabilities para habilitar la acción, mostrar las señales
 de la foto y su vista exacta, confirmación humana explícita y vínculo del comando
 a la cuenta staff. Renovar MFA puede ocurrir después de que el owner ya haya
 confirmado; esa respuesta debe tratarse como incierta y conservar el evento para
