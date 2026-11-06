@@ -285,6 +285,25 @@ BEGIN
  RETURN jsonb_build_object('case_id',p_case,'assignee',p_assignee);
 END $$;
 
+-- Triage view for staff: severity-first, no subject, reporter or content.
+-- Cases where the viewer is the subject or a reporter are omitted.
+CREATE FUNCTION ts.case_queue(p_event audit.reference,p_actor audit.reference,p_policy audit.reference,p_limit int)
+ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
+BEGIN
+ IF p_event IS NULL OR p_actor IS NULL OR p_policy IS NULL OR p_limit IS NULL OR p_limit NOT BETWEEN 1 AND 50 THEN
+  RAISE EXCEPTION 'invalid_case_command' USING ERRCODE='22023';
+ END IF;
+ RETURN COALESCE((SELECT jsonb_agg(item ORDER BY severity,opened_at) FROM (
+  SELECT c.severity,c.opened_at,jsonb_build_object('id',c.id,'severity',c.severity,
+   'opened_at',to_char(c.opened_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+   'reports',(SELECT count(*) FROM ts.reports r WHERE r.case_id=c.id AND r.state='open'),
+   'assigned',EXISTS(SELECT FROM ts.case_assignments a WHERE a.case_id=c.id AND a.released_at IS NULL),
+   'assigned_to_me',ts.assigned(c.id,p_actor),
+   'pending_approval',EXISTS(SELECT FROM ts.actions x WHERE x.case_id=c.id AND x.state='proposed' AND x.proposed_by<>p_actor)) item
+  FROM ts.cases c WHERE c.state='open' AND NOT ts.conflicted(c.id,p_actor)
+  ORDER BY c.severity,c.opened_at LIMIT p_limit) q),'[]');
+END $$;
+
 -- Only the assigned, non-conflicted reviewer sees the case. Reporter
 -- identities are not returned; evidence opens separately and is audited.
 CREATE FUNCTION ts.case_detail(p_event audit.reference,p_actor audit.reference,p_policy audit.reference,p_case uuid)
@@ -319,6 +338,14 @@ DECLARE c ts.cases%ROWTYPE; created ts.actions%ROWTYPE;
 BEGIN
  IF p_event IS NULL OR p_actor IS NULL OR p_policy IS NULL OR p_case IS NULL OR p_kind IS NULL OR p_kind='revocation' THEN
   RAISE EXCEPTION 'invalid_case_command' USING ERRCODE='22023';
+ END IF;
+ -- A retried command (same event) returns its original action.
+ SELECT * INTO created FROM ts.actions WHERE id=(SELECT resource_id FROM audit.log WHERE event_id=p_event AND action='action.decided' LIMIT 1);
+ IF FOUND THEN
+  IF created.case_id<>p_case OR created.proposed_by<>p_actor OR created.kind<>p_kind OR created.reason_code<>p_reason THEN
+   RAISE EXCEPTION 'case_command_conflict' USING ERRCODE='23505';
+  END IF;
+  RETURN jsonb_build_object('action_id',created.id,'state',created.state);
  END IF;
  SELECT * INTO c FROM ts.cases WHERE id=p_case FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'case_not_found' USING ERRCODE='P0002'; END IF;
@@ -380,6 +407,13 @@ DECLARE a ts.actions%ROWTYPE; created ts.actions%ROWTYPE;
 BEGIN
  IF p_event IS NULL OR p_actor IS NULL OR p_policy IS NULL OR p_action IS NULL THEN
   RAISE EXCEPTION 'invalid_case_command' USING ERRCODE='22023';
+ END IF;
+ SELECT * INTO created FROM ts.actions WHERE id=(SELECT resource_id FROM audit.log WHERE event_id=p_event AND action='action.decided' LIMIT 1);
+ IF FOUND THEN
+  IF created.revokes IS DISTINCT FROM p_action OR created.proposed_by<>p_actor THEN
+   RAISE EXCEPTION 'case_command_conflict' USING ERRCODE='23505';
+  END IF;
+  RETURN jsonb_build_object('action_id',created.id,'revokes',created.revokes);
  END IF;
  SELECT * INTO a FROM ts.actions WHERE id=p_action FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'action_not_found' USING ERRCODE='P0002'; END IF;

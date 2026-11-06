@@ -21,6 +21,9 @@ def main():
     storage, volume, database = name + '-storage', name + '-data', name + '-db'
     capture_password = 'synthetic-evidence-capture-' + uuid.uuid4().hex
     reader_password = 'synthetic-evidence-reader-' + uuid.uuid4().hex
+    staff_password = 'synthetic-cases-staff-' + uuid.uuid4().hex
+    intake_password = 'synthetic-cases-intake-' + uuid.uuid4().hex
+    ref = 'audit.reference,audit.reference,audit.reference'
     access, secret = 'synthetic-evidence-root', 'synthetic-evidence-root-password-123456'
     admin = ROOT.parent / 'rac-admin-service'
     platform = os.environ.get('RAC_EVIDENCE_PLATFORM_SOURCE', '')
@@ -60,6 +63,11 @@ def main():
                 'ts.evidence_commit(audit.reference,audit.reference,audit.reference,uuid,text,text,text)']),
             'rac_evidence_reader_lab': (reader_password, ['ts.evidence_ready()',
                 'ts.evidence_open(audit.reference,audit.reference,audit.reference,uuid,text)']),
+            'rac_ts_staff_lab': (staff_password, [f'ts.case_queue({ref},integer)', f'ts.case_assign({ref},uuid,audit.reference)',
+                f'ts.case_detail({ref},uuid)', f'ts.action_propose({ref},uuid,text,text,text,integer,text)',
+                f'ts.action_approve({ref},uuid)', f'ts.action_revoke({ref},uuid,text)', f'ts.appeal_decide({ref},uuid,text)']),
+            'rac_ts_intake_lab': (intake_password, [f'ts.report_submit({ref},text,uuid,audit.reference,text,uuid)',
+                f'ts.appeal_submit({ref},uuid,uuid)']),
         }
         statements = []
         for role, (password, functions) in grants.items():
@@ -91,14 +99,18 @@ def main():
                      '-e', 'RAC_EVIDENCE_TEST_ENDPOINT=http://evidence-store-fixture:9000',
                      '-e', 'RAC_EVIDENCE_TEST_ACCESS_KEY=' + access, '-e', 'RAC_EVIDENCE_TEST_SECRET_KEY=' + secret,
                      '-e', f'RAC_EVIDENCE_CAPTURE_DSN=postgres://rac_evidence_capture_lab:{capture_password}@evidence-db-fixture:5432/evidence?sslmode=disable',
+                     '-e', f'RAC_CASES_STAFF_DSN=postgres://rac_ts_staff_lab:{staff_password}@evidence-db-fixture:5432/evidence?sslmode=disable',
+                     '-e', f'RAC_CASES_INTAKE_DSN=postgres://rac_ts_intake_lab:{intake_password}@evidence-db-fixture:5432/evidence?sslmode=disable',
                      '-e', f'RAC_EVIDENCE_READER_DSN=postgres://rac_evidence_reader_lab:{reader_password}@evidence-db-fixture:5432/evidence?sslmode=disable',
-                     GO, 'sh', '-c', prepare + f' && go test {mode} -race -count=1 -v ./internal/evidencestore')
-        if '--- PASS: TestRustFSCompliance' not in result.stdout or '--- PASS: TestServicePostgresRustFS' not in result.stdout:
+                     GO, 'sh', '-c', prepare + f' && go test {mode} -race -count=1 -v ./internal/evidencestore ./internal/cases')
+        if '--- PASS: TestRustFSCompliance' not in result.stdout or '--- PASS: TestServicePostgresRustFS' not in result.stdout                 or '--- PASS: TestCasesPostgres' not in result.stdout:
             raise RuntimeError('RustFS evidence proof did not run\n' + result.stdout[-2000:])
         print('PASS: sealed COMPLIANCE capture, exact-version open, create-only, delete/shorten denial, '
               'delete-marker isolation and no plaintext in the object store', flush=True)
         print('PASS: migrated registry with separate function-only capture/reader logins, permission split, '
               'justification, MFA expiry during read and audited access before reveal', flush=True)
+        print('PASS: staff case HTTP over function-only logins: queue/detail without identities, conflict refusal, '
+              'replay-safe proposal, four eyes and independent appeal', flush=True)
         print('PASS: synthetic EvidenceStore proof only; not key custody, retention approval or off-PC durability',
               flush=True)
     finally:

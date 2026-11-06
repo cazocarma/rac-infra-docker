@@ -4,7 +4,7 @@ import uuid
 
 REF = 'audit.reference,audit.reference,audit.reference'
 INTAKE = (f'ts.report_submit({REF},text,uuid,audit.reference,text,uuid)', f'ts.appeal_submit({REF},uuid,uuid)')
-STAFF = (f'ts.case_assign({REF},uuid,audit.reference)', f'ts.case_detail({REF},uuid)',
+STAFF = (f'ts.case_queue({REF},integer)', f'ts.case_assign({REF},uuid,audit.reference)', f'ts.case_detail({REF},uuid)',
          f'ts.action_propose({REF},uuid,text,text,text,integer,text)', f'ts.action_approve({REF},uuid)',
          f'ts.action_revoke({REF},uuid,text)', f'ts.appeal_decide({REF},uuid,text)')
 
@@ -53,6 +53,10 @@ def verify(sql, database):
     # Conflicts of interest: subject or reporter can neither assign nor be assigned.
     for actor, assignee in ((subject, agent), (lead, subject), (lead, r1), (r2, agent)):
         assert call(staff, 'case_assign', actor, policy, case, assignee, ok=False).returncode != 0, f'Conflicted assignment {actor}->{assignee}'
+    queue = call(staff, 'case_queue', lead, policy, 50)
+    assert [q['severity'] for q in queue if q['id'] == case] == ['P1'] and all('subject' not in q for q in queue), 'Queue exposed subject'
+    assert all(q['id'] != case for q in call(staff, 'case_queue', r1, policy, 50)), 'Reporter saw own reported case'
+    assert call(staff, 'case_queue', lead, policy, 51, ok=False).returncode != 0
     call(staff, 'case_assign', lead, policy, case, agent)
     detail = call(staff, 'case_detail', agent, policy, case)
     assert len(detail['reports']) == 2 and all('reporter' not in r for r in detail['reports']), 'Reporter identity exposed'
@@ -61,6 +65,10 @@ def verify(sql, database):
     warning = call(staff, 'action_propose', agent, policy, case, 'warning', 'drug_offer', 'actions-fixture-1', None, 'actionWarning')
     assert warning['state'] == 'effective'
     assert call(staff, 'action_propose', lead, policy, case, 'warning', 'drug_offer', 'actions-fixture-1', None, 'actionWarning', ok=False).returncode != 0, 'Unassigned staff acted'
+    replay = str(uuid.uuid4())
+    restrict = f"SELECT ts.action_propose('{replay}','{agent}','{policy}','{case}','restrict_publish','drug_offer','actions-fixture-1',24,'actionRestrict');"
+    assert execute(restrict, staff).stdout == execute(restrict, staff).stdout, 'Retried command created another action'
+    assert execute(restrict.replace('restrict_publish', 'restrict_booking'), staff, ok=False).returncode != 0, 'Event reused for another command'
     ban = call(staff, 'action_propose', agent, policy, case, 'ban', 'drug_offer', 'actions-fixture-1', None, 'actionBan')
     assert ban['state'] == 'proposed', 'Ban became effective with one reviewer'
     for approver in (agent, subject, r1):
@@ -86,11 +94,11 @@ def verify(sql, database):
     revoked = call(staff, 'action_revoke', agent, policy, warning['action_id'], 'warning_withdrawn')
     assert revoked['revokes'] == warning['action_id']
     outbox = execute(f"SELECT string_agg(payload->>'kind',',' ORDER BY id) FROM ts.outbox WHERE payload->>'subject'='{subject}';").stdout.strip()
-    assert outbox == 'warning,ban,revocation,revocation', 'Effects not emitted exactly once in order: ' + outbox
+    assert outbox == 'warning,restrict_publish,ban,revocation,revocation', 'Effects not emitted exactly once in order: ' + outbox
     history = execute(f"SELECT count(*) FROM ts.actions WHERE case_id='{case}';").stdout.strip()
-    assert history == '4', 'Revocation rewrote instead of appending: ' + history
+    assert history == '5', 'Revocation rewrote instead of appending: ' + history
     audits = execute(f"SELECT string_agg(action||'='||n,',' ORDER BY action) FROM (SELECT action,count(*) n FROM audit.log WHERE case_id='{case}' GROUP BY action) a;").stdout.strip()
-    assert audits == 'action.decided=4,appeal.decided=1,case.assigned=1,evidence.accessed=1,report.received=2', 'Audit trail mismatch: ' + audits
+    assert audits == 'action.decided=5,appeal.decided=1,case.assigned=1,evidence.accessed=1,report.received=2', 'Audit trail mismatch: ' + audits
     for role in ('rac_user', 'rac_match', 'rac_chat', 'rac_alert', intake):
         assert execute('SELECT count(*) FROM ts.cases;', role, ok=False).returncode != 0, f'{role} read cases'
         assert execute(f"SELECT ts.case_assign(gen_random_uuid(),'{lead}','{policy}','{case}','{independent}');", role, ok=False).returncode != 0, f'{role} assigned a case'
