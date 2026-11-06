@@ -66,9 +66,13 @@ def prove(run, root, network, database, tools, fixtures):
                 'RAC_PHOTO_STAGING_ACCESS_KEY': fixtures['PHOTO_STAGING_ACCESS_KEY'],
                 'RAC_PHOTO_STAGING_SECRET_KEY': fixtures['PHOTO_STAGING_SECRET_KEY'],
             }
+            Path(temporary).chmod(0o755)
             flags = []
             for name,value in secrets.items():
                 (Path(temporary)/name).write_text(value,encoding='utf-8')
+                # Synthetic, per-run secrets: the image runs as uid 10001, which
+                # cannot traverse the runner's 0700 temporary directory on Linux.
+                (Path(temporary)/name).chmod(0o444)
                 flags += ['-e',name+'_FILE=/run/secrets/'+name]
             try:
                 run('docker','run','-d','--name',worker,'--network',network,
