@@ -87,7 +87,12 @@ def prove(run, root, network, database, tools, fixtures):
                     if result:
                         break
                     if run('docker','inspect','--format','{{.State.Running}}',worker).stdout.strip()!='true':
-                        raise RuntimeError('Worker exited before committing its private result')
+                        # The worker logs only fixed, non-sensitive status lines.
+                        tail = run('docker','logs','--tail','20',worker,ok=False)
+                        lines = [line[:200] for line in (tail.stdout+tail.stderr).splitlines()[-20:]]
+                        raise RuntimeError('Worker exited before committing its private result:
+' + '
+'.join(lines))
                     time.sleep(1)
                 else:
                     raise RuntimeError('Worker did not complete the synthetic job within the test budget')
