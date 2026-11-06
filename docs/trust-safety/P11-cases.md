@@ -148,6 +148,36 @@ Cobertura de la versión final:
 No se aplicaron migraciones al DEV habitual ni se ejecutó CI remoto. Las pruebas
 no demuestran todavía un flujo completo Keycloak→caso→broker→standing.
 
+### Validación de identidad V058 — 6 de noviembre de 2026
+
+Infra `8654ef0b0d7f242e85bf1515ee17893b539aee19` se exportó desde Git limpio,
+con los compañeros fijados en
+`.local/rac-p11-receipt-proof-6e75bc35cfe5/revisions.json`.
+`results.json` confirma exit 0 en sintaxis (117 fuentes), permisos y migraciones
+con regresión user. La suite de permisos incluye fresh/upgrade V018 con migrador
+no superusuario y dump/restore de nueve recibos y diez vínculos sintéticos.
+
+Los laboratorios focalizados también terminaron exit 0:
+`.local/p11-principal-focused-2026-11-06.log` y
+`.local/p11-principal-focused-final-2026-11-06.log`. Cubren IDs internos y de
+Keycloak distintos, colisión entre namespaces de dos cuentas, principal ausente,
+revocación cruzada, tipos/límites de comandos nuevos, helpers privados, replays
+y una sola entrega ganadora bajo concurrencia. El upgrade poblado prueba que un
+recibo histórico sigue reconociéndose después de cambiar la vinculación actual,
+sin reinterpretar su identidad, y que una acción nueva solo resuelve el principal.
+
+Contratos `f0b3c26a7339b38039cbcf880eeca8e32849d2bf`: 21 tests y validación
+OpenAPI exit 0; registros `.local/p11-contract-principals-retry-2026-11-06.log`
+y `.local/p11-contract-openapi-2026-11-06.log`. La ejecución inicial quedó
+incompleta por faltar PyYAML en el venv; se instalaron las dependencias fijadas
+por el CI existente en un venv local separado y se repitió la suite completa.
+El esquema preparado no se consumió por AMQP ni se publicó remotamente.
+
+Antes de activar el futuro consumidor debe comprobarse V058 como esquema mínimo:
+la firma SQL por sí sola también existe en versiones que interpretaban otro
+namespace. El intake y el recorrido real con tokens/owner snapshots/broker
+siguen siendo gates abiertos; estas pruebas no los sustituyen.
+
 ## Pendiente
 
 - Ingreso de reportes y apelaciones de clientes, con la autenticación del
