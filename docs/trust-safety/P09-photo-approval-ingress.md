@@ -112,10 +112,33 @@ validado. La conexión del journal a la consola se validó igual en
 `.local/p09-frontend-4910d783b7.log`, exit 0, 282 pruebas y build web release.
 Los manifiestos fijan ese SHA.
 
-Pendiente de UI: usar capabilities para habilitar la acción, mostrar las señales
-de la foto y su vista exacta, confirmación humana explícita y vínculo del comando
-a la cuenta staff. Renovar MFA puede ocurrir después de que el owner ya haya
-confirmado; esa respuesta debe tratarse como incierta y conservar el evento para
-consultar/reintentar con la misma identidad, sin recopiado automático ni nuevo ID.
-También faltan la integración real de todos los hops/navegador, corte público,
-URLs/retirada y restore con datos. No se declara P08/P09 cerrado.
+## Señales de la foto y confirmación humana
+
+V053 reemplaza `listing_review.revision` con la misma firma y agrega
+`photo_review`, un resumen cerrado del resultado procesado exacto: SHA-256
+normalizado, riesgo, disposición, controles pendientes, categorías sin evaluar,
+categoría y regla de cada señal, estado de similitud y cantidad de coincidencias.
+No expone texto OCR, spans, huellas, clave del objeto ni ids de caso o evidencia
+de imágenes vetadas. Valores fuera del formato cerrado se descartan. Los grants
+existentes del lector no cambian.
+
+La consola consulta `capabilities` y solo ofrece la aprobación con foto cuando
+el owner la declara activa. Muestra señales, coincidencias y cobertura; un
+control sin evaluar se presenta como pendiente y nunca como aprobado. La vista
+previa calcula el SHA-256 de los bytes recibidos y solo la muestra si coincide
+con el resumen. La confirmación explícita se habilita con esa vista exacta en
+pantalla, se pierde al cerrarla, cambiar de revisión o perder el ciclo de vida,
+y el comando va a `photo-approval` con el mismo evento durable. Las señales solo
+priorizan: no aprueban ni rechazan por sí solas.
+
+Validación local: `TestReaderPostgresHTTP/private-photo-preview` exige el resumen exacto y que no
+filtre texto OCR, spans, ids de caso/evidencia, huellas, clave ni categorías
+fuera de formato. Frontend `cd7739d`: pruebas de aprobación con vista verificada,
+digest distinto y capability apagada, además de la suite completa.
+
+Pendiente: renovar MFA puede ocurrir después de que el owner ya haya confirmado;
+esa respuesta se trata como incierta y conserva el evento para reintentar con la
+misma identidad. Faltan la integración real de todos los hops con navegador y
+Keycloak, corte público, URLs/retirada, reconciliación, observabilidad y restore
+con datos. Los criterios de revisión de fotos dependen de decisiones D04–D14
+pendientes. No se declara P08/P09 cerrado.
