@@ -31,7 +31,10 @@ def prove(run, root, network, database, tools, fixtures):
     try:
         run('docker','build','-q','-t',image,'-f',str(source/'Dockerfile.photo-worker'),str(source))
         descriptor = run('docker','image','inspect','--format','{{json .Descriptor}}',image).stdout
-        image_digest = json.loads(descriptor)['digest']
+        # containerd stores expose the manifest descriptor; the classic store
+        # (GitHub runners) does not, so fall back to the immutable image ID.
+        parsed = json.loads(descriptor) if descriptor.strip() else None
+        image_digest = parsed['digest'] if parsed else run('docker','image','inspect','--format','{{.Id}}',image).stdout.strip()
         if not re.fullmatch('sha256:[a-f0-9]{64}',image_digest):
             raise RuntimeError('Immutable worker image descriptor required')
         sql(f"""INSERT INTO public.usuario(id,nombre,correo,rol,keycloak_id)
