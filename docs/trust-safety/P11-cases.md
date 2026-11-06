@@ -57,6 +57,68 @@ estables. Rutas bajo `/api/admin/staff/cases`, `/actions/:id/...` y
   sobre PostgreSQL real con los logins de staff e intake.
   Registro: `.local/p11-cases-http-2026-11-05.log`, exit 0.
 
+## Recepción de efectos en standing
+
+V056 define el ledger del dueño user: aplica restricciones, suspensión y ban por
+la única ruta `standing.change_account`, conserva accesos protectores, revoca sin
+reescribir acciones y permite recalcular vencimientos. Sigue sin existir un
+consumidor de RabbitMQ ni una provisión activada de este ingreso.
+
+V057 incorpora el comando JSON completo e inmutable por acción y el vínculo
+inmutable de cada ID de entrega aceptado, incluidos los IDs alternativos para
+una acción idéntica. Un duplicado con distinto caso, política, duración, inicio,
+revocación, motivo o aviso se rechaza; un evento usado por otra acción no puede
+retargetearse. Restricción, recibo y vínculo se confirman en la misma transacción.
+La entrega concurrente de un evento para dos acciones solo puede tener un ganador.
+Los roles de negocio no reciben lectura directa de estos registros.
+
+La actualización desde V056 solo incorpora el comando original cuando el evento
+del outbox de T&S coincide con el evento recibido y todos los campos conservados
+en el ledger. Se marca `source_outbox_backfill`: no se presenta como un cuerpo
+capturado originalmente por el receptor. Las recepciones nuevas usan `received`.
+Una fuente ausente o contradictoria aborta la migración completa con
+`ts_effect_receipt_reconciliation_required`, preservando el ledger anterior.
+Debe investigarse la procedencia original antes de reintentar; no se permite
+inventar el cuerpo perdido, cambiar IDs, desactivar triggers ni aceptar un
+duplicado ambiguo para superar ese gate.
+
+El relay, el consumidor y sus credenciales opt-in siguen pendientes. Estas
+garantías de BD no equivalen a un transporte integrado ni a P11 cerrado.
+
+### Validación local — 6 de noviembre de 2026
+
+Referencia previa a V057: ensayos completos de migraciones (user/match/chat),
+permisos y EvidenceStore/casos HTTP terminaron exit 0, en contenedores
+descartables. Registros relativos a raíz RAC:
+`.local/p11-verified-migrations-retry-2026-11-06.log`,
+`.local/p11-verified-permissions-retry-2026-11-06.log` y
+`.local/p11-verified-evidence-retry-2026-11-06.log`.
+Los intentos iniciales sin `-retry` fallaron antes del ensayo porque el motor
+Docker estaba apagado; se conservaron y no cuentan como pruebas de código.
+
+La versión final V057 se probó desde Git limpio, infra
+`f5d963db3f33fa1983fcf9544efe6852ddd927a1`, con los compañeros exactos indicados
+en `.local/rac-p11-receipt-proof-b726c5bf7c7e/revisions.json`.
+`results.json` registra exit 0 para sintaxis (116 fuentes Python), permisos y
+migraciones con regresión user. Los dos snapshots anteriores `482444d0d02f` y
+`67e2527187f7` también terminaron en verde, pero son iteraciones previas y no
+sustituyen al snapshot final.
+
+Cobertura de la versión final:
+
+- Fresh y upgrade V018 con Flyway no superusuario, permisos negativos y roles
+  de ingreso limitados a funciones.
+- Todos los campos alterados del comando, IDs de evento cruzados y alternativos,
+  colisión concurrente con un ganador, revocación y vencimiento.
+- Recibos y vínculos inmutables; comando demasiado grande revierte sin efecto.
+- Dump/restore conserva siete recibos y ocho vínculos de entrega sintéticos.
+- Upgrade V056 poblado: importa el comando correlacionado y marca su procedencia;
+  ausencia o contradicción aborta atómicamente sin perder el ledger anterior.
+- Repetición de migraciones, checksums y regresión user/P08/P09/documentos.
+
+No se aplicaron migraciones al DEV habitual ni se ejecutó CI remoto. Las pruebas
+no demuestran todavía un flujo completo Keycloak→caso→broker→standing.
+
 ## Pendiente
 
 - Ingreso de reportes y apelaciones de clientes, con la autenticación del
@@ -64,6 +126,13 @@ estables. Rutas bajo `/api/admin/staff/cases`, `/actions/:id/...` y
   cifrada mediante EvidenceStore.
 - Consumidores de `ts.action.effective.v1` en user (standing), match y chat, y
   avisos versionados en alert (S13/S14) sin revelar al reportante.
+- Antes de conectar intake y efectos, fijar y probar el namespace de sujeto:
+  staff usa el `sub` de Keycloak, pero `usuario.id` se genera independientemente
+  y `standing.account.subject_id` referencia ese ID interno. T&S debe comparar
+  reportante, sujeto y operadores en una identidad canónica para impedir
+  autorreportes y autocasos; user debe resolver esa identidad en su propio
+  dominio antes de aplicar standing. Probar IDs deliberadamente diferentes,
+  nunca asumir igualdad ni intentar ambos namespaces como fallback.
 - Consolas Flutter A1–A3/A5 y pantallas S12–S15.
 - Inventario, backfill y retirada de `chat_reporte`, `chat_auditoria` y
   `reporte`, preservando los límites `hasta_version`/`hasta_numero_legacy`.
