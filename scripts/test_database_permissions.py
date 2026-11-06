@@ -221,6 +221,10 @@ def main():
             verify_listing_revisions(sql, database, compa)
             from photo_source_fixture import verify as verify_photo_sources
             verify_photo_sources(sql,database,client,compa)
+            from evidence_fixture import verify as verify_evidence
+            verify_evidence(sql, database)
+            from case_fixture import verify as verify_cases
+            verify_cases(sql, database)
             # Replacing catalog activities requires DELETE even when the profile
             # is new. Other owners retain no delete permission on them.
             sql(database, 'DELETE FROM compa_activities WHERE false;', 'rac_user')
