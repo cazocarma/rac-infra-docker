@@ -3,12 +3,38 @@ on:
   pull_request: {}
   push:
     branches: [dev, qa, prd, main]
+  # Weekly full suite with the standing performance measurements; PRs skip them.
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch: {}
 permissions:
   contents: read
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  # Decides whether this run needs the heavy jobs (see scripts/ci_scope.py).
+  # Documentation-only changes and a push of a commit already verified by its
+  # pull request skip them; any doubt runs everything.
+  scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
+      measure: ${{ steps.scope.outputs.measure }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Select CI scope
+        id: scope
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/ci_scope.py
   workflow-policy:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -18,6 +44,8 @@ jobs:
           persist-credentials: false
       - run: make test-workflows
   repository-access:
+    needs: scope
+    if: needs.scope.outputs.full == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -68,6 +96,8 @@ jobs:
           path: rac-platform
           token: ${{ steps.repository-token.outputs.token }}
   storage:
+    needs: scope
+    if: needs.scope.outputs.full == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -79,7 +109,8 @@ jobs:
       - if: always()
         run: make storage-stop
   migrations:
-    needs: workflow-policy
+    needs: scope
+    if: needs.scope.outputs.full == 'true'
     defaults:
       run:
         working-directory: rac-infra-docker
@@ -157,13 +188,22 @@ jobs:
       - run: python -m unittest discover -s scripts -p "test_build_dev.py"
       - run: python -m unittest discover -s scripts -p "test_release_policy.py"
   integration:
-    timeout-minutes: 55
-    needs: [migrations, repository-access, workflow-policy]
+    # Independent suites run in parallel; each starts its own disposable
+    # databases, brokers and Compose projects. Nothing waits for migrations.
+    name: integration (${{ matrix.suite }})
+    needs: scope
+    if: needs.scope.outputs.full == 'true'
+    timeout-minutes: 40
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [labs, services, standing, stack]
     steps:
-      # The full stack plus labs nearly fills the hosted runner disk; drop
-      # preinstalled toolchains this job never uses before building images.
+      # The full stack nearly fills the hosted runner disk; drop preinstalled
+      # toolchains these suites never use before building images.
       - name: Free runner disk for the integration stack
+        if: matrix.suite == 'stack' || matrix.suite == 'standing'
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
           df -h /
@@ -266,46 +306,66 @@ jobs:
           path: rac-platform
           token: ${{ steps.repository-token.outputs.token }}
       - name: Browser Material labels against pinned frontend semantics
+        if: matrix.suite == 'labs'
         working-directory: rac-infra-docker
         run: python scripts/test_flutter_material_contract.py
       - name: Shared platform race tests at pinned revision
+        if: matrix.suite == 'labs'
         run: docker run --rm --mount type=bind,source="$PWD/rac-platform",target=/src,readonly -w /src golang:1.27.3 go test -race -count=1 ./...
       - name: Verify generated private dependency against pinned platform sources
+        if: matrix.suite == 'labs'
         working-directory: rac-infra-docker
         run: |
           python scripts/test_go_vendor.py
           python scripts/check_go_vendor.py
       - name: Keycloak least privilege, staff MFA and signed standing reader tokens
+        if: matrix.suite == 'services'
         working-directory: rac-infra-docker
         run: python scripts/test_identity_permissions.py
-      - name: Database policies against companion services
+      - name: Database policies against match and chat
+        if: matrix.suite == 'labs'
         working-directory: rac-infra-docker
-        run: python scripts/test_migrations.py
+        run: python scripts/test_migrations.py --services match chat
+      - name: Database policies against user
+        if: matrix.suite == 'services'
+        working-directory: rac-infra-docker
+        run: python scripts/test_migrations.py --services user
       - name: T&S relay transaction and function-only authority
+        if: matrix.suite == 'labs'
         working-directory: rac-infra-docker
         run: python -u scripts/test_ts_effect_relay.py
       - name: P11 relay publisher against disposable RabbitMQ
+        if: matrix.suite == 'labs'
         working-directory: rac-infra-docker
         run: python -u scripts/test_ts_relay_broker.py
       - name: P11 effect transport end to end with real workers and broker
+        if: matrix.suite == 'labs'
         working-directory: rac-infra-docker
         run: python -u scripts/test_ts_effect_e2e.py
       - name: Document owner SQL against scoped disposable PostgreSQL
+        if: matrix.suite == 'labs'
         working-directory: rac-infra-docker
         run: python scripts/test_document_source.py
       - name: Transactional messaging against disposable PostgreSQL and RabbitMQ
+        if: matrix.suite == 'labs'
         working-directory: rac-infra-docker
         run: python scripts/test_messaging.py
       - name: Reject persistent resources in the standing fault lab
+        if: matrix.suite == 'standing'
         working-directory: rac-infra-docker
         run: |
           python -m unittest discover -s scripts -p "test_standing_lab.py"
           python -m unittest discover -s scripts -p "test_standing_measurements.py"
       - name: Standing old-JWT and commit races across isolated Compose instances
+        if: matrix.suite == 'standing' && needs.scope.outputs.measure != 'true'
+        working-directory: rac-infra-docker
+        run: python -u scripts/test_standing_e2e.py
+      - name: Standing races with 100 measured revocation trials
+        if: matrix.suite == 'standing' && needs.scope.outputs.measure == 'true'
         working-directory: rac-infra-docker
         run: python -u scripts/test_standing_e2e.py --measure --report .local/p03-performance.json
       - name: Preserve sanitized standing performance evidence
-        if: always()
+        if: ${{ always() && matrix.suite == 'standing' && needs.scope.outputs.measure == 'true' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: standing-performance-${{ github.run_id }}-${{ github.run_attempt }}
@@ -314,6 +374,7 @@ jobs:
           if-no-files-found: ignore
           path: rac-infra-docker/.local/p03-performance.json
       - name: Prepare ephemeral DEV
+        if: matrix.suite == 'stack'
         working-directory: rac-infra-docker
         run: |
           cp envs/.env.dev.example envs/.env.dev
@@ -322,57 +383,62 @@ jobs:
           make storage-activate
           make backup-enable
       - name: S3 photo ownership and migration against disposable database
+        if: matrix.suite == 'services'
         working-directory: rac-infra-docker
         run: python scripts/test_photo_storage.py
       - name: P10 EvidenceStore against disposable RustFS and PostgreSQL
+        if: matrix.suite == 'services'
         working-directory: rac-infra-docker
         run: python scripts/test_evidence_store.py
       - name: API and PKCE integration
+        if: matrix.suite == 'stack'
         working-directory: rac-infra-docker
         run: make check test-integration
       - name: Recover notification delivery after broker outage
+        if: matrix.suite == 'stack'
         working-directory: rac-infra-docker
         run: python scripts/test_messaging_recovery.py
       - name: Install browser test runtime
+        if: matrix.suite == 'stack'
         id: browser-runtime
         working-directory: rac-infra-docker
         run: |
           python -m pip install playwright==1.55.0
           python -m playwright install --with-deps chromium
       - name: Web login and booking integration
-        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
+        if: ${{ matrix.suite == 'stack' && !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_browser.py
       - name: Administrative dashboard integration
-        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
+        if: ${{ matrix.suite == 'stack' && !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_admin_browser.py
       - name: Time off and pending expiry integration
-        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
+        if: ${{ matrix.suite == 'stack' && !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_schedule_browser.py
       - name: Web notification inbox integration
-        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
+        if: ${{ matrix.suite == 'stack' && !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_notifications_browser.py
       - name: Web onboarding integration
-        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
+        if: ${{ matrix.suite == 'stack' && !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_browser_onboarding.py
       - name: Web reviews integration
-        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
+        if: ${{ matrix.suite == 'stack' && !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_reviews_browser.py
       - name: Web private chat integration
-        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
+        if: ${{ matrix.suite == 'stack' && !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_chat_browser.py
       - name: Identity theme integration
-        if: ${{ !cancelled() && steps.browser-runtime.outcome == 'success' }}
+        if: ${{ matrix.suite == 'stack' && !cancelled() && steps.browser-runtime.outcome == 'success' }}
         working-directory: rac-infra-docker
         run: python scripts/test_identity_ui.py
       - name: Preserve synthetic browser failure diagnostics
-        if: failure()
+        if: ${{ matrix.suite == 'stack' && failure() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: browser-failure-${{ github.run_id }}-${{ github.run_attempt }}
@@ -388,11 +454,11 @@ jobs:
             rac-infra-docker/.local/admin-ui/*.txt
             rac-infra-docker/.local/schedule-ui/*.png
       - name: Logs
-        if: failure()
+        if: ${{ matrix.suite == 'stack' && failure() }}
         working-directory: rac-infra-docker
         run: if [ -f envs/.env.dev ]; then docker compose --env-file envs/.env.dev -p rac-dev -f compose.yaml -f docker-compose.dev.yaml logs --tail=100; fi
       - name: Clean ephemeral CI containers
-        if: always()
+        if: ${{ matrix.suite == 'stack' && always() }}
         working-directory: rac-infra-docker
         run: |
           if [ -f envs/.env.dev ]; then make down; fi

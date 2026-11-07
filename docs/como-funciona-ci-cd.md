@@ -10,10 +10,34 @@ Un paso `uses:` llama una acción reutilizable, por ejemplo descargar código. U
 
 Los workflows de los servicios prueban su código. Go usa `go test -race`; Flutter usa `flutter analyze` y `flutter test`. El workflow de infra, `ci.yml`, comprueba el conjunto:
 
-1. `migrations`: prueba migraciones, configuración DEV/QA/PRD y controles de despliegue.
-2. `integration`, con `needs: migrations`: emite un token temporal con la GitHub App, descarga los cinco repositorios a los SHA de ci/companion-revisions.json y prueba las políticas de base de datos.
-3. Dentro de integración, `make up` levanta un DEV efímero. `make check test-integration` comprueba healthchecks y flujos de API/OIDC. Playwright abre Chromium y recorre reservas y onboarding en tamaños desktop y móvil.
-4. Al terminar se limpian contenedores y se revoca el token. Un fallo produce un check rojo y conserva los logs de Actions.
+1. `scope` (`scripts/ci_scope.py`) decide el alcance y ante cualquier duda
+   ejecuta todo. Un PR que solo cambia Markdown fuera de `.github/` omite los
+   jobs pesados. En un `push`, si el commit es exactamente el que ya pasó en
+   su PR (un fast-forward), no se vuelve a probar el mismo árbol. `schedule`
+   (lunes) y `workflow_dispatch` ejecutan todo e incluyen las mediciones de
+   standing.
+2. `workflow-policy` revisa sintaxis, acciones fijadas y rutas de los scripts,
+   y siempre se ejecuta.
+3. `migrations`: migraciones, permisos de base de datos, configuración
+   DEV/QA/PRD y controles de despliegue.
+4. `integration` corre en paralelo con `migrations`, en cuatro runners
+   independientes. Cada suite levanta sus propias bases, brokers y proyectos
+   Compose desechables:
+   - `labs`: plataforma, vendor, políticas de match/chat, T&S, documentos y
+     mensajería.
+   - `services`: políticas de user, Keycloak/MFA, fotos S3 y EvidenceStore.
+   - `standing`: carreras de JWT y commit con instancias Compose aisladas.
+   - `stack`: `make up` levanta un DEV efímero; luego `make check
+     test-integration` y Playwright con Chromium en desktop y móvil.
+
+   Cada suite emite un token temporal con la GitHub App y descarga los
+   repositorios a los SHA de `ci/companion-revisions.json`.
+5. Al terminar se limpian contenedores y se revoca el token. Un fallo produce
+   un check rojo y conserva los logs de Actions.
+
+Un job omitido por alcance aparece como `skipped`, no como fallo. Para
+comprobar a mano un cambio de documentación, ejecuta el workflow con
+`workflow_dispatch`.
 
 El Makefile evita mantener recetas operativas distintas para el PC y CI. Las credenciales de integración pertenecen a una App de lectura, no a la llave SSH personal del desarrollador. Véase [acceso de CI](ci-acceso-repositorios.md).
 
