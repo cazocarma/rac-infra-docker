@@ -27,9 +27,14 @@ cierra la fase.
   CHECK lo imponen incluso al propietario del esquema. Revocar crea una acción
   vinculada y nunca reescribe la historia. Los comandos se repiten por id de
   evento sin duplicar efectos.
-- `appeals`: una por acción, solo del afectado y sin plazo hasta que se
-  apruebe la política. La decide alguien que no participó en la acción; si se
-  revoca la decisión, se registra una revocación.
+- `appeals`: una por acción y solo del afectado, presentada dentro de los
+  treinta días siguientes a que la acción quedó efectiva (V060,
+  `ts.appeal_window()`, D07). Fuera de plazo responde `appeal_window_closed`
+  (55000). La respuesta incluye el plazo (`deadline`, UTC) y la repetición de
+  una apelación presentada a tiempo sigue siendo idempotente después del plazo.
+  Es un plazo para presentar, no un compromiso de tiempo de respuesta. La
+  decide alguien que no participó en la acción; si se revoca la decisión, se
+  registra una revocación.
 - `outbox` emite `ts.action.effective.v1` para los dueños de cada efecto; este
   esquema no escribe standing, publicaciones, reservas ni chat.
 - `evidence_open` exige ahora una asignación activa y sin conflicto
@@ -199,7 +204,8 @@ siguen siendo gates abiertos; estas pruebas no los sustituyen.
 - Consolas Flutter A1–A3/A5 y pantallas S12–S15.
 - Inventario, backfill y retirada de `chat_reporte`, `chat_auditoria` y
   `reporte`, preservando los límites `hasta_version`/`hasta_numero_legacy`.
-- Provisión DEV opt-in de los logins de casos e intake.
+- Provisión DEV opt-in del login de intake (los de casos, relay y consumidor ya
+  están: `make ts-db-config`).
 - Concretar los criterios preventivos D06, la cobertura de atención D07 y los
   procedimientos especializados D10. Las direcciones de producto ya fueron
   respondidas: operador inicial Cris A, treinta días para presentar apelación

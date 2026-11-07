@@ -68,7 +68,8 @@ def verify(sql, database):
     assert call(staff, 'action_propose', lead, policy, case, 'warning', 'drug_offer', 'actions-fixture-1', None, 'actionWarning', ok=False).returncode != 0, 'Unassigned staff acted'
     replay = str(uuid.uuid4())
     restrict = f"SELECT ts.action_propose('{replay}','{agent}','{policy}','{case}','restrict_publish','drug_offer','actions-fixture-1',24,'actionRestrict');"
-    assert execute(restrict, staff).stdout == execute(restrict, staff).stdout, 'Retried command created another action'
+    restricted = execute(restrict, staff).stdout
+    assert restricted == execute(restrict, staff).stdout, 'Retried command created another action'
     assert execute(restrict.replace('restrict_publish', 'restrict_booking'), staff, ok=False).returncode != 0, 'Event reused for another command'
     ban = call(staff, 'action_propose', agent, policy, case, 'ban', 'drug_offer', 'actions-fixture-1', None, 'actionBan')
     assert ban['state'] == 'proposed', 'Ban became effective with one reviewer'
@@ -87,6 +88,18 @@ def verify(sql, database):
     assert call(intake, 'appeal_submit', r1, policy, ban['action_id'], None, ok=False).returncode != 0, 'Non-subject appealed'
     appeal = call(intake, 'appeal_submit', subject, policy, ban['action_id'], None)
     assert call(intake, 'appeal_submit', subject, policy, ban['action_id'], None)['duplicate'] is True, 'Second appeal for one action'
+    assert appeal['deadline'].endswith('Z'), 'Appeal response lacks the filing deadline'
+    # D07: thirty days to file from the effective time; not a response SLA.
+    def age(action, days):
+        execute(f"SET session_replication_role=replica; UPDATE ts.actions SET effective_at=effective_at-interval '{days} days' WHERE id='{action}';")
+    age(json.loads(restricted)['action_id'], 31)
+    late = call(intake, 'appeal_submit', subject, policy, json.loads(restricted)['action_id'], None, ok=False)
+    assert late.returncode != 0 and 'appeal_window_closed' in late.stderr, 'Appeal accepted after the thirty-day window'
+    age(warning['action_id'], 29)
+    assert call(intake, 'appeal_submit', subject, policy, warning['action_id'], None)['duplicate'] is False, 'Appeal inside the window refused'
+    age(ban['action_id'], 31)
+    replayed = call(intake, 'appeal_submit', subject, policy, ban['action_id'], None)
+    assert (replayed['appeal_id'], replayed['duplicate']) == (appeal['appeal_id'], True), 'Timely appeal replay refused after the window'
     for reviewer in (agent, lead, subject, r1):
         assert call(staff, 'appeal_decide', reviewer, policy, appeal['appeal_id'], 'overturned', ok=False).returncode != 0, f'{reviewer} decided a dependent appeal'
     assert call(staff, 'appeal_decide', independent, policy, appeal['appeal_id'], 'overturned')['outcome'] == 'overturned'
@@ -104,4 +117,4 @@ def verify(sql, database):
         assert execute('SELECT count(*) FROM ts.cases;', role, ok=False).returncode != 0, f'{role} read cases'
         assert execute(f"SELECT ts.case_assign(gen_random_uuid(),'{lead}','{policy}','{case}','{independent}');", role, ok=False).returncode != 0, f'{role} assigned a case'
     print('PASS: P11 reports dedup/grouping without revealing cases, conflict-of-interest assignment, assigned-only detail without reporter '
-          'identity, four-eyes ban, independent appeal, append-only revocation, ordered outbox effects and audit trail', flush=True)
+          'identity, four-eyes ban, independent appeal within the thirty-day window, append-only revocation, ordered outbox effects and audit trail', flush=True)
