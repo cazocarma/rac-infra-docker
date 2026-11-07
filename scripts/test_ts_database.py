@@ -64,7 +64,7 @@ class TrustSafetyDatabaseTarget(unittest.TestCase):
                                                       'ts.effect_relay_backlog()'})
         self.assertEqual(signatures['rac_ts_effects'], {'standing.apply_ts_effect(uuid,jsonb,uuid)',
                                                         'standing.refresh_ts_standing(uuid,uuid,uuid)'})
-        self.assertEqual(len(signatures['rac_ts_cases']), 7)
+        self.assertEqual(len(signatures['rac_ts_cases']), 8)
         # No login can both decide and deliver, or reach customer intake or evidence.
         self.assertFalse(signatures['rac_ts_cases'] & (signatures['rac_ts_relay'] | signatures['rac_ts_effects']))
         everything = set().union(*signatures.values())

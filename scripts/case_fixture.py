@@ -6,6 +6,7 @@ REF = 'audit.reference,audit.reference,audit.reference'
 INTAKE = (f'ts.report_submit({REF},text,uuid,audit.reference,text,uuid)', f'ts.appeal_submit({REF},uuid,uuid)')
 STAFF = (f'ts.case_queue({REF},integer)', f'ts.case_assign({REF},uuid,audit.reference)', f'ts.case_detail({REF},uuid)',
          f'ts.action_propose({REF},uuid,text,text,text,integer,text)', f'ts.action_approve({REF},uuid)',
+         f'ts.listing_hide_propose({REF},uuid,uuid,text,text,text)',
          f'ts.action_revoke({REF},uuid,text)', f'ts.appeal_decide({REF},uuid,text)')
 
 
@@ -113,8 +114,27 @@ def verify(sql, database):
     assert history == '5', 'Revocation rewrote instead of appending: ' + history
     audits = execute(f"SELECT string_agg(action||'='||n,',' ORDER BY action) FROM (SELECT action,count(*) n FROM audit.log WHERE case_id='{case}' GROUP BY action) a;").stdout.strip()
     assert audits == 'action.decided=5,appeal.decided=1,case.assigned=1,evidence.accessed=1,report.received=2', 'Audit trail mismatch: ' + audits
+    # hide_listing names a listing revision reported in the same case, on its own case.
+    listed, hidden_target = str(uuid.uuid4()), str(uuid.uuid4())
+    call(intake, 'report_submit', r1, policy, 'listing_revision', hidden_target, listed, 'drugs', None)
+    hide_case = execute(f"SELECT id FROM ts.cases WHERE subject='{listed}';").stdout.strip()
+    call(staff, 'case_assign', lead, policy, hide_case, agent)
+    assert call(staff, 'action_propose', agent, policy, hide_case, 'hide_listing', 'drug_offer', 'actions-fixture-1', None, 'actionHide', ok=False).returncode != 0, 'Untargeted hide accepted'
+    unreported = call(staff, 'listing_hide_propose', agent, policy, hide_case, str(uuid.uuid4()), 'drug_offer', 'actions-fixture-1', 'actionHide', ok=False)
+    assert unreported.returncode != 0 and 'action_target_not_reported' in unreported.stderr, 'Unreported listing hidden'
+    assert call(staff, 'listing_hide_propose', lead, policy, hide_case, hidden_target, 'drug_offer', 'actions-fixture-1', 'actionHide', ok=False).returncode != 0, 'Unassigned staff hid a listing'
+    hidden = call(staff, 'listing_hide_propose', agent, policy, hide_case, hidden_target, 'drug_offer', 'actions-fixture-1', 'actionHide')
+    assert hidden['state'] == 'effective'
+    call(staff, 'action_revoke', agent, policy, hidden['action_id'], 'hide_withdrawn')
+    targets = execute(f"SELECT string_agg((payload->>'kind')||'='||coalesce(payload#>>'{{target,type}}','-')||':'||coalesce(payload#>>'{{target,id}}','-'),',' ORDER BY id) FROM ts.outbox WHERE payload->>'subject'='{listed}';").stdout.strip()
+    assert targets == f'hide_listing=listing_revision:{hidden_target},revocation=listing_revision:{hidden_target}', targets
+    untargeted = execute(f"SELECT count(*) FROM ts.outbox WHERE payload->>'subject'='{subject}' AND payload ? 'target';").stdout.strip()
+    assert untargeted == '0', 'Untargeted bodies changed shape'
+    for statement in (f"INSERT INTO ts.actions(case_id,subject,kind,reason_code,policy_version,notice_key,proposed_by,state,effective_at,target_type,target_id) VALUES('{hide_case}','{listed}','ban','x_y','p-1','actionBan','{agent}','proposed',NULL,'listing_revision','{hidden_target}');",
+                      f"INSERT INTO ts.actions(case_id,subject,kind,reason_code,policy_version,notice_key,proposed_by,state,effective_at) VALUES('{hide_case}','{listed}','hide_listing','x_y','p-1','actionHide','{agent}','effective',now());"):
+        assert execute(statement, ok=False).returncode != 0, 'Target constraint bypassed: ' + statement
     for role in ('rac_user', 'rac_match', 'rac_chat', 'rac_alert', intake):
         assert execute('SELECT count(*) FROM ts.cases;', role, ok=False).returncode != 0, f'{role} read cases'
         assert execute(f"SELECT ts.case_assign(gen_random_uuid(),'{lead}','{policy}','{case}','{independent}');", role, ok=False).returncode != 0, f'{role} assigned a case'
     print('PASS: P11 reports dedup/grouping without revealing cases, conflict-of-interest assignment, assigned-only detail without reporter '
-          'identity, four-eyes ban, independent appeal within the thirty-day window, append-only revocation, ordered outbox effects and audit trail', flush=True)
+          'identity, four-eyes ban, independent appeal within the thirty-day window, hide_listing only on a reported target, append-only revocation, ordered outbox effects and audit trail', flush=True)

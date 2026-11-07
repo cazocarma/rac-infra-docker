@@ -223,8 +223,9 @@ No aplicar esto al DEV habitual solo porque los ensayos desechables pasaron.
 - Healthchecks, métricas sin PII y ensayo de reinicio y recuperación del stack
   opt-in. La topología, las cuentas acotadas, la provisión y el overlay ya están.
 - Consumidor user con ready mínimo V058, commit antes de ack, clasificación de
-  errores, reconexión y efectos correspondientes por tipo; `hide_listing` aún
-  requiere aplicación por el dueño de publicaciones.
+  errores, reconexión y efectos correspondientes por tipo. `hide_listing` ya lo
+  aplica user sobre la publicación (V061); falta excluir `suspended` en la
+  lectura pública tras el corte de P08.
 - Confirmación de aplicación por el dueño y estado visible de enforcement
   separado de la decisión/publicación. No anunciar una sanción aplicada ni un
   aviso recibido basándose solo en una decisión en cola o `confirmed_at`.

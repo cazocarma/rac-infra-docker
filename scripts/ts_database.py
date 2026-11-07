@@ -19,6 +19,7 @@ LOGINS = {
         f'ts.case_detail({REF},uuid)',
         f'ts.case_assign({REF},uuid,audit.reference)',
         f'ts.action_propose({REF},uuid,text,text,text,integer,text)',
+        f'ts.listing_hide_propose({REF},uuid,uuid,text,text,text)',
         f'ts.action_approve({REF},uuid)',
         f'ts.action_revoke({REF},uuid,text)',
         f'ts.appeal_decide({REF},uuid,text)',

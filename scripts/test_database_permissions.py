@@ -258,6 +258,8 @@ def main():
             verify_effect_relay(sql, database)
             from standing_effects_fixture import verify as verify_effects
             verify_effects(sql, database)
+            from listing_hold_fixture import verify as verify_listing_holds
+            verify_listing_holds(sql, database)
             # Replacing catalog activities requires DELETE even when the profile
             # is new. Other owners retain no delete permission on them.
             sql(database, 'DELETE FROM compa_activities WHERE false;', 'rac_user')
@@ -289,13 +291,19 @@ def main():
             assert sql(restored, "SELECT has_table_privilege('rac_chat','sesion','UPDATE');").stdout.strip() == 'f'
             assert sql(restored, "SELECT has_table_privilege('rac_chat','mensaje','INSERT');").stdout.strip() == 't'
             assert sql(restored, 'SELECT count(*) FROM reserva_resena;', 'rac_user').stdout.strip() == '1'
-            assert sql(restored, 'SELECT count(*) FROM standing.ts_effect_receipts;').stdout.strip() == '9'
-            assert sql(restored, 'SELECT count(*) FROM standing.ts_effect_deliveries;').stdout.strip() == '10'
+            # The restore keeps every row the fixtures wrote, whatever their number.
+            def same(statement, role='postgres'):
+                source, copy = sql(database, statement, role).stdout.strip(), sql(restored, statement, role).stdout.strip()
+                assert source == copy and source not in ('', '0'), (statement, source, copy)
+            for table in ('standing.ts_effect_receipts', 'standing.ts_effect_deliveries', 'standing.listing_holds'):
+                same('SELECT count(*) FROM ' + table + ';')
+            same("SELECT string_agg(action_id::text||coalesce(released_by::text,'-'),',' ORDER BY action_id) FROM standing.listing_holds;")
+            same("SELECT string_agg(id::text||state,',' ORDER BY id) FROM listings;", 'rac_user')
             assert sql(restored, "SELECT bool_and(r.payload->>'action_id'=e.action_id::text) FROM standing.ts_effect_receipts r JOIN standing.ts_effects e USING(action_id);").stdout.strip() == 't'
             assert sql(restored, 'SELECT count(*) FROM ts.effect_delivery_state WHERE confirmed_at IS NULL;').stdout.strip() == '0'
             assert sql(restored, 'SELECT count(*) FROM ts.outbox o LEFT JOIN ts.effect_delivery_state d USING(event_id) WHERE d.event_id IS NULL;').stdout.strip() == '0'
-            assert sql(restored, 'SELECT count(*) FROM listing_revisions;', 'rac_user').stdout.strip() == '2'
-            assert sql(restored, 'SELECT count(*) FROM listing_revision_decisions;', 'rac_user').stdout.strip() == '2'
+            same('SELECT count(*) FROM listing_revisions;', 'rac_user')
+            same('SELECT count(*) FROM listing_revision_decisions;', 'rac_user')
             assert sql(restored, "SELECT bool_and(payload_hash=public.digest(payload_canonical,'sha256')) FROM listing_revisions;", 'rac_user').stdout.strip() == 't'
             assert sql(restored,'SELECT count(*) FROM photo.sources;','rac_user').stdout.strip()=='1'
             assert sql(restored,'SELECT count(*) FROM photo.upload_confirmations;','rac_user').stdout.strip()=='1'

@@ -65,6 +65,7 @@ def main():
                 'ts.evidence_open(audit.reference,audit.reference,audit.reference,uuid,text)']),
             'rac_ts_staff_lab': (staff_password, [f'ts.case_queue({ref},integer)', f'ts.case_assign({ref},uuid,audit.reference)',
                 f'ts.case_detail({ref},uuid)', f'ts.action_propose({ref},uuid,text,text,text,integer,text)',
+                f'ts.listing_hide_propose({ref},uuid,uuid,text,text,text)',
                 f'ts.action_approve({ref},uuid)', f'ts.action_revoke({ref},uuid,text)', f'ts.appeal_decide({ref},uuid,text)']),
             'rac_ts_intake_lab': (intake_password, [f'ts.report_submit({ref},text,uuid,audit.reference,text,uuid)',
                 f'ts.appeal_submit({ref},uuid,uuid)']),

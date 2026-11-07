@@ -190,6 +190,33 @@ la firma SQL por sí sola también existe en versiones que interpretaban otro
 namespace. El intake y el recorrido real con tokens/owner snapshots/broker
 siguen siendo gates abiertos; estas pruebas no los sustituyen.
 
+## Ocultar una publicación (`hide_listing`) — V061
+
+- La consola staff solo propone `hide_listing` con `target_id`, mediante
+  `ts.listing_hide_propose`. El objetivo debe ser un `listing_revision`
+  reportado en el mismo caso: si no lo es, responde `action_target_not_reported`
+  (422). `action_propose` ya no acepta `hide_listing` sin objetivo. No lleva
+  duración: dura hasta su revocación o hasta una apelación acogida, porque los
+  criterios de vencimiento preventivo de D06 siguen abiertos.
+- `ts.actions` guarda `target_type`/`target_id`; la revocación repite el
+  objetivo. El cuerpo `ts.action.effective.v1` agrega `target` solo en esos
+  casos, así que los demás tipos quedan idénticos byte a byte (contrato en
+  rac-shared-contracts).
+- User (`standing.apply_ts_effect`) comprueba que la revisión pertenezca al
+  sujeto (`ts_effect_listing_mismatch`; si no existe, `ts_effect_listing_missing`).
+  Registra una retención en `standing.listing_holds` y deja la publicación en
+  `suspended`, el estado de cumplimiento que la aprobación ya rechaza. Cada
+  revocación libera solo la retención con el mismo objetivo. Con la última
+  liberada, la publicación vuelve a `published` con su snapshot aprobado, o a
+  `unpublished` si no lo tenía.
+- La lectura pública sigue en el perfil legado hasta el corte de P08: allí debe
+  excluirse `suspended`. El dueño ve el estado en su consola. El aviso al dueño
+  (S13) sigue pendiente.
+- Pruebas: `case_fixture` (objetivo reportado, asignación, forma de la salida),
+  `listing_hold_fixture` (propiedad, reintentos, retenciones apiladas,
+  liberación con objetivo exacto, historia inmutable) y la prueba HTTP de admin
+  en el laboratorio de evidencias.
+
 ## Pendiente
 
 - Ingreso de reportes y apelaciones de clientes, con la autenticación del
