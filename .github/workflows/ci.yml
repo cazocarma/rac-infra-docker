@@ -285,6 +285,9 @@ jobs:
       - name: P11 relay publisher against disposable RabbitMQ
         working-directory: rac-infra-docker
         run: python -u scripts/test_ts_relay_broker.py
+      - name: P11 effect transport end to end with real workers and broker
+        working-directory: rac-infra-docker
+        run: python -u scripts/test_ts_effect_e2e.py
       - name: Document owner SQL against scoped disposable PostgreSQL
         working-directory: rac-infra-docker
         run: python scripts/test_document_source.py
