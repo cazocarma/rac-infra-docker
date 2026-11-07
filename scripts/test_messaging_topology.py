@@ -14,6 +14,17 @@ roles = {
     'standing-alert': ('^$', '^rac[.]alert[.]standing$'),
 }
 broker.configure()
+# Without the explicit opt-in no T&S topology or credential exists.
+for path in ('exchanges/rac-dev/rac.trust_safety', 'queues/rac-dev/rac.user.ts_effects', 'users/rac-dev-ts-publisher'):
+    try:
+        broker.request('GET', path)
+    except broker.urllib.error.HTTPError as error:
+        assert error.code == 404
+    else:
+        raise AssertionError('T&S messaging created without opt-in: ' + path)
+os.environ['RAC_TS_MESSAGING'] = '1'
+roles.update({'ts-publisher': ('^rac[.]trust_safety$', '^$'), 'ts-user': ('^$', '^rac[.]user[.]ts_effects$')})
+broker.configure()
 first = {role: (Path('/credentials') / role / 'url').read_bytes() for role in roles}
 broker.configure()
 for role, (write, read) in roles.items():
@@ -21,11 +32,15 @@ for role, (write, read) in roles.items():
     permissions = broker.request('GET', 'permissions/rac-dev/rac-dev-' + role)
     assert permissions['configure'] == '^$'
     assert permissions['write'] == write and permissions['read'] == read
-for queue in ('rac.match.standing', 'rac.match.standing.failed', 'rac.alert.standing', 'rac.alert.standing.failed'):
+for queue in ('rac.match.standing', 'rac.match.standing.failed', 'rac.alert.standing', 'rac.alert.standing.failed',
+              'rac.user.ts_effects', 'rac.user.ts_effects.failed'):
     assert broker.request('GET', 'queues/rac-dev/' + queue)['arguments']['x-queue-type'] == 'quorum'
 policy = broker.request('GET', 'policies/rac-dev/standing-delivery')['definition']
 assert policy['dead-letter-strategy'] == 'at-least-once'
 assert policy['overflow'] == 'reject-publish' and policy['delivery-limit'] == 20
+effects = broker.request('GET', 'policies/rac-dev/ts-effect-delivery')['definition']
+assert effects['dead-letter-strategy'] == 'at-least-once' and effects['dead-letter-exchange'] == 'rac.trust_safety.failed'
+assert any(b['routing_key'] == 'ts.action.effective.v1' for b in broker.request('GET', 'bindings/rac-dev/e/rac.trust_safety/q/rac.user.ts_effects'))
 
 # Losing a local volume is not authorization to rotate the deployed account.
 lost = Path('/credentials/standing-alert/url')

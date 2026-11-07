@@ -71,8 +71,26 @@ def configure():
             'definition': {'delivery-limit': 20, 'dead-letter-exchange': 'rac.standing.failed',
                 'dead-letter-routing-key': failed_key, 'dead-letter-strategy': 'at-least-once',
                 'overflow': 'reject-publish'}, 'priority': 10, 'apply-to': 'quorum_queues'})
-    for role, write, read in [('publisher', '^rac[.]bookings$', '^$'), ('consumer', '^$', '^rac[.]alert[.]bookings$'),
-                             ('standing-publisher', '^rac[.]standing$', '^$'), ('standing-match', '^$', '^rac[.]match[.]standing$'), ('standing-alert', '^$', '^rac[.]alert[.]standing$')]:
+    roles = [('publisher', '^rac[.]bookings$', '^$'), ('consumer', '^$', '^rac[.]alert[.]bookings$'),
+             ('standing-publisher', '^rac[.]standing$', '^$'), ('standing-match', '^$', '^rac[.]match[.]standing$'), ('standing-alert', '^$', '^rac[.]alert[.]standing$')]
+    # P11 effect transport is opt-in: no T&S topology or credentials are created
+    # unless explicitly requested for this broker.
+    if os.environ.get('RAC_TS_MESSAGING') == '1':
+        request('PUT', f'exchanges/{encoded}/rac.trust_safety', {'type': 'topic', 'durable': True, 'auto_delete': False, 'arguments': {}})
+        request('PUT', f'exchanges/{encoded}/rac.trust_safety.failed', {'type': 'direct', 'durable': True, 'auto_delete': False, 'arguments': {}})
+        for queue in ('rac.user.ts_effects', 'rac.user.ts_effects.failed'):
+            request('PUT', f'queues/{encoded}/{queue}', {'durable': True, 'auto_delete': False, 'arguments': {'x-queue-type': 'quorum'}})
+        for exchange, queue, key in [('rac.trust_safety', 'rac.user.ts_effects', 'ts.action.effective.v1'),
+                                     ('rac.trust_safety.failed', 'rac.user.ts_effects.failed', 'failed')]:
+            bindings = request('GET', f'bindings/{encoded}/e/{exchange}/q/{queue}')
+            if not any(b['routing_key'] == key for b in bindings):
+                request('POST', f'bindings/{encoded}/e/{exchange}/q/{queue}', {'routing_key': key, 'arguments': {}})
+        request('PUT', f'policies/{encoded}/ts-effect-delivery', {'pattern': '^rac[.]user[.]ts_effects$',
+            'definition': {'delivery-limit': 20, 'dead-letter-exchange': 'rac.trust_safety.failed',
+                'dead-letter-routing-key': 'failed', 'dead-letter-strategy': 'at-least-once',
+                'overflow': 'reject-publish'}, 'priority': 10, 'apply-to': 'quorum_queues'})
+        roles += [('ts-publisher', '^rac[.]trust_safety$', '^$'), ('ts-user', '^$', '^rac[.]user[.]ts_effects$')]
+    for role, write, read in roles:
         file = Path('/credentials/' + role + '/url')
         file.parent.mkdir(parents=True, exist_ok=True)
         user = vhost + '-' + role
