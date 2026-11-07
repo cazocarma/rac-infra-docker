@@ -20,7 +20,9 @@ def archive(source, expected_revision):
         revision = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
         if revision != expected_revision:
             raise ValueError('Source differs from the pinned revision')
-        return subprocess.check_output(['git', '-C', str(source), 'archive', '--format=tar', revision])
+        # Export committed bytes: a Windows autocrlf checkout would otherwise
+        # convert text files to CRLF inside the archive.
+        return subprocess.check_output(['git', '-c', 'core.autocrlf=false', '-C', str(source), 'archive', '--format=tar', revision])
     if source.parent.name != 'sources':
         raise ValueError('Git metadata or explicit snapshot bundle required')
     bundle = source.parent.parent.resolve()

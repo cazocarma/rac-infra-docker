@@ -132,10 +132,26 @@ al DEV habitual, no se ejecutó CI remoto y no hubo push. Los ensayos del relay
 usan publisher falso: estos resultados no acreditan publisher confirms, consumo
 o entrega de avisos en un broker real.
 
+## Prueba con broker real — 7 de noviembre de 2026
+
+`scripts/test_ts_relay_broker.py` levanta un RabbitMQ 4.3.6 desechable (sin
+puertos publicados ni volúmenes existentes), declara `rac.trust_safety` y una
+cuenta `relay` limitada a escribir ese exchange con la ruta
+`ts.action.effective.v1`. Contra admin `29e41c77351a74c40b7b1f50dae3703f26ac3af1`
+pasaron `TestRabbitConfiguration`, `TestRabbitHandshakeCancellation` y
+`TestRabbitRealBroker`: cola quorum, rechazo `mandatory` sin ruta, mensajes
+persistentes confirmados, identidad estable de duplicados y cancelación acotada
+del handshake. Registro `.local/p11-ts-relay-broker-2026-11-07.log`, exit 0.
+
+El primer intento falló con exit 1 y sin salida. `git archive` en Windows
+aplicaba `core.autocrlf` y el gate de gofmt veía CRLF. `committed_sources.archive`
+exporta ahora los bytes confirmados (`core.autocrlf=false`); no se desactivó el
+gate. Esto no prueba la topología productiva, el worker ni el consumidor.
+
 ## Pendiente antes de integrar
 
-- Adapter real con mensajes persistentes, `mandatory`, confirmación positiva y
-  cierre de socket por cancelación; prueba con RabbitMQ real y fallos.
+- Pruebas de fallo del broker durante la publicación (caída y reconexión) con el
+  worker real; el adapter ya pasó la prueba básica con broker real.
 - Topología quorum, dead lettering al menos una vez y cuentas de publicación y
   consumo con scopes mínimos. Provisión e incorporación al stack solo opt-in.
 - Proceso worker, healthchecks, métricas sin PII y ensayo de reinicio/recuperación.
