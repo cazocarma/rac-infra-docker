@@ -235,7 +235,7 @@ anterior sigue vigente hasta que un humano apruebe la nueva. Responde 202
 `submitted`, sin la palabra "publicar".
 
 La política de publicación (`LISTING_POLICY_VERSION`, límites de precio, áreas)
-no tiene valores por defecto porque D04 sigue pendiente, y el léxico propuesto
+no tiene valores por defecto porque D04 no fija importes ni categorías definitivas, y el léxico propuesto
 solo se admite en dev/test (D13); fuera de eso el envío responde 503
 `listing_submission_unavailable`. La aprobación debe configurarse con la misma
 versión de política. Una foto se rechaza con 409 `listing_photo_unavailable`

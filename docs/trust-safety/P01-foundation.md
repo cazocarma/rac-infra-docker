@@ -37,7 +37,7 @@ endpoint del producto.
 Append no permite editar/eliminar a los roles de aplicación. El dueño de BD
 puede alterar datos: verify detecta cambios contra una cabecera confiable.
 El anclaje independiente, claves externas, alertas y restauración siguen
-pendientes de D08/D11/D14; no hay WORM ni detección operacional continua ya
+aplazados según D08/D11/D14 (respaldo local aprobado); no hay WORM ni detección operacional continua ya
 activados. Un checkpoint firmado viejo puede ser válido pero obsoleto: el
 custodio debe suministrar el último head confiable y controlar su frescura.
 

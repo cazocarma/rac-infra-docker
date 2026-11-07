@@ -1,8 +1,8 @@
 # P05 — Identidad y mayoría de edad (en desarrollo)
 
 Sigue [ADR-005](ADR-005-identity.md). Rama `feat/identity-verification` en user e
-infra, apilada sobre P04 (`feat/versioned-documents`). El proveedor real, el
-tratamiento y la política siguen pendientes de D05/D08/D12. Nada de este
+infra, apilada sobre P04 (`feat/versioned-documents`). D05 aplaza el proveedor
+real (control desactivado); faltan proveedor, plazos revisados y rotación (D05/D08/D12). Nada de este
 incremento activa obligaciones sobre usuarios: no hay gates todavía.
 
 ## Incremento 1: datos, puerto, fake DEV y renombre
@@ -44,7 +44,7 @@ D12. Reglas:
 | Huella aprobada en otra cuenta | `needs_review` |
 | Error o timeout | Queda `pending`, nunca aprobado |
 
-Ninguna coincidencia banea automáticamente a una persona nueva (D12 pendiente).
+Ninguna coincidencia banea automáticamente a una persona nueva (D12: coincidencia reversible a revisión).
 Las aprobaciones concurrentes de una misma identidad se serializan con un lock
 transaccional por huella. Un replay de `event_id` no tiene efecto y un resultado
 distinto para un intento decidido es conflicto. Un intento nuevo sustituye al

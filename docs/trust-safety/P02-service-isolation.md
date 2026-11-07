@@ -99,7 +99,7 @@ Después de restaurar, las credenciales vigentes se reprovisionan desde su
 custodia; no se recuperan contraseñas del dump. El ensayo desechable restaura
 los datos y verifica que chat conserva INSERT de mensaje sin UPDATE de reserva.
 El runbook general de restauración aislada sigue vigente. Tombstones, holds,
-anclaje independiente y copias fuera del PC continúan pendientes de P12/D11;
+anclaje independiente y copias fuera del PC continúan pendientes de P12 (D11 aprobó solo respaldo local);
 no se activan aquí.
 
 ## Activación DEV y reversa

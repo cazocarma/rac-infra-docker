@@ -1,6 +1,9 @@
 # ADR-002 — Publicaciones con revisiones y revisión previa
 
-Estado: dirección técnica aprobada; D04/D05/D06/D09 pendientes.
+Estado: dirección técnica aprobada; D04/D05/D06/D09 con dirección aprobada
+([registro](decisions-2026-11-02.md)). Faltan importes y categorías
+definitivas (D04), proveedor KYC (D05), criterios corroborables de urgencia
+(D06) y revisión de proporcionalidad antes de exigir foto (D09).
 
 ## Propuesta
 

@@ -1,8 +1,10 @@
 # P11 — reportes, casos, acciones y apelaciones
 
 Estado: **modelo unificado y consola staff de casos implementados y probados con
-datos sintéticos; sin activar**. D02, D06, D07 y D10 siguen pendientes: no se
-fijan SLA, plazo de apelación ni protecciones automáticas. Este estado no
+datos sintéticos; sin activar**. D02, D06, D07 y D10 tienen dirección aprobada
+([registro](decisions-2026-11-02.md)): apelación dentro de 30 días, sin SLA de
+respuesta, sin sanción automática y operaciones de dos personas bloqueadas con un
+solo operador. Faltan criterios corroborables de urgencia y horario/suplencia. Este estado no
 cierra la fase.
 
 ## Implementado

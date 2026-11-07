@@ -8,7 +8,7 @@ Estado: **programa en desarrollo**. La evidencia de E2E-04 está en [P03-close](
 | 02 | Teléfono escrito/abreviatura de contacto rechazados con mensaje público | P07; M5 | Vectores Flutter/Go positivos y benignos; 422 estable |
 | 03 | Foto con handle detectado por OCR no publicada | P09; M6 | Imagen sintética, cuarentena y visibilidad de asset/version |
 | 04 | JWT viejo no publica, acepta ni envía después de suspensión ≤5 s | P03; M1 | Medición desde commit; varias instancias, cache fría/caliente, fallos y p99 |
-| 05 | Identidad de baneado no obtiene acceso; caso P1 | P05/P11; M2/M10 | Replay/rotación/suplantación; resultado definitivo pendiente D12 |
+| 05 | Identidad de baneado no obtiene acceso; caso P1 | P05/P11; M2/M10 | Replay/rotación/suplantación; D12 aprobada como revisión reversible; falta rotación/equivalencia con proveedor y revisión de privacidad |
 | 06 | Reserva 20 min o con 30 min anticipación devuelve 422/código | P13; M7 | Límites exactos, reloj servidor y zonas/DST |
 | 07 | P0 activa protección reversible, caso/SLA/alerta | P11; M10/M11 | Decisión D06 antes de fijar automatismo; controles A11 de abuso |
 | 08 | Ban sin segundo revisor distinto es rechazado | P02/P11; M11/M14 | API y constraints BD; NULL/reintento/actor propio denegados |

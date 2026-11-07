@@ -1,6 +1,8 @@
 # ADR-006 — Analizador compartido y léxico versionado
 
-Estado: dirección técnica aprobada; D04/D09/D13 pendientes.
+Estado: dirección técnica aprobada; D04/D09/D13 con dirección aprobada
+([registro](decisions-2026-11-02.md)). Faltan corpus/curación especializada y
+aprobación explícita de activación de detectores.
 
 `rac-platform/contentsignals` será implementación Go única de normalización/evaluación. `policy` carga snapshots inmutables versionados y auditados. Resultados incluyen versión del analizador/política, categorías, scores, RuleIDs y spans sobre texto original. Reglas privadas y fragmentos se entregan solo a personal autorizado, nunca a mensajes de error públicos o logs.
 

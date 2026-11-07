@@ -1,6 +1,6 @@
 # ADR-007 — Auditoría encadenada y anclajes independientes
 
-Estado: dirección técnica aprobada; almacenamiento externo y gestión de claves D08/D11/D14 pendientes.
+Estado: dirección técnica aprobada; D08/D11/D14 con dirección aprobada ([registro](decisions-2026-11-02.md)): respaldos locales; almacenamiento externo, custodia de claves y anclaje independiente aplazados.
 
 ## Garantía buscada
 

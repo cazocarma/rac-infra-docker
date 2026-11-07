@@ -1,6 +1,6 @@
 # ADR-004 — Evidencia, retención, legal holds y supresión
 
-Estado: dirección técnica aprobada. Proveedor efectivo, plazos y base jurídica D08/D10/D11 pendientes. No activar retención irreversible de datos reales durante desarrollo.
+Estado: dirección técnica aprobada. D08/D10/D11 tienen dirección aprobada ([registro](decisions-2026-11-02.md)); faltan proveedor efectivo, plazos y bases revisados por abogado y destino externo. No activar retención irreversible de datos reales durante desarrollo.
 
 ## Diseño
 

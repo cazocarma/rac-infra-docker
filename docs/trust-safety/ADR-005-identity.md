@@ -1,6 +1,6 @@
 # ADR-005 — Verificación de identidad y huella de documento
 
-Estado: dirección técnica aprobada; proveedor, tratamiento y política D05/D08/D12 pendientes.
+Estado: dirección técnica aprobada; D05/D08/D12 con dirección aprobada ([registro](decisions-2026-11-02.md)): KYC real aplazado; faltan proveedor, plazos revisados y rotación acordada.
 
 ## Puerto y datos mínimos
 
