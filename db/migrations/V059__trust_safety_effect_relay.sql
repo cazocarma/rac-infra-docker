@@ -46,7 +46,10 @@ CREATE TRIGGER effect_delivery_guard BEFORE UPDATE OR DELETE ON ts.effect_delive
 
 CREATE FUNCTION ts.effect_relay_ready() RETURNS boolean
  LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $$
- SELECT EXISTS(SELECT FROM meta.schema_history WHERE success AND version IN('59','059'))
+ -- Visible only after the V059 transaction commits; independent of the
+ -- migration tool's history table name.
+ SELECT to_regclass('ts.effect_delivery_state') IS NOT NULL
+  AND to_regprocedure('ts.confirm_effect(audit.reference)') IS NOT NULL
 $$;
 
 CREATE FUNCTION ts.claim_effect(p_claim audit.reference) RETURNS jsonb
