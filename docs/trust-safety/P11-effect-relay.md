@@ -148,6 +148,29 @@ aplicaba `core.autocrlf` y el gate de gofmt veía CRLF. `committed_sources.archi
 exporta ahora los bytes confirmados (`core.autocrlf=false`); no se desactivó el
 gate. Esto no prueba la topología productiva, el worker ni el consumidor.
 
+## Transporte completo — 7 de noviembre de 2026
+
+- Admin `cmd/ts-relay` (rama `feat/ts-relay-worker`, 6aa0dee): worker opt-in
+  (`TS_RELAY_ENABLED=true`, solo dev/test), credenciales únicamente desde
+  archivos montados, backoff y logs de líneas fijas con conteo de backlog.
+  La imagen incluye el binario; el entrypoint por defecto sigue siendo el
+  servidor HTTP.
+- User `cmd/ts-effects` e `internal/tseffects` (rama `feat/ts-effects-consumer`,
+  11594fe): consumidor opt-in con login solo de funciones, verificado por
+  `CheckRole`. Valida el sobre antes de la base de datos y hace commit antes
+  del ack. Reencola los errores transitorios (40001, conexión) y envía a
+  dead-letter los inválidos, conflictivos y los principales desconocidos.
+- `configure_messaging.py` con `RAC_TS_MESSAGING=1`: exchange
+  `rac.trust_safety`, cola quorum `rac.user.ts_effects` con dead lettering at
+  least once, y roles `ts-publisher` y `ts-user` acotados. Sin el flag no se
+  crea nada; `test_messaging_topology.py` prueba ambos casos.
+- `scripts/test_ts_effect_e2e.py`: acción del caso → `ts.outbox` → worker
+  relay → RabbitMQ (topología real) → consumidor → standing. La cuenta queda
+  `restricted` (publish_listing) y vuelve a `active` tras revocar. No quedan
+  entregas pendientes, la cola de fallidos queda vacía y no hay sujetos ni
+  credenciales en los logs. Registro
+  `.local/p11-ts-effect-e2e-2026-11-07.log`, exit 0.
+
 ## Pendiente antes de integrar
 
 - Pruebas de fallo del broker durante la publicación (caída y reconexión) con el
