@@ -150,6 +150,35 @@ def main():
             sql(database, 'REVOKE SELECT(version_id) ON photo.promotion_receipts FROM rac_listing_photo_approver;')
             run('docker', 'run', '--rm', '--network', name, *photo_flags, tools, 'python', 'listing_review_database.py')
             print('PASS: photo approval identity is explicit opt-in, six-function-only, idempotent and denies plain approval/core/preview/raw data authority', flush=True)
+            ts_flags = list(editorial_flags)
+            from ts_database import LOGINS as TS_LOGINS
+            for role, (variable, _, _) in TS_LOGINS.items():
+                ts_flags += ['-e', variable + '=postgresql://' + role + ':synthetic-ts-' + role + '-123456@postgres:5432/' + database + '?sslmode=disable']
+            for _ in range(2):
+                run('docker', 'run', '--rm', '--network', name, *ts_flags, tools, 'python', 'ts_database.py')
+            sql(database, 'GRANT EXECUTE ON FUNCTION ts.action_approve(audit.reference,audit.reference,audit.reference,uuid) TO rac_ts_relay;')
+            refused = run('docker', 'run', '--rm', '--network', name, *ts_flags, tools, 'python', 'ts_database.py', ok=False)
+            assert refused.returncode != 0, 'Relay login accepted decision authority'
+            assert 'synthetic-ts' not in refused.stdout + refused.stderr
+            sql(database, 'REVOKE EXECUTE ON FUNCTION ts.action_approve(audit.reference,audit.reference,audit.reference,uuid) FROM rac_ts_relay;')
+            sql(database, 'GRANT SELECT(status) ON standing.account TO rac_ts_effects;')
+            refused = run('docker', 'run', '--rm', '--network', name, *ts_flags, tools, 'python', 'ts_database.py', ok=False)
+            assert refused.returncode != 0, 'Consumer login accepted column authority'
+            sql(database, 'REVOKE SELECT(status) ON standing.account FROM rac_ts_effects;')
+            run('docker', 'run', '--rm', '--network', name, *ts_flags, tools, 'python', 'ts_database.py')
+            for role, (_, _, signatures) in TS_LOGINS.items():
+                assert sql(database, f"SELECT count(*) FROM audit.writer_principals WHERE database_role='{role}';").stdout.strip() == '1'
+                granted = sql(database, f"SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('ts','standing','audit','listing_review','public') AND has_function_privilege('{role}',p.oid,'EXECUTE') AND NOT EXISTS(SELECT FROM pg_depend d WHERE d.classid='pg_proc'::regclass AND d.objid=p.oid AND d.deptype='e');").stdout.strip()
+                assert granted == str(len(signatures)), role + ' has unexpected functions: ' + granted
+                for forbidden in ('SELECT * FROM ts.cases;', 'SELECT * FROM ts.outbox;', 'SELECT * FROM ts.reports;',
+                                  'SELECT * FROM standing.account;', 'SELECT * FROM ts.evidence_manifests;', 'SELECT * FROM usuario;'):
+                    assert sql(database, forbidden, role, ok=False).returncode != 0, role + ' read ' + forbidden
+            for role, denied in (('rac_ts_cases', "SELECT ts.effect_relay_backlog();"),
+                                 ('rac_ts_relay', "SELECT standing.refresh_ts_standing(gen_random_uuid(),gen_random_uuid(),gen_random_uuid());"),
+                                 ('rac_ts_effects', "SELECT ts.effect_relay_backlog();")):
+                assert sql(database, denied, role, ok=False).returncode != 0, role + ' crossed into another T&S process'
+            assert sql(database, 'SELECT ts.effect_relay_ready();', 'rac_ts_relay').stdout.strip() == 't'
+            print('PASS: T&S DEV provisioning creates separate case, relay and consumer logins with exactly their functions, is idempotent and refuses extra authority', flush=True)
             assert sql(database, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname='standing';").stdout.strip() == 'rac_migrator'
             if (ROOT / 'db/migrations/V029__document_registry.sql').exists():
                 from document_registry_checks import check as check_document_registry

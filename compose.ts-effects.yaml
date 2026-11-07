@@ -1,0 +1,60 @@
+# Opt-in DEV only (TS_EFFECTS_PREVIEW=1). Runs the P11 effect transport:
+# ts.outbox -> ts-effect-relay (admin) -> rac.trust_safety -> ts-effect-consumer
+# (user) -> standing. Provision the logins first with make ts-db-config.
+# Database URLs reach the workers only as mounted secret files; broker
+# credentials come from messaging-config with RAC_TS_MESSAGING=1. This does not
+# enable the staff console, customer intake, notices or any real-user activation.
+services:
+  messaging-config:
+    environment:
+      RAC_TS_MESSAGING: "1"
+    volumes:
+      - messaging-ts-publisher:/credentials/ts-publisher
+      - messaging-ts-user:/credentials/ts-user
+  ts-effect-relay:
+    image: rac-${RAC_ENV}-admin:local
+    entrypoint: [/app/ts-relay]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    environment:
+      RAC_ENV: dev
+      TS_RELAY_ENABLED: "true"
+      TS_RELAY_DATABASE_URL_FILE: /run/secrets/rac_ts_relay_database_url
+      TS_RELAY_AMQP_URL_FILE: /run/messaging/url
+    secrets: [rac_ts_relay_database_url]
+    volumes: ["messaging-ts-publisher:/run/messaging:ro"]
+    depends_on:
+      messaging-config:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+  ts-effect-consumer:
+    image: rac-${RAC_ENV}-user:local
+    entrypoint: [/app/ts-effects]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    environment:
+      RAC_ENV: dev
+      TS_EFFECTS_ENABLED: "true"
+      TS_EFFECTS_POLICY_VERSION: ${TS_EFFECTS_POLICY_VERSION:?Indicar versión de política de efectos T&S}
+      TS_EFFECTS_DATABASE_URL_FILE: /run/secrets/rac_ts_effects_database_url
+      TS_EFFECTS_AMQP_URL_FILE: /run/messaging/url
+    secrets: [rac_ts_effects_database_url]
+    volumes: ["messaging-ts-user:/run/messaging:ro"]
+    depends_on:
+      messaging-config:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+secrets:
+  rac_ts_relay_database_url:
+    file: ${TS_RELAY_DATABASE_URL_PATH:?Indicar archivo con la URL del login de relay T&S}
+  rac_ts_effects_database_url:
+    file: ${TS_EFFECTS_DATABASE_URL_PATH:?Indicar archivo con la URL del login consumidor T&S}
+volumes:
+  messaging-ts-publisher:
+  messaging-ts-user:

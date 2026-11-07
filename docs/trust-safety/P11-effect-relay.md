@@ -171,13 +171,57 @@ gate. Esto no prueba la topología productiva, el worker ni el consumidor.
   credenciales en los logs. Registro
   `.local/p11-ts-effect-e2e-2026-11-07.log`, exit 0.
 
+## Provisión DEV opt-in — 7 de noviembre de 2026
+
+- `scripts/ts_database.py` (`make ts-db-config`, solo `ENV=dev`) crea tres logins
+  solo de funciones, cada uno con su secreto independiente y su principal de
+  auditoría:
+  - `rac_ts_cases`: las siete funciones de la consola staff.
+  - `rac_ts_relay`: exactamente el conjunto que verifica el worker con `CheckRole`.
+  - `rac_ts_effects`: `apply_ts_effect` y `refresh_ts_standing`, con uso solo
+    del esquema `standing`.
+
+  Solo provisiona los logins cuyas variables (`TS_CASES_DATABASE_URL`,
+  `TS_RELAY_DATABASE_URL`, `TS_EFFECTS_DATABASE_URL`) se entregan. Rechaza
+  secretos reutilizados, destinos que no sean el PostgreSQL interno y logins que
+  ya tengan funciones, columnas o tablas de más. No crea cuentas staff, roles de
+  Keycloak, credenciales del broker, intake de clientes ni políticas de retención.
+- `compose.ts-effects.yaml` (`TS_EFFECTS_PREVIEW=1`, solo DEV) añade
+  `ts-effect-relay` (imagen admin, `/app/ts-relay`) y `ts-effect-consumer`
+  (imagen user, `/app/ts-effects`):
+  - Ambos son de solo lectura, con `cap_drop: ALL` y `no-new-privileges`, y no
+    publican puertos.
+  - La URL de base de datos llega solo como secreto de archivo
+    (`TS_RELAY_DATABASE_URL_PATH`, `TS_EFFECTS_DATABASE_URL_PATH`).
+  - Las credenciales del broker vienen de `messaging-config` con
+    `RAC_TS_MESSAGING=1`, en volúmenes propios montados en solo lectura.
+  - `TS_EFFECTS_POLICY_VERSION` es obligatoria.
+
+  El archivo de secreto debe ser legible por el contenedor.
+- Pruebas:
+  - `test_ts_database.py` y `test_ts_effects_compose.py` cubren las validaciones
+    y el render sin servicios.
+  - `test_database_permissions.py` provisiona dos veces sobre esquemas nuevos y
+    actualizados, rechaza autoridad extra y verifica que cada login no cruza al
+    proceso vecino.
+  - `test_ts_effect_e2e.py` ya no crea logins a mano para staff, relay y
+    consumidor: usa este mismo código de provisión con los workers reales.
+
+Secuencia DEV:
+
+1. `make migrate`.
+2. `make ts-db-config` con las tres URLs.
+3. Guardar las URLs del relay y del consumidor en archivos fuera del repositorio.
+4. `make up TS_EFFECTS_PREVIEW=1` con las rutas y la versión de política.
+
+No aplicar esto al DEV habitual solo porque los ensayos desechables pasaron.
+
 ## Pendiente antes de integrar
 
 - Pruebas de fallo del broker durante la publicación (caída y reconexión) con el
   worker real; el adapter ya pasó la prueba básica con broker real.
-- Topología quorum, dead lettering al menos una vez y cuentas de publicación y
-  consumo con scopes mínimos. Provisión e incorporación al stack solo opt-in.
-- Proceso worker, healthchecks, métricas sin PII y ensayo de reinicio/recuperación.
+- Healthchecks, métricas sin PII y ensayo de reinicio y recuperación del stack
+  opt-in. La topología, las cuentas acotadas, la provisión y el overlay ya están.
 - Consumidor user con ready mínimo V058, commit antes de ack, clasificación de
   errores, reconexión y efectos correspondientes por tipo; `hide_listing` aún
   requiere aplicación por el dueño de publicaciones.

@@ -22,14 +22,21 @@ ROOT = Path(__file__).resolve().parents[1]
 BROKER = 'rabbitmq:4.3.6-management@sha256:54cb013d76cd1fd6c0a0708f34062ad61c452bb6f016b434c6c33f1a765d2b58'
 GO = 'golang:1.27.3'
 REF = 'audit.reference,audit.reference,audit.reference'
+# Customer intake has no provisioning adapter yet; the staff console, relay and
+# consumer logins come from the real DEV provisioning code (ts_database.py).
 LOGINS = {
-    'rac_ts_relay_e2e': ['ts.effect_relay_ready()', 'ts.claim_effect(audit.reference)', 'ts.confirm_effect(audit.reference)',
-                         'ts.retry_effect(audit.reference)', 'ts.effect_relay_backlog()'],
-    'rac_ts_effects_e2e': ['standing.apply_ts_effect(uuid,jsonb,uuid)', 'standing.refresh_ts_standing(uuid,uuid,uuid)'],
     'rac_ts_intake_e2e': [f'ts.report_submit({REF},text,uuid,audit.reference,text,uuid)'],
-    'rac_ts_staff_e2e': [f'ts.case_assign({REF},uuid,audit.reference)',
-                         f'ts.action_propose({REF},uuid,text,text,text,integer,text)', f'ts.action_revoke({REF},uuid,text)'],
 }
+PROVISIONED = ('rac_ts_cases', 'rac_ts_relay', 'rac_ts_effects')
+PROVISION = (
+    'import os, psycopg, ts_database as t\n'
+    'with psycopg.connect() as db:\n'
+    '    for role, (variable, _, _) in t.LOGINS.items():\n'
+    '        t.provision(db, os.environ[variable], "rac", role)\n'
+    'for role, (variable, _, _) in t.LOGINS.items():\n'
+    '    with psycopg.connect(os.environ[variable]) as login:\n'
+    '        t.verify(login, role)\n'
+)
 
 
 def head(repository):
@@ -40,7 +47,8 @@ def main():
     name = 'rac-ts-e2e-' + uuid.uuid4().hex[:12]
     database, broker = name + '-db', name + '-mq'
     volumes = {key: name + '-' + key for key in ('credentials', 'admin', 'user')}
-    passwords = {role: 'synthetic-' + uuid.uuid4().hex for role in LOGINS}
+    tools = name + '-tools'
+    passwords = {role: 'synthetic-' + uuid.uuid4().hex for role in (*LOGINS, *PROVISIONED, 'broker')}
     admin_dir, user_dir = ROOT.parent / 'rac-admin-service', ROOT.parent / 'rac-user-service'
     revisions = {'admin': os.environ.get('RAC_TS_E2E_ADMIN') or head(admin_dir),
                  'user': os.environ.get('RAC_TS_E2E_USER') or head(user_dir)}
@@ -54,7 +62,7 @@ def main():
             'postgis/postgis:16-3.4')
         run('docker', 'run', '-d', '--name', broker, '--network', name, '--network-alias', 'rabbitmq',
             '--tmpfs', '/var/lib/rabbitmq:uid=999,gid=999,mode=0700', '-e', 'RABBITMQ_DEFAULT_USER=e2e-admin',
-            '-e', 'RABBITMQ_DEFAULT_PASS=' + passwords['rac_ts_relay_e2e'], BROKER)
+            '-e', 'RABBITMQ_DEFAULT_PASS=' + passwords['broker'], BROKER)
         for _ in range(90):
             if (run('docker', 'exec', database, 'pg_isready', '-U', 'postgres', ok=False).returncode == 0
                     and 'PostgreSQL init process complete' in run('docker', 'logs', database).stdout):
@@ -84,6 +92,15 @@ def main():
             statements.append("DO $$DECLARE c uuid:=gen_random_uuid(); BEGIN INSERT INTO audit.chain_heads(chain_id) VALUES(c);"
                               f" INSERT INTO audit.writer_principals(database_role,actor_id,chain_id) VALUES('{role}',gen_random_uuid(),c); END$$;")
         sql(''.join(statements))
+        run('docker', 'build', '-q', '-t', tools, '-f', str(ROOT / 'tools/Dockerfile'), str(ROOT))
+        urls = []
+        from ts_database import LOGINS as TS_LOGINS
+        for role, (variable, _, _) in TS_LOGINS.items():
+            urls += ['-e', f'{variable}=postgresql://{role}:{passwords[role]}@postgres:5432/rac?sslmode=disable']
+        for _ in range(2):  # Idempotent: the second run reconciles without new principals.
+            run('docker', 'run', '--rm', '--network', name, '-e', 'PGHOST=postgres', '-e', 'PGUSER=postgres',
+                '-e', 'PGPASSWORD=test-only', '-e', 'PGDATABASE=rac', *urls, tools, 'python', '-c', PROVISION)
+        assert sql("SELECT count(*) FROM audit.writer_principals WHERE database_role IN('rac_ts_cases','rac_ts_relay','rac_ts_effects');") == '3'
 
         # Broker topology and scoped credentials come from the real bootstrap.
         for _ in range(90):
@@ -95,14 +112,14 @@ def main():
         run('docker', 'run', '--rm', '--network', name, '-v', volumes['credentials'] + ':/credentials',
             '--mount', f'type=bind,source={ROOT / "scripts"},target=/tools,readonly',
             '-e', 'RAC_ENV=dev', '-e', 'RAC_TS_MESSAGING=1', '-e', 'RABBITMQ_USER=e2e-admin',
-            '-e', 'RABBITMQ_PASSWORD=' + passwords['rac_ts_relay_e2e'], 'python:3.13-slim', 'python', '/tools/configure_messaging.py')
+            '-e', 'RABBITMQ_PASSWORD=' + passwords['broker'], 'python:3.13-slim', 'python', '/tools/configure_messaging.py')
 
         subject, reporter, lead, agent, policy = (str(uuid.uuid4()) for _ in range(5))
         account = sql(f"INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES(gen_random_uuid(),'E2E fixture','{subject}@example.test','compa','{subject}') RETURNING id;")
         sql(f"SELECT ts.report_submit(gen_random_uuid(),'{reporter}','{policy}','account','{subject}','{subject}','harassment',NULL);", 'rac_ts_intake_e2e')
         case = sql(f"SELECT case_id FROM ts.reports WHERE reporter='{reporter}';")
-        sql(f"SELECT ts.case_assign(gen_random_uuid(),'{lead}','{policy}','{case}','{agent}');", 'rac_ts_staff_e2e')
-        action = json.loads(sql(f"SELECT ts.action_propose(gen_random_uuid(),'{agent}','{policy}','{case}','restrict_publish','harassment_repeat','actions-e2e-1',NULL,'actionRestrict');", 'rac_ts_staff_e2e'))['action_id']
+        sql(f"SELECT ts.case_assign(gen_random_uuid(),'{lead}','{policy}','{case}','{agent}');", 'rac_ts_cases')
+        action = json.loads(sql(f"SELECT ts.action_propose(gen_random_uuid(),'{agent}','{policy}','{case}','restrict_publish','harassment_repeat','actions-e2e-1',NULL,'actionRestrict');", 'rac_ts_cases'))['action_id']
 
         for key, directory in (('admin', admin_dir), ('user', user_dir)):
             source = archive(directory, revisions[key])
@@ -111,8 +128,8 @@ def main():
         with tempfile.TemporaryDirectory(prefix='rac-ts-e2e-') as secrets:
             folder = Path(secrets)
             files = {
-                'relay-db': f'postgres://rac_ts_relay_e2e:{passwords["rac_ts_relay_e2e"]}@postgres:5432/rac?sslmode=disable',
-                'effects-db': f'postgres://rac_ts_effects_e2e:{passwords["rac_ts_effects_e2e"]}@postgres:5432/rac?sslmode=disable',
+                'relay-db': f'postgres://rac_ts_relay:{passwords["rac_ts_relay"]}@postgres:5432/rac?sslmode=disable',
+                'effects-db': f'postgres://rac_ts_effects:{passwords["rac_ts_effects"]}@postgres:5432/rac?sslmode=disable',
             }
             for file, value in files.items():
                 (folder / file).write_text(value, encoding='utf-8')
@@ -146,7 +163,7 @@ def main():
             wait('restricted')
             restricted = sql(f"SELECT string_agg(capability,',') FROM standing.restriction WHERE subject_id='{account}';")
             assert restricted == 'publish_listing', restricted
-            sql(f"SELECT ts.action_revoke(gen_random_uuid(),'{agent}','{policy}','{action}','restriction_withdrawn');", 'rac_ts_staff_e2e')
+            sql(f"SELECT ts.action_revoke(gen_random_uuid(),'{agent}','{policy}','{action}','restriction_withdrawn');", 'rac_ts_cases')
             wait('active', budget=120)
         pending = sql('SELECT count(*) FROM ts.effect_delivery_state WHERE confirmed_at IS NULL;')
         effects = sql(f"SELECT count(*) FROM standing.ts_effects WHERE subject_id='{account}';")
@@ -163,6 +180,7 @@ def main():
               f'in worker logs; admin {revisions["admin"]} user {revisions["user"]}', flush=True)
     finally:
         run('docker', 'rm', '-f', *workers, database, broker, ok=False)
+        run('docker', 'image', 'rm', '-f', tools, ok=False)
         run('docker', 'network', 'rm', name, ok=False)
         for volume in volumes.values():
             # Only the exact per-run volumes created above.
