@@ -282,6 +282,9 @@ jobs:
       - name: T&S relay transaction and function-only authority
         working-directory: rac-infra-docker
         run: python -u scripts/test_ts_effect_relay.py
+      - name: P11 relay publisher against disposable RabbitMQ
+        working-directory: rac-infra-docker
+        run: python -u scripts/test_ts_relay_broker.py
       - name: Document owner SQL against scoped disposable PostgreSQL
         working-directory: rac-infra-docker
         run: python scripts/test_document_source.py
