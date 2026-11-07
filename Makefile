@@ -88,6 +88,19 @@ $(error PHOTO_PROMOTION_PREVIEW requiere PHOTO_REVIEW_PREVIEW=1)
 endif
 COMPOSE_FILES += -f compose.photo-promotion.yaml
 endif
+TS_EFFECTS_PREVIEW ?= 0
+ifneq ($(words $(TS_EFFECTS_PREVIEW)),1)
+$(error TS_EFFECTS_PREVIEW debe ser 0 o 1)
+endif
+ifeq ($(filter $(TS_EFFECTS_PREVIEW),0 1),)
+$(error TS_EFFECTS_PREVIEW debe ser 0 o 1)
+endif
+ifeq ($(TS_EFFECTS_PREVIEW),1)
+ifneq ($(ENV),dev)
+$(error TS_EFFECTS_PREVIEW solo admite DEV)
+endif
+COMPOSE_FILES += -f compose.ts-effects.yaml
+endif
 ifeq ($(ENV),dev)
 ifneq ($(wildcard envs/.env.photos-s3),)
 COMPOSE_FILES += -f compose.photos-s3.yaml
@@ -120,6 +133,7 @@ help:
 	@echo make backup-enable / backup-now / backup-status / backup-restore-test
 	@echo make database-init / test-database-permissions / test-identity-permissions
 	@echo make listing-review-db-config - logins DEV separados de revision de publicaciones (LISTING_PREVIEW=1)
+	@echo make ts-db-config - logins DEV de casos, relay y consumidor TS (TS_EFFECTS_PREVIEW=1 para los workers)
 	@echo STANDING_PREVIEW=1 habilita solo el preview DEV de standing. Ver docs/trust-safety/P03-standing.md
 config:
 	$(COMPOSE) config --quiet
@@ -296,6 +310,14 @@ ifneq ($(ENV),dev)
 	$(error La provision editorial disponible es solo DEV; QA/PRD requieren su adaptador revisado)
 else
 	$(COMPOSE) run --rm --no-deps --build -e RAC_ENV=dev -e DOCUMENT_EDITORIAL_DATABASE_URL database-config python editorial_database.py
+endif
+
+.PHONY: ts-db-config
+ts-db-config:
+ifneq ($(ENV),dev)
+	$(error La provision T&S es solo DEV; QA/PRD requieren su adaptador revisado)
+else
+	$(COMPOSE) run --rm --no-deps --build -e RAC_ENV=dev -e TS_CASES_DATABASE_URL -e TS_RELAY_DATABASE_URL -e TS_EFFECTS_DATABASE_URL database-config python ts_database.py
 endif
 
 .PHONY: listing-review-db-config
