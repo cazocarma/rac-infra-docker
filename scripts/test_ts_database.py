@@ -38,8 +38,8 @@ class TrustSafetyDatabaseTarget(unittest.TestCase):
     def test_logins_are_requested_independently(self):
         values = environment()
         del values['TS_CASES_DATABASE_URL']
-        self.assertEqual(set(validate_environment(values)[0]), {'rac_ts_relay', 'rac_ts_effects'})
-        for variable in ('TS_RELAY_DATABASE_URL', 'TS_EFFECTS_DATABASE_URL'):
+        self.assertEqual(set(validate_environment(values)[0]), {'rac_ts_intake', 'rac_ts_relay', 'rac_ts_effects'})
+        for variable in ('TS_INTAKE_DATABASE_URL', 'TS_RELAY_DATABASE_URL', 'TS_EFFECTS_DATABASE_URL'):
             del values[variable]
         with self.assertRaises(RuntimeError):
             validate_environment(values)
@@ -66,10 +66,16 @@ class TrustSafetyDatabaseTarget(unittest.TestCase):
                                                         'standing.refresh_ts_standing(uuid,uuid,uuid)',
                                                         'standing.ts_expiries_due(integer)'})
         self.assertEqual(len(signatures['rac_ts_cases']), 8)
-        # No login can both decide and deliver, or reach customer intake or evidence.
+        # Intake holds only the two customer entry points; nobody passes a subject
+        # directly (report_submit) or reaches evidence, and no login both decides
+        # and delivers.
+        ref = 'audit.reference,audit.reference,audit.reference'
+        self.assertEqual(signatures['rac_ts_intake'], {f'ts.report_receive({ref},text,uuid,text)', f'ts.appeal_submit({ref},uuid,uuid)'})
+        others = signatures['rac_ts_cases'] | signatures['rac_ts_relay'] | signatures['rac_ts_effects']
+        self.assertFalse(signatures['rac_ts_intake'] & others)
         self.assertFalse(signatures['rac_ts_cases'] & (signatures['rac_ts_relay'] | signatures['rac_ts_effects']))
         everything = set().union(*signatures.values())
-        self.assertFalse(any(s.startswith(('ts.report_submit', 'ts.appeal_submit', 'ts.evidence_')) for s in everything))
+        self.assertFalse(any(s.startswith(('ts.report_submit', 'ts.evidence_')) for s in everything))
         self.assertEqual(LOGINS['rac_ts_effects'][1], ('standing',))
 
 

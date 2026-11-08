@@ -23,6 +23,8 @@ def main():
     reader_password = 'synthetic-evidence-reader-' + uuid.uuid4().hex
     staff_password = 'synthetic-cases-staff-' + uuid.uuid4().hex
     intake_password = 'synthetic-cases-intake-' + uuid.uuid4().hex
+    customer_password = 'synthetic-customer-intake-' + uuid.uuid4().hex
+    owner, profile = str(uuid.uuid4()), str(uuid.uuid4())
     ref = 'audit.reference,audit.reference,audit.reference'
     access, secret = 'synthetic-evidence-root', 'synthetic-evidence-root-password-123456'
     admin = ROOT.parent / 'rac-admin-service'
@@ -67,6 +69,8 @@ def main():
                 f'ts.case_detail({ref},uuid)', f'ts.action_propose({ref},uuid,text,text,text,integer,text)',
                 f'ts.listing_hide_propose({ref},uuid,uuid,text,text,text)',
                 f'ts.action_approve({ref},uuid)', f'ts.action_revoke({ref},uuid,text)', f'ts.appeal_decide({ref},uuid,text)']),
+            # Customer intake: exactly the two entry points the admin login checks.
+            'rac_ts_customer_lab': (customer_password, [f'ts.report_receive({ref},text,uuid,text)', f'ts.appeal_submit({ref},uuid,uuid)']),
             'rac_ts_intake_lab': (intake_password, [f'ts.report_submit({ref},text,uuid,audit.reference,text,uuid)',
                 f'ts.appeal_submit({ref},uuid,uuid)']),
         }
@@ -79,6 +83,9 @@ def main():
         # Synthetic lab policy only; real retention ceilings are D08/D14.
         statements.append("INSERT INTO ts.evidence_retention_policies(version,purpose,max_days,registered_by) "
                           "VALUES('evidence-lab-1','case_review',1,'44444444-4444-4444-8444-444444444444');")
+        # A public compa profile the customer intake can report; its owner is resolved in the database.
+        statements.append(f"INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('{profile}','Lab compa','lab-{profile}@example.test','compa','{owner}');"
+                          f"INSERT INTO compa_perfil(id,usuario_id,descripcion,tarifa_hora) VALUES('{profile}','{profile}','Lab profile',12000);")
         # The legal reader in the Go proof is assigned to the synthetic case.
         statements.append("INSERT INTO ts.cases(id,subject,severity) VALUES('77777777-7777-4777-8777-777777777777',"
                           "'99999999-9999-4999-8999-999999999999','P2');INSERT INTO ts.case_assignments(case_id,assignee,assigned_by) "
@@ -102,9 +109,11 @@ def main():
                      '-e', f'RAC_EVIDENCE_CAPTURE_DSN=postgres://rac_evidence_capture_lab:{capture_password}@evidence-db-fixture:5432/evidence?sslmode=disable',
                      '-e', f'RAC_CASES_STAFF_DSN=postgres://rac_ts_staff_lab:{staff_password}@evidence-db-fixture:5432/evidence?sslmode=disable',
                      '-e', f'RAC_CASES_INTAKE_DSN=postgres://rac_ts_intake_lab:{intake_password}@evidence-db-fixture:5432/evidence?sslmode=disable',
+                     '-e', f'RAC_INTAKE_DSN=postgres://rac_ts_customer_lab:{customer_password}@evidence-db-fixture:5432/evidence?sslmode=disable',
+                     '-e', 'RAC_INTAKE_PROFILE=' + profile, '-e', 'RAC_INTAKE_OWNER=' + owner,
                      '-e', f'RAC_EVIDENCE_READER_DSN=postgres://rac_evidence_reader_lab:{reader_password}@evidence-db-fixture:5432/evidence?sslmode=disable',
-                     GO, 'sh', '-c', prepare + f' && go test {mode} -race -count=1 -v ./internal/evidencestore ./internal/cases')
-        if '--- PASS: TestRustFSCompliance' not in result.stdout or '--- PASS: TestServicePostgresRustFS' not in result.stdout                 or '--- PASS: TestCasesPostgres' not in result.stdout:
+                     GO, 'sh', '-c', prepare + f' && go test {mode} -race -count=1 -v ./internal/evidencestore ./internal/cases ./internal/intake')
+        if '--- PASS: TestRustFSCompliance' not in result.stdout or '--- PASS: TestServicePostgresRustFS' not in result.stdout                 or '--- PASS: TestCasesPostgres' not in result.stdout or '--- PASS: TestIntakePostgres' not in result.stdout:
             raise RuntimeError('RustFS evidence proof did not run\n' + result.stdout[-2000:])
         print('PASS: sealed COMPLIANCE capture, exact-version open, create-only, delete/shorten denial, '
               'delete-marker isolation and no plaintext in the object store', flush=True)
@@ -112,6 +121,8 @@ def main():
               'justification, MFA expiry during read and audited access before reveal', flush=True)
         print('PASS: staff case HTTP over function-only logins: queue/detail without identities, conflict refusal, '
               'replay-safe proposal, four eyes and independent appeal', flush=True)
+        print('PASS: customer intake HTTP over an exactly function-only login: owner-resolved subject, grouped duplicates, '
+              'uniform unknown target, self report and unknown appeal refused', flush=True)
         print('PASS: synthetic EvidenceStore proof only; not key custody, retention approval or off-PC durability',
               flush=True)
     finally:
