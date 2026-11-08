@@ -3,7 +3,8 @@ import json
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
-FUNCTIONS = ('standing.apply_ts_effect(uuid,jsonb,uuid)', 'standing.refresh_ts_standing(uuid,uuid,uuid)')
+FUNCTIONS = ('standing.apply_ts_effect(uuid,jsonb,uuid)', 'standing.refresh_ts_standing(uuid,uuid,uuid)',
+             'standing.ts_expiries_due(integer)')
 
 
 def verify(sql, database):
@@ -121,5 +122,20 @@ def verify(sql, database):
         assert execute(f"SELECT has_function_privilege('{other}','standing.record_ts_effect_delivery(uuid,uuid)','EXECUTE');").stdout.strip() == 'f', 'Private helper callable directly'
     for table in ('ts_effect_receipts', 'ts_effect_deliveries'):
         assert execute('SELECT * FROM standing.' + table + ';', role, ok=False).returncode != 0, 'Consumer read raw receipts'
+    # Expiry: a timed effect that has run out is listed once until refreshed.
+    timed, timed_principal = str(uuid.uuid4()), str(uuid.uuid4())
+    execute(f"INSERT INTO usuario(id,nombre,correo,rol,keycloak_id) VALUES('{timed}','Fixture','{timed}@example.test','cliente','{timed_principal}');")
+
+    def due():
+        return execute('SELECT standing.ts_expiries_due(100);', role).stdout.strip().strip('{}').split(',')
+
+    suspension = {**effect('suspend', hours=1), 'subject': timed_principal}
+    assert apply(suspension)['status'] == 'suspended' and timed not in due(), 'Live suspension listed as expired'
+    execute(f"SET session_replication_role=replica; UPDATE standing.ts_effects SET starts_at=starts_at-interval '2 hours',"
+            f"ends_at=ends_at-interval '2 hours' WHERE action_id='{suspension['action_id']}';")
+    assert timed in due() and status(timed) == 'suspended:', 'Expired suspension not listed'
+    refreshed = json.loads(execute(f"SELECT standing.refresh_ts_standing(gen_random_uuid(),'{timed}','{policy}');", role).stdout)
+    assert refreshed['changed'] is True and status(timed) == 'active:' and timed not in due(), 'Refresh did not settle the expiry'
+    assert execute('SELECT standing.ts_expiries_due(100);', 'rac_user', ok=False).returncode != 0, 'Expiry list exposed to user service'
     print('PASS: T&S effects ledger applies once per action, derives standing through the single standing path, '
-          'resolves distinct realm/internal identities without fallback, rejects altered commands and event/alias reuse with one concurrent winner, handles revocation order and expiry, is append-only and denies other services', flush=True)
+          'resolves distinct realm/internal identities without fallback, rejects altered commands and event/alias reuse with one concurrent winner, handles revocation order and expiry, lists expired timed effects until refreshed, is append-only and denies other services', flush=True)

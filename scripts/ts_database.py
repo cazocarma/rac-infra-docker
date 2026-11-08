@@ -34,6 +34,7 @@ LOGINS = {
     'rac_ts_effects': ('TS_EFFECTS_DATABASE_URL', ('standing',), (
         'standing.apply_ts_effect(uuid,jsonb,uuid)',
         'standing.refresh_ts_standing(uuid,uuid,uuid)',
+        'standing.ts_expiries_due(integer)',
     )),
 }
 SCHEMAS = ('public', 'ts', 'audit', 'standing', 'listing_review', 'documents', 'photo')

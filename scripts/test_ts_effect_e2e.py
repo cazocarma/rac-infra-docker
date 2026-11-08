@@ -145,7 +145,8 @@ def main():
             run('docker', 'run', '-d', '--name', name + '-effects', *common, '-v', volumes['user'] + ':/app', '-w', '/app',
                 '-e', 'TS_EFFECTS_ENABLED=true', '-e', 'TS_EFFECTS_POLICY_VERSION=' + policy,
                 '-e', 'TS_EFFECTS_DATABASE_URL_FILE=/secrets/effects-db',
-                '-e', 'TS_EFFECTS_AMQP_URL_FILE=/credentials/ts-user/url', GO, 'go', 'run', '-mod=vendor', './cmd/ts-effects')
+                '-e', 'TS_EFFECTS_AMQP_URL_FILE=/credentials/ts-user/url', '-e', 'TS_EFFECTS_REFRESH_SECONDS=5',
+                GO, 'go', 'run', '-mod=vendor', './cmd/ts-effects')
             workers.append(name + '-effects')
 
             def wait(expected, budget=420):
@@ -165,10 +166,17 @@ def main():
             assert restricted == 'publish_listing', restricted
             sql(f"SELECT ts.action_revoke(gen_random_uuid(),'{agent}','{policy}','{action}','restriction_withdrawn');", 'rac_ts_cases')
             wait('active', budget=120)
+            # A timed restriction that runs out is lifted by the worker's expiry
+            # sweep, with no further event. Age it instead of waiting an hour.
+            timed = json.loads(sql(f"SELECT ts.action_propose(gen_random_uuid(),'{agent}','{policy}','{case}','restrict_booking','harassment_repeat','actions-e2e-1',1,'actionRestrict');", 'rac_ts_cases'))['action_id']
+            wait('restricted')
+            sql(f"SET session_replication_role=replica; UPDATE standing.ts_effects SET starts_at=starts_at-interval '2 hours',"
+                f"ends_at=ends_at-interval '2 hours' WHERE action_id='{timed}';")
+            wait('active', budget=120)
         pending = sql('SELECT count(*) FROM ts.effect_delivery_state WHERE confirmed_at IS NULL;')
         effects = sql(f"SELECT count(*) FROM standing.ts_effects WHERE subject_id='{account}';")
         failed = run('docker', 'exec', '--user', 'rabbitmq', broker, 'rabbitmqctl', '-q', '-p', 'rac-dev', 'list_queues', 'name', 'messages').stdout
-        assert pending == '0' and effects == '2', (pending, effects)
+        assert pending == '0' and effects == '3', (pending, effects)
         assert any(line.split() == ['rac.user.ts_effects.failed', '0'] for line in failed.splitlines()), failed
         for worker in workers:
             logs = run('docker', 'logs', worker, ok=False)
@@ -176,7 +184,7 @@ def main():
             for secret in [subject, account, *passwords.values()]:
                 assert secret not in text, 'Worker log exposed a subject or credential'
         print('PASS: case action -> ts.outbox -> relay worker -> RabbitMQ quorum queue -> effects consumer -> standing '
-              f'restricted then active after revocation, no pending delivery, empty failed queue, no subjects or credentials '
+              f'restricted then active after revocation, timed restriction lifted by the expiry sweep, no pending delivery, empty failed queue, no subjects or credentials '
               f'in worker logs; admin {revisions["admin"]} user {revisions["user"]}', flush=True)
     finally:
         run('docker', 'rm', '-f', *workers, database, broker, ok=False)

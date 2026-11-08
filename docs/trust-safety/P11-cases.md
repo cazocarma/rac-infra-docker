@@ -190,6 +190,18 @@ la firma SQL por sí sola también existe en versiones que interpretaban otro
 namespace. El intake y el recorrido real con tokens/owner snapshots/broker
 siguen siendo gates abiertos; estas pruebas no los sustituyen.
 
+## Vencimiento de efectos con duración — V062
+
+Las restricciones y suspensiones con `duration_hours` vencen por tiempo, pero
+el estado de la cuenta solo se recalcula al llamar `refresh_ts_standing`.
+`standing.ts_expiries_due(limit)` lista, como máximo 100 cuentas, aquellas con
+un efecto vencido cuyo estado guardado ya no coincide con sus efectos activos.
+El consumidor (`cmd/ts-effects`) recorre ese listado cada minuto
+(`TS_EFFECTS_REFRESH_SECONDS`, 5–3600) y refresca cada cuenta con un evento de
+auditoría nuevo. Los logs solo registran conteos. Una cuenta refrescada sale
+del listado. La prueba E2E envejece una restricción de una hora y comprueba que
+el worker la levanta sin un evento nuevo.
+
 ## Ocultar una publicación (`hide_listing`) — V061
 
 - La consola staff solo propone `hide_listing` con `target_id`, mediante

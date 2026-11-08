@@ -178,7 +178,7 @@ gate. Esto no prueba la topología productiva, el worker ni el consumidor.
   auditoría:
   - `rac_ts_cases`: las siete funciones de la consola staff.
   - `rac_ts_relay`: exactamente el conjunto que verifica el worker con `CheckRole`.
-  - `rac_ts_effects`: `apply_ts_effect` y `refresh_ts_standing`, con uso solo
+  - `rac_ts_effects`: `apply_ts_effect`, `refresh_ts_standing` y `ts_expiries_due`, con uso solo
     del esquema `standing`.
 
   Solo provisiona los logins cuyas variables (`TS_CASES_DATABASE_URL`,
