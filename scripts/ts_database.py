@@ -1,10 +1,11 @@
 """Explicit DEV provisioning of the Trust & Safety function-only logins.
 
-Three separate identities: the staff case console (admin), the effect relay
-(admin, ts.outbox -> broker) and the effect consumer (user, broker -> standing).
+Four separate identities: the staff case console (admin), customer intake
+(admin), the effect relay (admin, ts.outbox -> broker) and the effect consumer
+(user, broker -> standing).
 None of them shares a credential or a capability beyond what its process
 checks with CheckRole. This does not create staff accounts, Keycloak roles,
-broker credentials, retention policies or customer intake; it does not apply
+broker credentials or retention policies; it does not apply
 migrations and refuses anything other than RAC_ENV=dev.
 """
 from urllib.parse import urlsplit, unquote, parse_qs
@@ -23,6 +24,12 @@ LOGINS = {
         f'ts.action_approve({REF},uuid)',
         f'ts.action_revoke({REF},uuid,text)',
         f'ts.appeal_decide({REF},uuid,text)',
+    )),
+    # Customer intake (admin, authenticated reporters): the subject is resolved
+    # by the target's owner inside the database, never passed by the caller.
+    'rac_ts_intake': ('TS_INTAKE_DATABASE_URL', ('ts', 'audit'), (
+        f'ts.report_receive({REF},text,uuid,text)',
+        f'ts.appeal_submit({REF},uuid,uuid)',
     )),
     'rac_ts_relay': ('TS_RELAY_DATABASE_URL', ('ts', 'audit'), (
         'ts.effect_relay_ready()',

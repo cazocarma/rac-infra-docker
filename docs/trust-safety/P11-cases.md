@@ -190,6 +190,34 @@ la firma SQL por sí sola también existe en versiones que interpretaban otro
 namespace. El intake y el recorrido real con tokens/owner snapshots/broker
 siguen siendo gates abiertos; estas pruebas no los sustituyen.
 
+## Ingreso de reportes y apelaciones de clientes — V063
+
+- Admin expone `POST /api/admin/ts/reports` y `POST /api/admin/ts/appeals` a
+  clientes autenticados (`cliente`/`compa`). Es opt-in (`TS_INTAKE_ENABLED=true`)
+  y solo funciona en dev/test. El reportante o apelante es el `sub` del token.
+- La persona reportada nunca llega en la solicitud. `ts.report_receive` la
+  obtiene de `public.ts_report_subject`, una función del dominio user (el dueño
+  del objetivo, ADR-003). Por ahora resuelve un perfil público de compa
+  (`account`, por `compa_perfil.id`) y una revisión publicada (`listing_revision`).
+- Un objetivo desconocido, no publicado o de otro tipo responde lo mismo
+  (`report_target_unavailable`), y un principal legado no canónico tampoco se
+  resuelve.
+- Los duplicados abiertos se agrupan (`duplicate: true`) y no cuentan para el
+  límite de 20 reportes nuevos por persona al día (`report_rate_limited`). Ese
+  límite no decide culpabilidad (D06). Un autorreporte responde 422.
+- La apelación usa `ts.appeal_submit` con el plazo de 30 días (V060).
+- El login de intake `rac_ts_intake` (`make ts-db-config`,
+  `TS_INTAKE_DATABASE_URL`) tiene exactamente `report_receive` y
+  `appeal_submit`, y admin lo verifica con `CheckRole`. No puede indicar un
+  sujeto (`report_submit`) ni leer casos.
+- Pendiente:
+  - Descripción cifrada vía EvidenceStore.
+  - Objetivos de match y chat (reserva, reseña, conversación), que necesitan
+    su propio resolvedor.
+  - Avisos y la UI S12–S15.
+- Pruebas: `report_intake_fixture` y la prueba HTTP de admin en el laboratorio
+  de evidencias.
+
 ## Vencimiento de efectos con duración — V062
 
 Las restricciones y suspensiones con `duration_hours` vencen por tiempo, pero
@@ -243,8 +271,7 @@ el worker la levanta sin un evento nuevo.
 - Consolas Flutter A1–A3/A5 y pantallas S12–S15.
 - Inventario, backfill y retirada de `chat_reporte`, `chat_auditoria` y
   `reporte`, preservando los límites `hasta_version`/`hasta_numero_legacy`.
-- Provisión DEV opt-in del login de intake (los de casos, relay y consumidor ya
-  están: `make ts-db-config`).
+- Provisión DEV de logins: hecha (`make ts-db-config` incluye intake).
 - Concretar los criterios preventivos D06, la cobertura de atención D07 y los
   procedimientos especializados D10. Las direcciones de producto ya fueron
   respondidas: operador inicial Cris A, treinta días para presentar apelación

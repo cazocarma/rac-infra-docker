@@ -260,6 +260,8 @@ def main():
             verify_effects(sql, database)
             from listing_hold_fixture import verify as verify_listing_holds
             verify_listing_holds(sql, database)
+            from report_intake_fixture import verify as verify_report_intake
+            verify_report_intake(sql, database)
             # Replacing catalog activities requires DELETE even when the profile
             # is new. Other owners retain no delete permission on them.
             sql(database, 'DELETE FROM compa_activities WHERE false;', 'rac_user')

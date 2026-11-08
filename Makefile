@@ -317,7 +317,7 @@ ts-db-config:
 ifneq ($(ENV),dev)
 	$(error La provision T&S es solo DEV; QA/PRD requieren su adaptador revisado)
 else
-	$(COMPOSE) run --rm --no-deps --build -e RAC_ENV=dev -e TS_CASES_DATABASE_URL -e TS_RELAY_DATABASE_URL -e TS_EFFECTS_DATABASE_URL database-config python ts_database.py
+	$(COMPOSE) run --rm --no-deps --build -e RAC_ENV=dev -e TS_CASES_DATABASE_URL -e TS_INTAKE_DATABASE_URL -e TS_RELAY_DATABASE_URL -e TS_EFFECTS_DATABASE_URL database-config python ts_database.py
 endif
 
 .PHONY: listing-review-db-config

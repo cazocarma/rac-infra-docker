@@ -27,7 +27,7 @@ REF = 'audit.reference,audit.reference,audit.reference'
 LOGINS = {
     'rac_ts_intake_e2e': [f'ts.report_submit({REF},text,uuid,audit.reference,text,uuid)'],
 }
-PROVISIONED = ('rac_ts_cases', 'rac_ts_relay', 'rac_ts_effects')
+PROVISIONED = ('rac_ts_cases', 'rac_ts_intake', 'rac_ts_relay', 'rac_ts_effects')
 PROVISION = (
     'import os, psycopg, ts_database as t\n'
     'with psycopg.connect() as db:\n'
@@ -100,7 +100,7 @@ def main():
         for _ in range(2):  # Idempotent: the second run reconciles without new principals.
             run('docker', 'run', '--rm', '--network', name, '-e', 'PGHOST=postgres', '-e', 'PGUSER=postgres',
                 '-e', 'PGPASSWORD=test-only', '-e', 'PGDATABASE=rac', *urls, tools, 'python', '-c', PROVISION)
-        assert sql("SELECT count(*) FROM audit.writer_principals WHERE database_role IN('rac_ts_cases','rac_ts_relay','rac_ts_effects');") == '3'
+        assert sql("SELECT count(*) FROM audit.writer_principals WHERE database_role IN('rac_ts_cases','rac_ts_intake','rac_ts_relay','rac_ts_effects');") == '4'
 
         # Broker topology and scoped credentials come from the real bootstrap.
         for _ in range(90):
